@@ -1,0 +1,195 @@
+{
+  "title": "Attendance Records Collection",
+  "description": "Finalized IN/OUT clock records for payroll and attendance tracking",
+  "mongoSchema": {
+    "bsonType": "object",
+    "required": ["employeeId", "timestamp", "type"],
+    "additionalProperties": false,
+    "properties": {
+      "_id": {
+        "bsonType": "objectId",
+        "description": "MongoDB document ID"
+      },
+      "employeeId": {
+        "bsonType": "string",
+        "description": "Reference to employee ID (e.g. EMP001)",
+        "pattern": "^EMP[0-9]{3,}$"
+      },
+      "timestamp": {
+        "bsonType": "date",
+        "description": "Clock IN/OUT timestamp (ISO 8601 UTC)"
+      },
+      "type": {
+        "bsonType": "string",
+        "description": "Event type",
+        "enum": ["IN", "OUT"]
+      },
+      "deviceId": {
+        "bsonType": "string",
+        "description": "ID of device that recorded this event (e.g. DEV001)"
+      },
+      "location": {
+        "bsonType": "string",
+        "description": "Physical location of device (e.g. Front Gate, Warehouse Door)"
+      },
+      "source": {
+        "bsonType": "string",
+        "description": "How record was created",
+        "enum": ["device", "manual", "import", "api"],
+        "default": "device"
+      },
+      "verified": {
+        "bsonType": "bool",
+        "description": "Whether this record has been verified by manager",
+        "default": false
+      },
+      "notes": {
+        "bsonType": "string",
+        "description": "Any notes about this attendance (e.g. manually approved, adjusted)"
+      },
+      "date": {
+        "bsonType": "string",
+        "description": "Date portion for grouping (YYYY-MM-DD format)",
+        "pattern": "^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$"
+      },
+      "shiftPair": {
+        "bsonType": "object",
+        "description": "Associated IN/OUT pair metadata",
+        "properties": {
+          "inRecordId": {
+            "bsonType": "objectId",
+            "description": "ID of paired IN record"
+          },
+          "outRecordId": {
+            "bsonType": "objectId",
+            "description": "ID of paired OUT record"
+          },
+          "hoursWorked": {
+            "bsonType": "decimal",
+            "description": "Hours between IN and OUT"
+          },
+          "minutesLate": {
+            "bsonType": "int",
+            "description": "Minutes late from scheduled start (0 if on-time)"
+          },
+          "gracePeriodApplied": {
+            "bsonType": "int",
+            "description": "Grace period used (minutes)"
+          }
+        }
+      },
+      "manual": {
+        "bsonType": "bool",
+        "description": "True if manually entered by admin/manager",
+        "default": false
+      },
+      "manualEnteredBy": {
+        "bsonType": "objectId",
+        "description": "User ID who manually entered this record"
+      },
+      "manualEnteredAt": {
+        "bsonType": "date",
+        "description": "When this record was manually entered"
+      },
+      "createdAt": {
+        "bsonType": "date",
+        "description": "Record creation timestamp"
+      },
+      "updatedAt": {
+        "bsonType": "date",
+        "description": "Last update timestamp"
+      }
+    }
+  },
+
+  "indexes": [
+    {
+      "name": "employeeId_timestamp",
+      "keys": { "employeeId": 1, "timestamp": -1 },
+      "options": { "background": true }
+    },
+    {
+      "name": "date_employeeId",
+      "keys": { "date": 1, "employeeId": 1 }
+    },
+    {
+      "name": "timestamp_index",
+      "keys": { "timestamp": -1 }
+    },
+    {
+      "name": "deviceId_timestamp",
+      "keys": { "deviceId": 1, "timestamp": -1 }
+    },
+    {
+      "name": "verified_date",
+      "keys": { "verified": 1, "date": -1 }
+    }
+  ],
+
+  "sample_documents": [
+    {
+      "_id": { "$oid": "507f1f77bcf86cd799439013" },
+      "employeeId": "EMP001",
+      "timestamp": { "$date": "2026-03-01T09:05:00.000Z" },
+      "type": "IN",
+      "deviceId": "DEV001",
+      "location": "Front Gate",
+      "source": "device",
+      "verified": false,
+      "date": "2026-03-01",
+      "manual": false,
+      "createdAt": { "$date": "2026-03-01T09:05:15.000Z" },
+      "updatedAt": { "$date": "2026-03-01T09:05:15.000Z" }
+    },
+    {
+      "_id": { "$oid": "507f1f77bcf86cd799439014" },
+      "employeeId": "EMP001",
+      "timestamp": { "$date": "2026-03-01T17:30:00.000Z" },
+      "type": "OUT",
+      "deviceId": "DEV001",
+      "location": "Front Gate",
+      "source": "device",
+      "verified": true,
+      "date": "2026-03-01",
+      "shiftPair": {
+        "inRecordId": { "$oid": "507f1f77bcf86cd799439013" },
+        "hoursWorked": { "$numberDecimal": "8.416" },
+        "minutesLate": 5,
+        "gracePeriodApplied": 5
+      },
+      "manual": false,
+      "createdAt": { "$date": "2026-03-01T17:30:15.000Z" },
+      "updatedAt": { "$date": "2026-03-01T17:30:15.000Z" }
+    }
+  ],
+
+  "validation_rules": [
+    "employeeId must be valid (exist in employees collection)",
+    "timestamp must be in ISO 8601 UTC format",
+    "type must be either IN or OUT",
+    "date must be extracted from timestamp and match YYYY-MM-DD format",
+    "For each employee, IN times must precede OUT times in daily sequence",
+    "deviceId should reference valid device in devices collection",
+    "minutesLate should be 0 or positive integer",
+    "verified field automatically updated when payroll is run",
+    "Manual entries must have manualEnteredBy and manualEnteredAt",
+    "shiftPair populated only after matching IN/OUT pair"
+  ],
+
+  "payroll_integration": {
+    "pairing_logic": "System matches IN/OUT pairs per employee per day. Unpaired events flagged as anomalies.",
+    "late_calculation": "If IN time > scheduledStart (after grace period): minutesLate = IN_time - scheduledStart - grace_period",
+    "hours_calculation": "hoursWorked = (OUT_timestamp - IN_timestamp) / 60 minutes",
+    "grace_period": "Default 5 minutes (configurable in settings)",
+    "break_handling": "Unpaid breaks deducted from hoursWorked; paid leave added",
+    "rounding": "All decimals rounded to nearest 0.01 hours / 1 minute"
+  },
+
+  "notes": [
+    "Stores complete audit trail of clock events",
+    "shiftPair field computed during payroll processing",
+    "Manual entries require approval and are logged to audit_logs",
+    "Indexes optimized for: lookup by employee+date, recent events, device logs",
+    "TTL index can be set on createdAt for retention policy (e.g. 3 years)"
+  ]
+}

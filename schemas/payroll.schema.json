@@ -1,0 +1,434 @@
+{
+  "title": "Payroll Collections",
+  "description": "Payroll runs and itemized employee payment records",
+
+  "payroll_runs": {
+    "title": "Payroll Runs Collection",
+    "description": "Atomic monthly/weekly payroll processing records - one run per pay period",
+    "mongoSchema": {
+      "bsonType": "object",
+      "required": ["periodStart", "periodEnd", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "_id": {
+          "bsonType": "objectId",
+          "description": "MongoDB document ID"
+        },
+        "runId": {
+          "bsonType": "string",
+          "description": "Unique payroll run identifier (e.g. PAY20260301)",
+          "pattern": "^PAY[0-9]{8}$"
+        },
+        "periodStart": {
+          "bsonType": "date",
+          "description": "Start of pay period (inclusive) in UTC"
+        },
+        "periodEnd": {
+          "bsonType": "date",
+          "description": "End of pay period (inclusive) in UTC"
+        },
+        "periodType": {
+          "bsonType": "string",
+          "description": "Frequency of payroll",
+          "enum": ["weekly", "biweekly", "monthly", "custom"],
+          "default": "monthly"
+        },
+        "runDate": {
+          "bsonType": "date",
+          "description": "When payroll was processed/run"
+        },
+        "runBy": {
+          "bsonType": "objectId",
+          "description": "User ID of person who ran payroll"
+        },
+        "status": {
+          "bsonType": "string",
+          "description": "Payroll processing status",
+          "enum": ["draft", "processing", "completed", "approved", "paid", "archived"],
+          "default": "draft"
+        },
+        "approvalStatus": {
+          "bsonType": "string",
+          "description": "Approval workflow status",
+          "enum": ["pending", "approved", "rejected"],
+          "default": "pending"
+        },
+        "approvedBy": {
+          "bsonType": "objectId",
+          "description": "User ID of approver (finance manager)"
+        },
+        "approvalDate": {
+          "bsonType": "date",
+          "description": "When payroll was approved"
+        },
+        "totalEmployees": {
+          "bsonType": "int",
+          "description": "Number of employees in this run",
+          "minimum": 0
+        },
+        "totalGrossPay": {
+          "bsonType": "decimal",
+          "description": "Sum of all gross pay (before deductions)"
+        },
+        "totalDeductions": {
+          "bsonType": "decimal",
+          "description": "Sum of all deductions"
+        },
+        "totalNetPay": {
+          "bsonType": "decimal",
+          "description": "Sum of all net pay"
+        },
+        "currency": {
+          "bsonType": "string",
+          "description": "Payment currency",
+          "default": "SYP"
+        },
+        "summaryStats": {
+          "bsonType": "object",
+          "description": "Statistical summary",
+          "properties": {
+            "totalHoursWorked": {
+              "bsonType": "decimal"
+            },
+            "totalLatePenalty": {
+              "bsonType": "decimal"
+            },
+            "employeesProcessed": {
+              "bsonType": "int"
+            },
+            "employeesWithAnomalies": {
+              "bsonType": "int"
+            }
+          }
+        },
+        "notes": {
+          "bsonType": "string",
+          "description": "Admin notes about this payroll run"
+        },
+        "createdAt": {
+          "bsonType": "date",
+          "description": "Record creation timestamp"
+        },
+        "updatedAt": {
+          "bsonType": "date",
+          "description": "Last update timestamp"
+        }
+      }
+    },
+
+    "indexes": [
+      {
+        "name": "runId_unique",
+        "keys": { "runId": 1 },
+        "options": { "unique": true }
+      },
+      {
+        "name": "periodStart_periodEnd",
+        "keys": { "periodStart": 1, "periodEnd": 1 }
+      },
+      {
+        "name": "status_index",
+        "keys": { "status": 1 }
+      },
+      {
+        "name": "runDate_index",
+        "keys": { "runDate": -1 }
+      }
+    ],
+
+    "sample_document": {
+      "_id": { "$oid": "507f1f77bcf86cd799439017" },
+      "runId": "PAY20260301",
+      "periodStart": { "$date": "2026-03-01T00:00:00.000Z" },
+      "periodEnd": { "$date": "2026-03-31T23:59:59.999Z" },
+      "periodType": "monthly",
+      "runDate": { "$date": "2026-04-01T09:00:00.000Z" },
+      "runBy": { "$oid": "507f1f77bcf86cd799439018" },
+      "status": "approved",
+      "approvalStatus": "approved",
+      "approvedBy": { "$oid": "507f1f77bcf86cd799439019" },
+      "approvalDate": { "$date": "2026-04-01T14:00:00.000Z" },
+      "totalEmployees": 42,
+      "totalGrossPay": { "$numberDecimal": "125430.50" },
+      "totalDeductions": { "$numberDecimal": "15060.25" },
+      "totalNetPay": { "$numberDecimal": "110370.25" },
+      "currency": "SYP",
+      "summaryStats": {
+        "totalHoursWorked": { "$numberDecimal": "5010.50" },
+        "totalLatePenalty": { "$numberDecimal": "320.75" },
+        "employeesProcessed": 42,
+        "employeesWithAnomalies": 3
+      },
+      "notes": "March 2026 payroll. 3 employees flagged for missing OUT records.",
+      "createdAt": { "$date": "2026-04-01T09:00:00.000Z" },
+      "updatedAt": { "$date": "2026-04-01T14:00:05.000Z" }
+    }
+  },
+
+  "payroll_items": {
+    "title": "Payroll Items Collection",
+    "description": "Per-employee payment line items for a payroll run - contains detailed calculations",
+    "mongoSchema": {
+      "bsonType": "object",
+      "required": ["payrollRunId", "employeeId", "hoursWorked", "grossPay", "netPay"],
+      "additionalProperties": false,
+      "properties": {
+        "_id": {
+          "bsonType": "objectId",
+          "description": "MongoDB document ID"
+        },
+        "payrollRunId": {
+          "bsonType": "objectId",
+          "description": "Reference to payroll_runs document"
+        },
+        "employeeId": {
+          "bsonType": "string",
+          "description": "Reference to employee ID (e.g. EMP001)",
+          "pattern": "^EMP[0-9]{3,}$"
+        },
+        "employeeName": {
+          "bsonType": "string",
+          "description": "Employee name (denormalized for reporting)"
+        },
+        "department": {
+          "bsonType": "string",
+          "description": "Employee department (denormalized)"
+        },
+        "hoursWorked": {
+          "bsonType": "decimal",
+          "description": "Total hours worked in period (including paid leave, excluding unpaid break)",
+          "minimum": 0,
+          "maximum": 744
+        },
+        "hourlyRate": {
+          "bsonType": "decimal",
+          "description": "Hourly rate at time of payroll (historical record)",
+          "minimum": 0
+        },
+        "basePay": {
+          "bsonType": "decimal",
+          "description": "Base calculation: hoursWorked * hourlyRate"
+        },
+        "allowances": {
+          "bsonType": "decimal",
+          "description": "Additional allowances (e.g. transportation, meal)",
+          "default": 0
+        },
+        "grossPay": {
+          "bsonType": "decimal",
+          "description": "Gross before deductions: basePay + allowances"
+        },
+        "deductions": {
+          "bsonType": "object",
+          "description": "Breakdown of all deductions",
+          "properties": {
+            "latePenalty": {
+              "bsonType": "decimal",
+              "description": "Deduction for late arrivals"
+            },
+            "socialSecurity": {
+              "bsonType": "decimal",
+              "description": "Social insurance/social security deduction"
+            },
+            "taxes": {
+              "bsonType": "decimal",
+              "description": "Income tax"
+            },
+            "other": {
+              "bsonType": "decimal",
+              "description": "Other adjustment deductions"
+            }
+          }
+        },
+        "totalDeductions": {
+          "bsonType": "decimal",
+          "description": "Sum of all deductions"
+        },
+        "netPay": {
+          "bsonType": "decimal",
+          "description": "Net after deductions: grossPay - totalDeductions"
+        },
+        "currency": {
+          "bsonType": "string",
+          "description": "Currency code",
+          "default": "SYP"
+        },
+        "attendanceData": {
+          "bsonType": "object",
+          "description": "Summary of attendance for this period",
+          "properties": {
+            "daysWorked": {
+              "bsonType": "int"
+            },
+            "daysAbsent": {
+              "bsonType": "int"
+            },
+            "minutesLate": {
+              "bsonType": "int"
+            },
+            "unpaidBreakMinutes": {
+              "bsonType": "int"
+            }
+          }
+        },
+        "anomalies": {
+          "bsonType": "array",
+          "description": "List of detected issues",
+          "items": {
+            "bsonType": "string",
+            "enum": ["missing_out", "missing_in", "excessive_overtime", "zero_hours", "clock_fraud_suspected"]
+          },
+          "default": []
+        },
+        "notes": {
+          "bsonType": "string",
+          "description": "Payroll processor notes (e.g. manual adjustment reason)"
+        },
+        "manuallyAdjusted": {
+          "bsonType": "bool",
+          "description": "True if adjusted after initial calculation",
+          "default": false
+        },
+        "adjustedBy": {
+          "bsonType": "objectId",
+          "description": "User ID who made manual adjustment"
+        },
+        "adjustedAt": {
+          "bsonType": "date",
+          "description": "Timestamp of adjustment"
+        },
+        "createdAt": {
+          "bsonType": "date",
+          "description": "Record creation timestamp"
+        },
+        "updatedAt": {
+          "bsonType": "date",
+          "description": "Last update timestamp"
+        }
+      }
+    },
+
+    "indexes": [
+      {
+        "name": "payrollRunId_employeeId",
+        "keys": { "payrollRunId": 1, "employeeId": 1 },
+        "options": { "unique": true }
+      },
+      {
+        "name": "employeeId_index",
+        "keys": { "employeeId": 1 }
+      },
+      {
+        "name": "department_index",
+        "keys": { "department": 1 }
+      }
+    ],
+
+    "sample_document": {
+      "_id": { "$oid": "507f1f77bcf86cd799439020" },
+      "payrollRunId": { "$oid": "507f1f77bcf86cd799439017" },
+      "employeeId": "EMP001",
+      "employeeName": "أحمد محمد علي",
+      "department": "Warehouse",
+      "hoursWorked": { "$numberDecimal": "158.75" },
+      "hourlyRate": { "$numberDecimal": "20.00" },
+      "basePay": { "$numberDecimal": "3175.00" },
+      "allowances": { "$numberDecimal": "100.00" },
+      "grossPay": { "$numberDecimal": "3275.00" },
+      "deductions": {
+        "latePenalty": { "$numberDecimal": "3.33" },
+        "socialSecurity": { "$numberDecimal": "163.75" },
+        "taxes": { "$numberDecimal": "100.00" },
+        "other": { "$numberDecimal": "0.00" }
+      },
+      "totalDeductions": { "$numberDecimal": "267.08" },
+      "netPay": { "$numberDecimal": "3007.92" },
+      "currency": "SYP",
+      "attendanceData": {
+        "daysWorked": 22,
+        "daysAbsent": 0,
+        "minutesLate": 45,
+        "unpaidBreakMinutes": 0
+      },
+      "anomalies": [],
+      "manuallyAdjusted": false,
+      "createdAt": { "$date": "2026-04-01T09:00:00.000Z" },
+      "updatedAt": { "$date": "2026-04-01T09:00:00.000Z" }
+    }
+  },
+
+  "payroll_calculation_formula": {
+    "description": "Detailed formula for computing payroll items",
+    
+    "step_1_base_pay": {
+      "formula": "basePay = hoursWorked × hourlyRate",
+      "example": "158.75 hours × 20.00 SYP/hr = 3,175.00 SYP"
+    },
+
+    "step_2_allowances": {
+      "formula": "allowances = transportation + meal + other",
+      "example": "100.00 SYP (flat allowance or sum of individual items)",
+      "note": "Configured per company policy; can vary by department"
+    },
+
+    "step_3_gross_pay": {
+      "formula": "grossPay = basePay + allowances",
+      "example": "3,175.00 + 100.00 = 3,275.00 SYP"
+    },
+
+    "step_4_late_penalty": {
+      "formula": "latePenalty = max(minutesLate - gracePeriod, 0) × (hourlyRate / 60)",
+      "example": "45 minutes late - 5 minute grace = 40 minutes × (20 / 60) = 13.33 SYP",
+      "note": "Grace period default 5 min; configured in settings"
+    },
+
+    "step_5_other_deductions": {
+      "formulas": {
+        "socialSecurity": "grossPay × 5% (typical Syrian rate)",
+        "taxes": "Based on progressive tax table per government rules",
+        "other": "Loans, advances, penalties (as configured)"
+      },
+      "examples": {
+        "socialSecurity": "3,275.00 × 0.05 = 163.75 SYP",
+        "taxes": "3,275.00 × 3% = 98.25 SYP (approx, depends on tax rules)"
+      }
+    },
+
+    "step_6_total_deductions": {
+      "formula": "totalDeductions = latePenalty + socialSecurity + taxes + other",
+      "example": "13.33 + 163.75 + 100.00 + 0 = 277.08 SYP"
+    },
+
+    "step_7_net_pay": {
+      "formula": "netPay = grossPay - totalDeductions",
+      "example": "3,275.00 - 277.08 = 2,997.92 SYP"
+    },
+
+    "rounding": "All monetary values rounded to nearest 0.01 (cents/fils); times rounded to nearest minute",
+
+    "paid_leave_handling": "Counts as hoursWorked (i.e. paid leave increases gross pay)",
+    "unpaid_break_handling": "Deducted from hoursWorked (thus reduces gross pay)",
+    "overtime_handling": "If hoursWorked > 160/month: excess hours may use overtime multiplier (e.g. 1.25×) per policy"
+  },
+
+  "validation_rules": [
+    "hoursWorked must be non-negative and <= max hours in period",
+    "basePay must equal hoursWorked × hourlyRate (within rounding)",
+    "grossPay must equal basePay + allowances",
+    "netPay must equal grossPay - totalDeductions",
+    "totalDeductions must sum constituent deductions",
+    "Sum of all payroll_items.netPay should equal payroll_runs.totalNetPay (within rounding)",
+    "employeeId in payroll_items must exist in employees collection",
+    "payrollRunId must exist in payroll_runs collection",
+    "Each (payrollRunId, employeeId) tuple must be unique",
+    "Anomalies list should include any detected issues, flagged for manager review"
+  ],
+
+  "notes": [
+    "Denormalization: employeeName, department stored in payroll_items for historical reference",
+    "Immutability: Once payroll is 'paid', records should not be editable (optional, per company policy)",
+    "Audit trail: Manual adjustments logged with adjustedBy and adjustedAt",
+    "Anomaly detection: System flags inconsistent attendance data for HR review",
+    "Tax/Deduction rules vary by country; this schema assumes Syria as example context"
+  ]
+}

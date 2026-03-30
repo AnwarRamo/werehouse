@@ -1,0 +1,337 @@
+{
+  "title": "Devices and Device Events Collections",
+  "description": "Biometric devices and raw event logs from hardware",
+
+  "devices": {
+    "title": "Devices Collection",
+    "description": "Biometric attendance devices (scanners, fingerprint readers, etc)",
+    "mongoSchema": {
+      "bsonType": "object",
+      "required": ["deviceId", "name", "location"],
+      "additionalProperties": false,
+      "properties": {
+        "_id": {
+          "bsonType": "objectId",
+          "description": "MongoDB document ID"
+        },
+        "deviceId": {
+          "bsonType": "string",
+          "description": "Unique device identifier (e.g. DEV001)",
+          "pattern": "^DEV[0-9]{3,}$"
+        },
+        "name": {
+          "bsonType": "string",
+          "description": "Device display name (e.g. Front Gate Scanner)",
+          "minLength": 3,
+          "maxLength": 100
+        },
+        "location": {
+          "bsonType": "string",
+          "description": "Physical location of device",
+          "enum": ["Front Gate", "Warehouse Door", "Admin Office", "Parking", "Other"]
+        },
+        "ip": {
+          "bsonType": "string",
+          "description": "Device IP address for network communication",
+          "pattern": "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$"
+        },
+        "port": {
+          "bsonType": "int",
+          "description": "Server port for device communication",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "model": {
+          "bsonType": "string",
+          "description": "Device model/brand (e.g. ZK Teco, Hikvision)",
+          "enum": ["ZK Teco", "Hikvision", "Suprema", "Anviz", "Other"]
+        },
+        "serialNumber": {
+          "bsonType": "string",
+          "description": "Device serial number for tracking"
+        },
+        "firmwareVersion": {
+          "bsonType": "string",
+          "description": "Device firmware version"
+        },
+        "status": {
+          "bsonType": "string",
+          "description": "Device operational status",
+          "enum": ["active", "inactive", "maintenance", "offline"],
+          "default": "active"
+        },
+        "lastSync": {
+          "bsonType": "date",
+          "description": "Last successful sync timestamp with server"
+        },
+        "timezone": {
+          "bsonType": "string",
+          "description": "Device timezone (e.g. Asia/Damascus)",
+          "default": "Asia/Damascus"
+        },
+        "settings": {
+          "bsonType": "object",
+          "description": "Device-specific configuration",
+          "properties": {
+            "enablePhotoCapture": {
+              "bsonType": "bool",
+              "description": "Capture photo with each event",
+              "default": true
+            },
+            "enableAudio": {
+              "bsonType": "bool",
+              "description": "Audio feedback on device",
+              "default": true
+            },
+            "verificationMode": {
+              "bsonType": "string",
+              "description": "1:1 or 1:N verification",
+              "enum": ["1:1", "1:N"],
+              "default": "1:N"
+            }
+          }
+        },
+        "createdAt": {
+          "bsonType": "date",
+          "description": "Record creation timestamp"
+        },
+        "updatedAt": {
+          "bsonType": "date",
+          "description": "Last update timestamp"
+        }
+      }
+    },
+
+    "indexes": [
+      {
+        "name": "deviceId_unique",
+        "keys": { "deviceId": 1 },
+        "options": { "unique": true }
+      },
+      {
+        "name": "location_status",
+        "keys": { "location": 1, "status": 1 }
+      },
+      {
+        "name": "ip_unique",
+        "keys": { "ip": 1 },
+        "options": { "sparse": true, "unique": true }
+      }
+    ],
+
+    "sample_document": {
+      "_id": { "$oid": "507f1f77bcf86cd799439015" },
+      "deviceId": "DEV001",
+      "name": "Front Gate Scanner",
+      "location": "Front Gate",
+      "ip": "192.168.1.100",
+      "port": 5000,
+      "model": "ZK Teco",
+      "serialNumber": "SN123456789",
+      "firmwareVersion": "v3.2.1",
+      "status": "active",
+      "lastSync": { "$date": "2026-03-28T15:30:00.000Z" },
+      "timezone": "Asia/Damascus",
+      "settings": {
+        "enablePhotoCapture": true,
+        "enableAudio": true,
+        "verificationMode": "1:N"
+      },
+      "createdAt": { "$date": "2026-01-01T10:00:00.000Z" },
+      "updatedAt": { "$date": "2026-03-28T10:00:00.000Z" }
+    }
+  },
+
+  "device_events": {
+    "title": "Device Events Collection",
+    "description": "Raw, unprocessed logs from biometric devices (idempotency key: deviceId + employeeId + timestamp + direction)",
+    "mongoSchema": {
+      "bsonType": "object",
+      "required": ["deviceId", "employeeId", "timestamp", "direction"],
+      "additionalProperties": false,
+      "properties": {
+        "_id": {
+          "bsonType": "objectId",
+          "description": "MongoDB document ID"
+        },
+        "eventId": {
+          "bsonType": "string",
+          "description": "Unique event identifier (UUID generated by device or server)",
+          "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+        },
+        "deviceId": {
+          "bsonType": "string",
+          "description": "ID of device that recorded event (e.g. DEV001)",
+          "pattern": "^DEV[0-9]{3,}$"
+        },
+        "deviceSequence": {
+          "bsonType": "int",
+          "description": "Event sequence number from device (for detecting lost events)"
+        },
+        "employeeId": {
+          "bsonType": "string",
+          "description": "Employee ID from device reading (e.g. EMP001)",
+          "pattern": "^EMP[0-9]{3,}$"
+        },
+        "timestamp": {
+          "bsonType": "date",
+          "description": "Event timestamp (device local time, converted to UTC)"
+        },
+        "direction": {
+          "bsonType": "string",
+          "description": "IN or OUT direction",
+          "enum": ["IN", "OUT"]
+        },
+        "verificationMethod": {
+          "bsonType": "string",
+          "description": "How employee was identified",
+          "enum": ["fingerprint", "rfid", "face", "card", "password", "manual"],
+          "default": "fingerprint"
+        },
+        "quality": {
+          "bsonType": "int",
+          "description": "Quality score of biometric match (0-100)",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "photoData": {
+          "bsonType": "string",
+          "description": "Base64-encoded photo or photo URL (optional, can be very large)"
+        },
+        "status": {
+          "bsonType": "string",
+          "description": "Event processing status",
+          "enum": ["pending", "processed", "ignored", "anomaly"],
+          "default": "pending"
+        },
+        "processingError": {
+          "bsonType": "string",
+          "description": "Error message if processing failed"
+        },
+        "normalizedTo": {
+          "bsonType": "objectId",
+          "description": "Reference to normalized attendance_record (after processing)"
+        },
+        "duplicateOf": {
+          "bsonType": "objectId",
+          "description": "If duplicate detected, reference to original event"
+        },
+        "isDuplicate": {
+          "bsonType": "bool",
+          "description": "Marked as duplicate",
+          "default": false
+        },
+        "serverReceivedAt": {
+          "bsonType": "date",
+          "description": "When server received this event"
+        },
+        "createdAt": {
+          "bsonType": "date",
+          "description": "Record creation timestamp"
+        },
+        "updatedAt": {
+          "bsonType": "date",
+          "description": "Last update timestamp"
+        }
+      }
+    },
+
+    "indexes": [
+      {
+        "name": "eventId_unique",
+        "keys": { "eventId": 1 },
+        "options": { "unique": true }
+      },
+      {
+        "name": "deviceId_timestamp",
+        "keys": { "deviceId": 1, "timestamp": -1 }
+      },
+      {
+        "name": "employeeId_timestamp",
+        "keys": { "employeeId": 1, "timestamp": -1 }
+      },
+      {
+        "name": "status_index",
+        "keys": { "status": 1 }
+      },
+      {
+        "name": "isDuplicate_index",
+        "keys": { "isDuplicate": 1 }
+      },
+      {
+        "name": "composite_idempotency",
+        "keys": { "deviceId": 1, "employeeId": 1, "timestamp": 1, "direction": 1 },
+        "options": { "unique": true, "sparse": true }
+      }
+    ],
+
+    "sample_documents": [
+      {
+        "_id": { "$oid": "507f1f77bcf86cd799439016" },
+        "eventId": "a1b2c3d4-e5f6-47g8-h9i0-j1k2l3m4n5o6",
+        "deviceId": "DEV001",
+        "deviceSequence": 1523,
+        "employeeId": "EMP001",
+        "timestamp": { "$date": "2026-03-01T09:05:00.000Z" },
+        "direction": "IN",
+        "verificationMethod": "fingerprint",
+        "quality": 98,
+        "status": "processed",
+        "normalizedTo": { "$oid": "507f1f77bcf86cd799439013" },
+        "isDuplicate": false,
+        "serverReceivedAt": { "$date": "2026-03-01T09:05:02.000Z" },
+        "createdAt": { "$date": "2026-03-01T09:05:02.000Z" },
+        "updatedAt": { "$date": "2026-03-01T09:05:05.000Z" }
+      }
+    ]
+  },
+
+  "device_integration_flow": {
+    "event_submission": {
+      "endpoint": "POST /api/devices/events",
+      "payload": {
+        "eventId": "uuid",
+        "deviceId": "DEV001",
+        "employeeId": "EMP001",
+        "timestamp": "2026-03-01T09:05:00Z",
+        "direction": "IN",
+        "verificationMethod": "fingerprint",
+        "quality": 98
+      }
+    },
+
+    "idempotency": "Use eventId UUID or composite key (deviceId, employeeId, timestamp, direction) to prevent duplicates. Check before insert.",
+
+    "processing_steps": [
+      "1. Receive raw event from device",
+      "2. Validate employeeId, deviceId exist",
+      "3. Check for duplicates (by eventId or composite key)",
+      "4. Convert device timestamp to UTC",
+      "5. Store in device_events with status=pending",
+      "6. Trigger normalization process (batch or real-time)",
+      "7. Match IN/OUT pairs for same employee per day",
+      "8. Create/update attendance_records",
+      "9. Flag anomalies (unpaired events, long gaps)",
+      "10. Update device_events status to processed/anomaly"
+    ],
+
+    "reconciliation": [
+      "Daily batch: Match IN/OUT pairs per employee for each day",
+      "Flag missing OUT: If IN without OUT, mark for manual review",
+      "Flag missing IN: If OUT without IN, check previous day or mark anomaly",
+      "Manager review UI: Show unmatched events for approval/adjustment",
+      "Override capability: Manager can manually adjust or pair events",
+      "Audit logging: All manual overrides logged with timestamp and user"
+    ]
+  },
+
+  "notes": [
+    "device_events is raw ingest layer - never modified after creation (immutable audit trail)",
+    "Composite idempotency key prevents exact duplicates from device retransmissions",
+    "eventId should be generated by device; if not, server generates UUID",
+    "Quality score helps identify unreliable reads (can trigger re-verification)",
+    "duplicateOf field used to track duplicate chains for investigation",
+    "photoData optional and can be stored separately in file storage to keep collection lean",
+    "TTL index on serverReceivedAt: raw events can be archived after 30-90 days"
+  ]
+}

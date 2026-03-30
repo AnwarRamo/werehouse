@@ -1,0 +1,295 @@
+{
+  "title": "Inventory Collections",
+  "description": "Products and stock management for apparel warehouse",
+
+  "products": {
+    "title": "Products Collection",
+    "description": "Apparel product master data",
+    "mongoSchema": {
+      "bsonType": "object",
+      "required": ["sku", "name", "category", "unitPrice"],
+      "additionalProperties": false,
+      "properties": {
+        "_id": {
+          "bsonType": "objectId",
+          "description": "MongoDB document ID"
+        },
+        "sku": {
+          "bsonType": "string",
+          "description": "Stock Keeping Unit - unique product identifier",
+          "pattern": "^[A-Z0-9-]{3,20}$"
+        },
+        "name": {
+          "bsonType": "string",
+          "description": "Product name (e.g. T-Shirt Blue XL)",
+          "minLength": 3,
+          "maxLength": 150
+        },
+        "category": {
+          "bsonType": "string",
+          "description": "Product category",
+          "enum": ["T-Shirts", "Shirts", "Pants", "Jackets", "Sweaters", "Accessories", "Other"],
+          "default": "Other"
+        },
+        "subcategory": {
+          "bsonType": "string",
+          "description": "Product subcategory (e.g. Casual, Formal, Sports)"
+        },
+        "size": {
+          "bsonType": "string",
+          "description": "Size (XS, S, M, L, XL, XXL, etc)",
+          "enum": ["XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL", "One Size"]
+        },
+        "color": {
+          "bsonType": "string",
+          "description": "Product color"
+        },
+        "unitPrice": {
+          "bsonType": "decimal",
+          "description": "Retail price per unit",
+          "minimum": 0
+        },
+        "costPrice": {
+          "bsonType": "decimal",
+          "description": "Cost/wholesale price per unit",
+          "minimum": 0
+        },
+        "currency": {
+          "bsonType": "string",
+          "description": "Currency code",
+          "default": "SYP"
+        },
+        "description": {
+          "bsonType": "string",
+          "description": "Product description"
+        },
+        "material": {
+          "bsonType": "string",
+          "description": "Material composition (e.g. 100% Cotton, 80% Polyester)"
+        },
+        "supplier": {
+          "bsonType": "string",
+          "description": "Supplier name"
+        },
+        "reorderLevel": {
+          "bsonType": "int",
+          "description": "Minimum stock level before reorder alert",
+          "minimum": 0,
+          "default": 10
+        },
+        "status": {
+          "bsonType": "string",
+          "description": "Product status",
+          "enum": ["active", "discontinued", "pending"],
+          "default": "active"
+        },
+        "imageUrl": {
+          "bsonType": "string",
+          "description": "URL to product image"
+        },
+        "createdAt": {
+          "bsonType": "date",
+          "description": "Record creation timestamp"
+        },
+        "updatedAt": {
+          "bsonType": "date",
+          "description": "Last update timestamp"
+        }
+      }
+    },
+
+    "indexes": [
+      {
+        "name": "sku_unique",
+        "keys": { "sku": 1 },
+        "options": { "unique": true }
+      },
+      {
+        "name": "category_index",
+        "keys": { "category": 1 }
+      },
+      {
+        "name": "status_index",
+        "keys": { "status": 1 }
+      },
+      {
+        "name": "reorderLevel_index",
+        "keys": { "reorderLevel": 1 }
+      }
+    ],
+
+    "sample_document": {
+      "_id": { "$oid": "507f1f77bcf86cd799439021" },
+      "sku": "TSHIRT-NAVY-L",
+      "name": "Classic Navy T-Shirt Large",
+      "category": "T-Shirts",
+      "subcategory": "Casual",
+      "size": "L",
+      "color": "Navy Blue",
+      "unitPrice": { "$numberDecimal": "25.00" },
+      "costPrice": { "$numberDecimal": "12.50" },
+      "currency": "SYP",
+      "description": "100% cotton classic crew neck t-shirt",
+      "material": "100% Cotton",
+      "supplier": "TextileCorp",
+      "reorderLevel": 20,
+      "status": "active",
+      "createdAt": { "$date": "2026-01-15T10:00:00.000Z" },
+      "updatedAt": { "$date": "2026-03-28T10:00:00.000Z" }
+    }
+  },
+
+  "stock_levels": {
+    "title": "Stock Levels Collection",
+    "description": "Inventory quantities by product and warehouse location",
+    "mongoSchema": {
+      "bsonType": "object",
+      "required": ["sku", "location", "quantity"],
+      "additionalProperties": false,
+      "properties": {
+        "_id": {
+          "bsonType": "objectId",
+          "description": "MongoDB document ID"
+        },
+        "sku": {
+          "bsonType": "string",
+          "description": "Product SKU",
+          "pattern": "^[A-Z0-9-]{3,20}$"
+        },
+        "productId": {
+          "bsonType": "objectId",
+          "description": "Reference to products collection document"
+        },
+        "location": {
+          "bsonType": "string",
+          "description": "Warehouse/storage location",
+          "enum": ["MainWarehouse", "SecondaryWarehouse", "DisplayShelf", "Stockroom", "Transit"],
+          "default": "MainWarehouse"
+        },
+        "warehouseCode": {
+          "bsonType": "string",
+          "description": "Warehouse identifier (e.g. WH001, WH002)"
+        },
+        "section": {
+          "bsonType": "string",
+          "description": "Section/aisle in warehouse (e.g. A1, B2)"
+        },
+        "quantity": {
+          "bsonType": "int",
+          "description": "Current quantity on hand",
+          "minimum": 0
+        },
+        "reserved": {
+          "bsonType": "int",
+          "description": "Quantity reserved for pending orders",
+          "minimum": 0,
+          "default": 0
+        },
+        "available": {
+          "bsonType": "int",
+          "description": "Available for sale: quantity - reserved",
+          "minimum": 0
+        },
+        "lastCountDate": {
+          "bsonType": "date",
+          "description": "Last physical inventory count date"
+        },
+        "lastCountBy": {
+          "bsonType": "objectId",
+          "description": "User ID of person who performed last count"
+        },
+        "lastMovement": {
+          "bsonType": "object",
+          "description": "Last inventory movement",
+          "properties": {
+            "type": {
+              "bsonType": "string",
+              "enum": ["in", "out", "adjustment", "count"]
+            },
+            "quantity": {
+              "bsonType": "int"
+            },
+            "timestamp": {
+              "bsonType": "date"
+            }
+          }
+        },
+        "createdAt": {
+          "bsonType": "date",
+          "description": "Record creation timestamp"
+        },
+        "updatedAt": {
+          "bsonType": "date",
+          "description": "Last update timestamp"
+        }
+      }
+    },
+
+    "indexes": [
+      {
+        "name": "sku_location_unique",
+        "keys": { "sku": 1, "location": 1 },
+        "options": { "unique": true }
+      },
+      {
+        "name": "location_index",
+        "keys": { "location": 1 }
+      },
+      {
+        "name": "available_index",
+        "keys": { "available": 1 }
+      },
+      {
+        "name": "productId_index",
+        "keys": { "productId": 1 }
+      }
+    ],
+
+    "sample_document": {
+      "_id": { "$oid": "507f1f77bcf86cd799439022" },
+      "sku": "TSHIRT-NAVY-L",
+      "productId": { "$oid": "507f1f77bcf86cd799439021" },
+      "location": "MainWarehouse",
+      "warehouseCode": "WH001",
+      "section": "A1",
+      "quantity": 250,
+      "reserved": 15,
+      "available": 235,
+      "lastCountDate": { "$date": "2026-03-20T15:00:00.000Z" },
+      "lastCountBy": { "$oid": "507f1f77bcf86cd799439023" },
+      "lastMovement": {
+        "type": "in",
+        "quantity": 50,
+        "timestamp": { "$date": "2026-03-25T10:30:00.000Z" }
+      },
+      "createdAt": { "$date": "2026-01-15T10:00:00.000Z" },
+      "updatedAt": { "$date": "2026-03-28T10:00:00.000Z" }
+    }
+  },
+
+  "inventory_operations": {
+    "stock_adjustments": {
+      "endpoint": "PUT /api/inventory/adjust",
+      "payload": {
+        "sku": "TSHIRT-NAVY-L",
+        "location": "MainWarehouse",
+        "quantityChange": -10,
+        "reason": "Sale/Damaged/Inventory Correction",
+        "notes": "Damaged shipment - 10 units discarded"
+      },
+      "logic": "Validate SKU exists, validate location, update quantity, log movement"
+    },
+
+    "reorder_alerts": "Query stock_levels where available < reorderLevel; trigger purchase order creation",
+
+    "inventory_count": "Periodic physical count: manager updates lastCountDate, lastCountBy, system flags discrepancies"
+  },
+
+  "notes": [
+    "Stock levels separated from products for multi-location support",
+    "Composite index (sku, location) ensures one record per SKU per location",
+    "available = quantity - reserved allows tracking of committed stock",
+    "reorderLevel in products drives automatic purchasing alerts",
+    "LastMovement tracks audit trail of inventory changes"
+  ]
+}

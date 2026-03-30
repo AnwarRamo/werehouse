@@ -1,0 +1,695 @@
+{
+  "info": {
+    "name": "Warehouse Backend Nest - Full API",
+    "_postman_id": "b8ebf2b8-9f8c-4f68-85f8-8035a8b04a9b",
+    "description": "Full Postman collection for backend-nest (auth, employees, devices, attendance, payroll, inventory, imports).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET Health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.token) pm.collectionVariables.set('token', data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "POST Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.token) pm.collectionVariables.set('token', data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newuser\",\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password12345\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "GET Me",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/me"
+          }
+        },
+        {
+          "name": "GET Roles",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/roles"
+          }
+        },
+        {
+          "name": "GET Users",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/users"
+          }
+        },
+        {
+          "name": "POST Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"new.user\",\n  \"email\": \"new.user@example.com\",\n  \"password\": \"password123\",\n  \"roleId\": \"{{roleId}}\",\n  \"status\": \"active\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/users"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Employees",
+      "item": [
+        {
+          "name": "GET Employees",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/employees?page=1&limit=20"
+          }
+        },
+        {
+          "name": "GET Employees Stats",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/employees/stats"
+          }
+        },
+        {
+          "name": "GET Employees by Department",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/employees/department/Warehouse"
+          }
+        },
+        {
+          "name": "POST Create Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": \"EMP9200\",\n  \"name\": \"Postman Employee\",\n  \"email\": \"postman.employee@example.com\",\n  \"hourlyRate\": 18.5,\n  \"currency\": \"SYP\",\n  \"department\": \"Warehouse\",\n  \"roleId\": \"{{roleId}}\",\n  \"status\": \"active\",\n  \"scheduledStart\": \"09:00\",\n  \"scheduledEnd\": \"17:00\"\n}"
+            },
+            "url": "{{baseUrl}}/employees"
+          }
+        },
+        {
+          "name": "GET Employee by MongoId",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/employees/{{employeeMongoId}}"
+          }
+        },
+        {
+          "name": "PUT Update Employee",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"department\": \"Operations\",\n  \"hourlyRate\": 20\n}"
+            },
+            "url": "{{baseUrl}}/employees/{{employeeMongoId}}"
+          }
+        },
+        {
+          "name": "DELETE Employee",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/employees/{{employeeMongoId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Devices",
+      "item": [
+        {
+          "name": "GET Devices",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/devices?page=1&limit=20"
+          }
+        },
+        {
+          "name": "POST Create Device",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"DEV9200\",\n  \"name\": \"Postman Device\",\n  \"location\": \"Front Gate\",\n  \"model\": \"ZK Teco\",\n  \"port\": 4370\n}"
+            },
+            "url": "{{baseUrl}}/devices"
+          }
+        },
+        {
+          "name": "GET Device by MongoId",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/devices/{{deviceMongoId}}"
+          }
+        },
+        {
+          "name": "PUT Update Device",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"location\": \"Warehouse Entrance\",\n  \"name\": \"Device Updated\"\n}"
+            },
+            "url": "{{baseUrl}}/devices/{{deviceMongoId}}"
+          }
+        },
+        {
+          "name": "GET Device Stats",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/devices/{{deviceMongoId}}/stats"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Attendance",
+      "item": [
+        {
+          "name": "GET Attendance",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/attendance?page=1&limit=20"
+          }
+        },
+        {
+          "name": "GET Attendance Stats",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/attendance/stats?startDate=2026-03-01&endDate=2026-03-31"
+          }
+        },
+        {
+          "name": "GET Attendance Anomalies",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/attendance/anomalies?startDate=2026-03-01&endDate=2026-03-31"
+          }
+        },
+        {
+          "name": "POST Create Attendance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": \"{{employeeBusinessId}}\",\n  \"deviceId\": \"{{deviceBusinessId}}\",\n  \"timestamp\": \"2026-03-29T08:30:00.000Z\",\n  \"eventType\": \"check_in\",\n  \"source\": \"manual\"\n}"
+            },
+            "url": "{{baseUrl}}/attendance"
+          }
+        },
+        {
+          "name": "GET Attendance by MongoId",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/attendance/{{attendanceMongoId}}"
+          }
+        },
+        {
+          "name": "PUT Update Attendance",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Updated from Postman\"\n}"
+            },
+            "url": "{{baseUrl}}/attendance/{{attendanceMongoId}}"
+          }
+        },
+        {
+          "name": "GET Employee Attendance by Date",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/attendance/employee/{{employeeBusinessId}}/date/2026-03-29"
+          }
+        },
+        {
+          "name": "GET Employee Attendance by Period",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/attendance/employee/{{employeeBusinessId}}/period?startDate=2026-03-01&endDate=2026-03-31"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payroll",
+      "item": [
+        {
+          "name": "GET Payroll Runs",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/payroll?page=1&limit=20"
+          }
+        },
+        {
+          "name": "GET Payroll Summary",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/payroll/summary?periodStart=2026-03-01&periodEnd=2026-03-31"
+          }
+        },
+        {
+          "name": "POST Calculate Payroll",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"periodStart\": \"2026-03-01\",\n  \"periodEnd\": \"2026-03-31\",\n  \"gracePeriodMinutes\": 5\n}"
+            },
+            "url": "{{baseUrl}}/payroll/calculate"
+          }
+        },
+        {
+          "name": "GET Payroll Run by Id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/payroll/{{payrollRunId}}"
+          }
+        },
+        {
+          "name": "GET Payroll Anomalies",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/payroll/{{payrollRunId}}/anomalies"
+          }
+        },
+        {
+          "name": "PUT Approve Payroll",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/payroll/{{payrollRunId}}/approve"
+          }
+        },
+        {
+          "name": "PUT Reject Payroll",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Invalid run data\"\n}"
+            },
+            "url": "{{baseUrl}}/payroll/{{payrollRunId}}/reject"
+          }
+        },
+        {
+          "name": "GET Payroll Export",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/payroll/{{payrollRunId}}/export"
+          }
+        },
+        {
+          "name": "GET Employee Payroll History",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/payroll/employee/{{employeeBusinessId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Inventory",
+      "item": [
+        {
+          "name": "GET Products",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/inventory/products?page=1&limit=20"
+          }
+        },
+        {
+          "name": "POST Create Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"SKU-9200\",\n  \"name\": \"Postman Product\",\n  \"category\": \"General\",\n  \"unitPrice\": 120,\n  \"costPrice\": 90,\n  \"reorderLevel\": 10,\n  \"status\": \"active\"\n}"
+            },
+            "url": "{{baseUrl}}/inventory/products"
+          }
+        },
+        {
+          "name": "GET Product by MongoId",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/inventory/products/{{productMongoId}}"
+          }
+        },
+        {
+          "name": "PUT Update Product",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unitPrice\": 130,\n  \"reorderLevel\": 8\n}"
+            },
+            "url": "{{baseUrl}}/inventory/products/{{productMongoId}}"
+          }
+        },
+        {
+          "name": "GET Stock by SKU",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/inventory/stock/{{productSku}}"
+          }
+        },
+        {
+          "name": "POST Adjust Stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{productSku}}\",\n  \"delta\": 10,\n  \"reason\": \"Initial stock\"\n}"
+            },
+            "url": "{{baseUrl}}/inventory/stock/adjust"
+          }
+        },
+        {
+          "name": "POST Reserve Stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{productSku}}\",\n  \"quantity\": 2,\n  \"reference\": \"SO-1001\"\n}"
+            },
+            "url": "{{baseUrl}}/inventory/stock/reserve"
+          }
+        },
+        {
+          "name": "POST Release Reservation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{productSku}}\",\n  \"quantity\": 2,\n  \"reference\": \"SO-1001\"\n}"
+            },
+            "url": "{{baseUrl}}/inventory/stock/release"
+          }
+        },
+        {
+          "name": "GET Low Stock Alerts",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/inventory/alerts/low-stock"
+          }
+        },
+        {
+          "name": "GET Inventory Stats",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/inventory/stats"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Imports",
+      "item": [
+        {
+          "name": "GET Import History",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/imports/history?page=1&limit=20"
+          }
+        },
+        {
+          "name": "GET Import Stats",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/imports/stats"
+          }
+        },
+        {
+          "name": "GET Import Details",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/imports/jobs/{{importJobId}}"
+          }
+        },
+        {
+          "name": "GET Employees CSV Template",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/imports/templates/employees"
+          }
+        },
+        {
+          "name": "GET Products CSV Template",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/imports/templates/products"
+          }
+        },
+        {
+          "name": "POST Validate Employees CSV (Dry Run)",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/employees/validate"
+          }
+        },
+        {
+          "name": "POST Import Employees CSV",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/employees"
+          }
+        },
+        {
+          "name": "POST Validate Products CSV (Dry Run)",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/products/validate"
+          }
+        },
+        {
+          "name": "POST Import Products CSV",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/products"
+          }
+        },
+        {
+          "name": "POST Retry Import Job",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/imports/jobs/{{importJobId}}/retry"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5001/api" },
+    { "key": "username", "value": "admin" },
+    { "key": "password", "value": "password123" },
+    { "key": "token", "value": "" },
+    { "key": "roleId", "value": "" },
+    { "key": "employeeMongoId", "value": "" },
+    { "key": "employeeBusinessId", "value": "EMP9200" },
+    { "key": "deviceMongoId", "value": "" },
+    { "key": "deviceBusinessId", "value": "DEV9200" },
+    { "key": "attendanceMongoId", "value": "" },
+    { "key": "payrollRunId", "value": "" },
+    { "key": "productMongoId", "value": "" },
+    { "key": "productSku", "value": "SKU-9200" },
+    { "key": "importJobId", "value": "" }
+  ]
+}

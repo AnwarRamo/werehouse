@@ -1,0 +1,422 @@
+{
+  "title": "Support Collections",
+  "description": "Users, Roles, Audit Logs, and Import Jobs",
+
+  "roles": {
+    "title": "Roles Collection",
+    "description": "RBAC role definitions",
+    "mongoSchema": {
+      "bsonType": "object",
+      "required": ["name", "permissions"],
+      "additionalProperties": false,
+      "properties": {
+        "_id": {
+          "bsonType": "objectId"
+        },
+        "name": {
+          "bsonType": "string",
+          "enum": ["admin", "finance_manager", "hr_manager", "warehouse_manager", "staff"],
+          "description": "Role name"
+        },
+        "description": {
+          "bsonType": "string"
+        },
+        "permissions": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "string",
+            "enum": [
+              "view_employees",
+              "edit_employees",
+              "delete_employees",
+              "view_attendance",
+              "edit_attendance",
+              "view_payroll",
+              "run_payroll",
+              "approve_payroll",
+              "view_inventory",
+              "edit_inventory",
+              "view_devices",
+              "manage_devices",
+              "view_audit_logs",
+              "view_imports",
+              "run_imports",
+              "manage_users",
+              "manage_roles"
+            ]
+          }
+        },
+        "createdAt": { "bsonType": "date" },
+        "updatedAt": { "bsonType": "date" }
+      }
+    },
+
+    "indexes": [
+      {
+        "name": "role_name_unique",
+        "keys": { "name": 1 },
+        "options": { "unique": true }
+      }
+    ],
+
+    "sample_document": {
+      "_id": { "$oid": "507f1f77bcf86cd799439024" },
+      "name": "finance_manager",
+      "description": "Finance team - manage payroll and approvals",
+      "permissions": [
+        "view_employees",
+        "view_attendance",
+        "view_payroll",
+        "run_payroll",
+        "approve_payroll",
+        "view_audit_logs"
+      ],
+      "createdAt": { "$date": "2026-01-01T10:00:00.000Z" },
+      "updatedAt": { "$date": "2026-01-01T10:00:00.000Z" }
+    }
+  },
+
+  "users": {
+    "title": "Users Collection",
+    "description": "System users for authentication and authorization",
+    "mongoSchema": {
+      "bsonType": "object",
+      "required": ["username", "email", "passwordHash", "roleId"],
+      "additionalProperties": false,
+      "properties": {
+        "_id": {
+          "bsonType": "objectId"
+        },
+        "username": {
+          "bsonType": "string",
+          "minLength": 3,
+          "maxLength": 50
+        },
+        "email": {
+          "bsonType": "string",
+          "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+        },
+        "passwordHash": {
+          "bsonType": "string",
+          "description": "Bcrypt hashed password"
+        },
+        "roleId": {
+          "bsonType": "objectId",
+          "description": "Reference to roles collection"
+        },
+        "status": {
+          "bsonType": "string",
+          "enum": ["active", "inactive", "suspended"],
+          "default": "active"
+        },
+        "lastLogin": {
+          "bsonType": "date"
+        },
+        "createdAt": {
+          "bsonType": "date"
+        },
+        "updatedAt": {
+          "bsonType": "date"
+        }
+      }
+    },
+
+    "indexes": [
+      {
+        "name": "username_unique",
+        "keys": { "username": 1 },
+        "options": { "unique": true }
+      },
+      {
+        "name": "email_unique",
+        "keys": { "email": 1 },
+        "options": { "sparse": true, "unique": true }
+      }
+    ]
+  },
+
+  "audit_logs": {
+    "title": "Audit Logs Collection",
+    "description": "Immutable change history for compliance and security",
+    "mongoSchema": {
+      "bsonType": "object",
+      "required": ["entity", "entityId", "action", "timestamp"],
+      "additionalProperties": false,
+      "properties": {
+        "_id": {
+          "bsonType": "objectId"
+        },
+        "entity": {
+          "bsonType": "string",
+          "description": "Entity type affected (employees, attendance, payroll, inventory, etc)"
+        },
+        "entityId": {
+          "bsonType": "string",
+          "description": "ID of the entity being changed"
+        },
+        "action": {
+          "bsonType": "string",
+          "enum": ["create", "update", "delete", "approve", "reject"],
+          "description": "Action type"
+        },
+        "userId": {
+          "bsonType": "objectId",
+          "description": "User who performed the action"
+        },
+        "oldValue": {
+          "bsonType": "object",
+          "description": "Previous state (for updates)"
+        },
+        "newValue": {
+          "bsonType": "object",
+          "description": "New state"
+        },
+        "reason": {
+          "bsonType": "string",
+          "description": "Why the change was made"
+        },
+        "timestamp": {
+          "bsonType": "date",
+          "description": "When the action occurred"
+        },
+        "ipAddress": {
+          "bsonType": "string",
+          "description": "IP address of requester"
+        },
+        "createdAt": {
+          "bsonType": "date"
+        }
+      }
+    },
+
+    "indexes": [
+      {
+        "name": "entity_entityId",
+        "keys": { "entity": 1, "entityId": 1 }
+      },
+      {
+        "name": "timestamp_index",
+        "keys": { "timestamp": -1 }
+      },
+      {
+        "name": "userId_index",
+        "keys": { "userId": 1 }
+      }
+    ],
+
+    "sample_document": {
+      "_id": { "$oid": "507f1f77bcf86cd799439025" },
+      "entity": "attendance",
+      "entityId": "507f1f77bcf86cd799439013",
+      "action": "update",
+      "userId": { "$oid": "507f1f77bcf86cd799439026" },
+      "oldValue": {
+        "verified": false
+      },
+      "newValue": {
+        "verified": true
+      },
+      "reason": "Manager manual approval",
+      "timestamp": { "$date": "2026-03-01T15:00:00.000Z" },
+      "ipAddress": "192.168.1.50",
+      "createdAt": { "$date": "2026-03-01T15:00:00.000Z" }
+    }
+  },
+
+  "import_jobs": {
+    "title": "Import Jobs Collection",
+    "description": "Track Excel/CSV imports and their status",
+    "mongoSchema": {
+      "bsonType": "object",
+      "required": ["jobId", "entity", "fileName", "uploadedBy", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "_id": {
+          "bsonType": "objectId"
+        },
+        "jobId": {
+          "bsonType": "string",
+          "description": "Unique job identifier"
+        },
+        "entity": {
+          "bsonType": "string",
+          "enum": ["employees", "attendance", "devices", "products", "stock"],
+          "description": "What entity is being imported"
+        },
+        "fileName": {
+          "bsonType": "string"
+        },
+        "fileSize": {
+          "bsonType": "long",
+          "description": "File size in bytes"
+        },
+        "uploadedBy": {
+          "bsonType": "objectId",
+          "description": "User who uploaded the file"
+        },
+        "uploadedAt": {
+          "bsonType": "date"
+        },
+        "status": {
+          "bsonType": "string",
+          "enum": ["pending", "processing", "completed", "failed", "partial"],
+          "default": "pending"
+        },
+        "totalRows": {
+          "bsonType": "int"
+        },
+        "successRows": {
+          "bsonType": "int"
+        },
+        "errorRows": {
+          "bsonType": "int"
+        },
+        "errors": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "properties": {
+              "row": { "bsonType": "int" },
+              "column": { "bsonType": "string" },
+              "error": { "bsonType": "string" }
+            }
+          }
+        },
+        "startedAt": {
+          "bsonType": "date"
+        },
+        "completedAt": {
+          "bsonType": "date"
+        },
+        "notes": {
+          "bsonType": "string"
+        },
+        "createdAt": {
+          "bsonType": "date"
+        },
+        "updatedAt": {
+          "bsonType": "date"
+        }
+      }
+    },
+
+    "indexes": [
+      {
+        "name": "jobId_unique",
+        "keys": { "jobId": 1 },
+        "options": { "unique": true }
+      },
+      {
+        "name": "entity_uploadedAt",
+        "keys": { "entity": 1, "uploadedAt": -1 }
+      },
+      {
+        "name": "status_index",
+        "keys": { "status": 1 }
+      }
+    ]
+  },
+
+  "settings": {
+    "title": "Settings Collection",
+    "description": "Global configuration and business rules",
+    "mongoSchema": {
+      "bsonType": "object",
+      "required": ["key"],
+      "additionalProperties": false,
+      "properties": {
+        "_id": {
+          "bsonType": "objectId"
+        },
+        "key": {
+          "bsonType": "string",
+          "description": "Setting key"
+        },
+        "value": {
+          "description": "Setting value (any type)"
+        },
+        "dataType": {
+          "bsonType": "string",
+          "enum": ["string", "number", "boolean", "object"],
+          "description": "Type of value"
+        },
+        "category": {
+          "bsonType": "string",
+          "enum": ["payroll", "attendance", "inventory", "system"],
+          "description": "Setting category"
+        },
+        "description": {
+          "bsonType": "string"
+        },
+        "updatedAt": {
+          "bsonType": "date"
+        }
+      }
+    },
+
+    "indexes": [
+      {
+        "name": "key_unique",
+        "keys": { "key": 1 },
+        "options": { "unique": true }
+      },
+      {
+        "name": "category_index",
+        "keys": { "category": 1 }
+      }
+    ],
+
+    "sample_documents": [
+      {
+        "key": "grace_period_minutes",
+        "value": 5,
+        "dataType": "number",
+        "category": "attendance",
+        "description": "Minutes allowed before marking as late"
+      },
+      {
+        "key": "tax_rate_percent",
+        "value": 10,
+        "dataType": "number",
+        "category": "payroll",
+        "description": "Income tax percentage"
+      },
+      {
+        "key": "social_security_rate_percent",
+        "value": 5,
+        "dataType": "number",
+        "category": "payroll",
+        "description": "Social security deduction percentage"
+      }
+    ]
+  },
+
+  "permissions_matrix": {
+    "admin": [
+      "manage all entities",
+      "view audit logs",
+      "manage users and roles"
+    ],
+    "finance_manager": [
+      "view/run payroll",
+      "approve payroll",
+      "view employees",
+      "view attendance"
+    ],
+    "hr_manager": [
+      "manage employees",
+      "view attendance",
+      "view payroll (read-only)",
+      "manage import jobs"
+    ],
+    "warehouse_manager": [
+      "view/edit inventory",
+      "manage devices",
+      "view employees (read-only)"
+    ],
+    "staff": [
+      "view own attendance history",
+      "view catalog (inventory)"
+    ]
+  }
+}

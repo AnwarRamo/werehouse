@@ -1,0 +1,149 @@
+{
+  "title": "Employees Collection",
+  "description": "Staff data with pay rates and shift information",
+  "mongoSchema": {
+    "bsonType": "object",
+    "required": ["employeeId", "name", "hourlyRate", "roleId"],
+    "additionalProperties": false,
+    "properties": {
+      "_id": {
+        "bsonType": "objectId",
+        "description": "MongoDB document ID"
+      },
+      "employeeId": {
+        "bsonType": "string",
+        "description": "Unique employee identifier (e.g. EMP001)",
+        "pattern": "^EMP[0-9]{3,}$"
+      },
+      "name": {
+        "bsonType": "string",
+        "description": "Employee full name",
+        "minLength": 2,
+        "maxLength": 100
+      },
+      "email": {
+        "bsonType": "string",
+        "description": "Employee email address",
+        "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+      },
+      "phone": {
+        "bsonType": "string",
+        "description": "Contact phone number"
+      },
+      "hourlyRate": {
+        "bsonType": "decimal",
+        "description": "Hourly wage in local currency",
+        "minimum": 0
+      },
+      "currency": {
+        "bsonType": "string",
+        "description": "Currency code (SYP, USD, etc)",
+        "default": "SYP"
+      },
+      "scheduledStart": {
+        "bsonType": "string",
+        "description": "Scheduled shift start time (HH:MM format)",
+        "pattern": "^([0-1][0-9]|2[0-3]):[0-5][0-9]$"
+      },
+      "scheduledEnd": {
+        "bsonType": "string",
+        "description": "Scheduled shift end time (HH:MM format)",
+        "pattern": "^([0-1][0-9]|2[0-3]):[0-5][0-9]$"
+      },
+      "department": {
+        "bsonType": "string",
+        "description": "Department name (Warehouse, HR, Admin, etc)",
+        "enum": ["Warehouse", "HR", "Admin", "Finance", "Sales", "Operations"]
+      },
+      "roleId": {
+        "bsonType": "objectId",
+        "description": "Reference to roles collection"
+      },
+      "status": {
+        "bsonType": "string",
+        "description": "Employment status",
+        "enum": ["active", "inactive", "on_leave", "terminated"],
+        "default": "active"
+      },
+      "joinDate": {
+        "bsonType": "date",
+        "description": "Employee join date"
+      },
+      "terminationDate": {
+        "bsonType": "date",
+        "description": "If terminated, the termination date"
+      },
+      "createdAt": {
+        "bsonType": "date",
+        "description": "Record creation timestamp"
+      },
+      "updatedAt": {
+        "bsonType": "date",
+        "description": "Last update timestamp"
+      }
+    }
+  },
+
+  "indexes": [
+    {
+      "name": "employeeId_unique",
+      "keys": { "employeeId": 1 },
+      "options": { "unique": true }
+    },
+    {
+      "name": "email_unique",
+      "keys": { "email": 1 },
+      "options": { "unique": true, "sparse": true }
+    },
+    {
+      "name": "roleId_index",
+      "keys": { "roleId": 1 }
+    },
+    {
+      "name": "department_status_index",
+      "keys": { "department": 1, "status": 1 }
+    },
+    {
+      "name": "updatedAt_index",
+      "keys": { "updatedAt": -1 }
+    }
+  ],
+
+  "sample_document": {
+    "_id": { "$oid": "507f1f77bcf86cd799439011" },
+    "employeeId": "EMP001",
+    "name": "أحمد محمد علي",
+    "email": "ahmad@warehouse.local",
+    "phone": "+963912345678",
+    "hourlyRate": { "$numberDecimal": "25.50" },
+    "currency": "SYP",
+    "scheduledStart": "09:00",
+    "scheduledEnd": "17:00",
+    "department": "Warehouse",
+    "roleId": { "$oid": "507f1f77bcf86cd799439012" },
+    "status": "active",
+    "joinDate": { "$date": "2024-01-15T00:00:00.000Z" },
+    "createdAt": { "$date": "2024-01-15T10:30:00.000Z" },
+    "updatedAt": { "$date": "2024-01-15T10:30:00.000Z" }
+  },
+
+  "validation_rules": [
+    "employeeId must be unique and follow format EMP###",
+    "email must be unique across all employees",
+    "hourlyRate must be positive decimal",
+    "scheduledStart must be before scheduledEnd",
+    "status must be one of: active, inactive, on_leave, terminated",
+    "department must match company structure",
+    "joinDate cannot be in future",
+    "For terminated employees, terminationDate must be set",
+    "roleId must reference valid role in roles collection"
+  ],
+
+  "notes": [
+    "Uses decimal type for monetary values to avoid floating point precision issues",
+    "Stores times as HH:MM strings for timezone independence",
+    "Status field enables soft deletes and leave tracking",
+    "Currency field allows for multi-currency support if needed",
+    "Timestamps (createdAt, updatedAt) managed by application layer"
+  ]
+}
