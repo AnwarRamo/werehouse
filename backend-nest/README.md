@@ -45,3 +45,29 @@ Create a .env file in backend-nest and set:
 ## Related Arabic Migration Guide
 See:
 - ../docs/NEST_MIGRATION_AR.md
+
+## Docker
+
+### Run With Docker Compose (API + PostgreSQL)
+From this folder:
+
+1. Build and start:
+	- `docker compose up --build -d`
+2. Check logs:
+	- `docker compose logs -f api`
+3. Health check:
+	- `GET http://localhost:5001/api/health`
+4. Stop:
+	- `docker compose down`
+
+The API container runs Prisma schema sync on startup:
+- `npx prisma db push --skip-generate`
+
+### Build Image Only
+1. `docker build -t warehouse-backend:latest .`
+2. `docker run --rm -p 5001:5001 --env-file .env warehouse-backend:latest`
+
+### Push To Docker Hub
+1. `docker login`
+2. `docker tag warehouse-backend:latest <dockerhub-username>/warehouse-backend:latest`
+3. `docker push <dockerhub-username>/warehouse-backend:latest`

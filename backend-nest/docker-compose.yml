@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: warehouse_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: warehouse_system
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d warehouse_system"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: warehouse_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5001
+      JWT_SECRET: warehouse_nest_jwt_secret_change_me
+      JWT_EXPIRE: 24h
+      JWT_COOKIE_NAME: warehouse_access_token
+      JWT_COOKIE_SECURE: false
+      JWT_COOKIE_SAME_SITE: lax
+      JWT_COOKIE_MAX_AGE_MS: 86400000
+      ADMIN_USERNAME: admin
+      ADMIN_EMAIL: admin@warehouse.local
+      ADMIN_BOOTSTRAP_PASSWORD: password123
+      DEV_ADMIN_USERNAME: developer
+      DEV_ADMIN_EMAIL: developer@warehouse.local
+      DEV_ADMIN_PASSWORD: DevAdmin@2026!
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/warehouse_system?schema=public
+      CORS_ORIGIN: ""
+      BCRYPT_ROUNDS: 10
+      THROTTLE_TTL_MS: 60000
+      THROTTLE_LIMIT: 120
+    ports:
+      - "5001:5001"
+    command: sh -c "npx prisma db push --skip-generate && node dist/main"
+
+volumes:
+  postgres_data:

@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+.git
+.gitignore
+.vscode
+npm-debug.log*
+*.md
+postman.*.json
