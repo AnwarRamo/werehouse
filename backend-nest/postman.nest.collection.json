@@ -26,6 +26,22 @@
             "method": "GET",
             "url": "{{baseUrl}}/health"
           }
+        },
+        {
+          "name": "GET Health Live",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/health/live"
+          }
+        },
+        {
+          "name": "GET Health Ready",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/health/ready"
+          }
         }
       ]
     },
@@ -448,6 +464,13 @@
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/payroll/{{payrollRunId}}/export"
+          }
+        },
+        {
+          "name": "GET Payroll Export PDF",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/payroll/{{payrollRunId}}/export/pdf"
           }
         },
         {

@@ -18,32 +18,67 @@ export class HealthController implements OnModuleDestroy {
     });
   }
 
+  @Get('live')
+  getLive() {
+    return {
+      status: 'ok',
+      check: 'liveness',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get('ready')
+  async getReady() {
+    const db = await this.checkDatabase();
+    const redis = await this.checkRedis();
+
+    return {
+      status: db === 'up' && redis === 'up' ? 'ok' : 'degraded',
+      check: 'readiness',
+      timestamp: new Date().toISOString(),
+      services: {
+        database: db,
+        redis,
+      },
+    };
+  }
+
   @Get()
   async getHealth() {
-    await this.prisma.$queryRaw`SELECT 1 as ok`;
-
-    let redisStatus: 'up' | 'down' = 'down';
-    try {
-      if (this.redis.status === 'wait') {
-        await this.redis.connect();
-      }
-      await this.redis.ping();
-      redisStatus = 'up';
-    } catch {
-      redisStatus = 'down';
-    }
-
-    const status = redisStatus === 'up' ? 'ok' : 'degraded';
+    const db = await this.checkDatabase();
+    const redis = await this.checkRedis();
+    const status = db === 'up' && redis === 'up' ? 'ok' : 'degraded';
 
     return {
       status,
       timestamp: new Date().toISOString(),
       framework: 'NestJS',
       services: {
-        database: 'up',
-        redis: redisStatus,
+        database: db,
+        redis,
       },
     };
+  }
+
+  private async checkDatabase(): Promise<'up' | 'down'> {
+    try {
+      await this.prisma.$queryRaw`SELECT 1 as ok`;
+      return 'up';
+    } catch {
+      return 'down';
+    }
+  }
+
+  private async checkRedis(): Promise<'up' | 'down'> {
+    try {
+      if (this.redis.status === 'wait') {
+        await this.redis.connect();
+      }
+      await this.redis.ping();
+      return 'up';
+    } catch {
+      return 'down';
+    }
   }
 
   async onModuleDestroy() {

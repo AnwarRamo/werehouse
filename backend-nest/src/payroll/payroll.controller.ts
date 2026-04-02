@@ -116,6 +116,24 @@ export class PayrollController {
     res.status(200).send(payload.content);
   }
 
+  @Get(':runId/export/pdf')
+  @Permissions('view_payroll')
+  async exportPdf(@Param('runId') runId: string, @Req() req: Request, @Res() res: Response) {
+    const payload = await this.payrollService.exportPdf(runId);
+    this.audit.log(
+      {
+        action: 'payroll.export.pdf',
+        targetType: 'payroll_run',
+        targetId: runId,
+      },
+      req,
+    );
+
+    res.setHeader('Content-Type', payload.mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${payload.fileName}"`);
+    res.status(200).send(payload.content);
+  }
+
   @Get('employee/:employeeId')
   @Permissions('view_payroll')
   employeeHistory(@Param('employeeId') employeeId: string) {

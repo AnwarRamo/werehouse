@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CalculatePayrollDto } from './dto/calculate-payroll.dto';
 import { Queue } from 'bullmq';
 import { QUEUE_JOBS, QUEUE_NAMES } from '../queues/queue.constants';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 const PAYROLL_BATCH_SIZE = 250;
 
@@ -201,6 +202,79 @@ export class PayrollService {
       orderBy: { employeeId: 'asc' },
     });
 
+    const fileName = `payroll-${run.runId}.csv`;
+    return {
+      mimeType: 'text/csv; charset=utf-8',
+      fileName,
+      content: this.buildCsv(run, items),
+    };
+  }
+
+  async exportPdf(runId: string) {
+    const run = await this.prisma.payrollRun.findUnique({ where: { id: runId } });
+    if (!run) throw new NotFoundException('Payroll run not found');
+
+    const items = await this.prisma.payrollItem.findMany({
+      where: { payrollRunId: runId },
+      orderBy: { employeeId: 'asc' },
+    });
+
+    const pdf = await PDFDocument.create();
+    const page = pdf.addPage([842, 595]);
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+
+    const margin = 24;
+    let y = 565;
+
+    page.drawText(`Payroll Report: ${run.runId}`, {
+      x: margin,
+      y,
+      size: 14,
+      font: bold,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    y -= 20;
+    page.drawText(`Period: ${run.periodStart.toISOString().slice(0, 10)} to ${run.periodEnd.toISOString().slice(0, 10)}`, {
+      x: margin,
+      y,
+      size: 10,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    y -= 24;
+
+    const header = 'EmpID        Name                    Dept            Gross     Deductions   Net';
+    page.drawText(header, { x: margin, y, size: 10, font: bold });
+    y -= 14;
+
+    for (const item of items) {
+      if (y < 36) {
+        break;
+      }
+
+      const line = [
+        (item.employeeId || '').padEnd(12).slice(0, 12),
+        (item.employeeName || '').padEnd(24).slice(0, 24),
+        (item.department || '').padEnd(14).slice(0, 14),
+        Number(item.grossPay).toFixed(2).padStart(10),
+        Number(item.totalDeductions).toFixed(2).padStart(12),
+        Number(item.netPay).toFixed(2).padStart(8),
+      ].join(' ');
+
+      page.drawText(line, { x: margin, y, size: 9, font });
+      y -= 12;
+    }
+
+    const bytes = await pdf.save();
+    return {
+      mimeType: 'application/pdf',
+      fileName: `payroll-${run.runId}.pdf`,
+      content: Buffer.from(bytes),
+    };
+  }
+
+  private buildCsv(run: NonNullable<Awaited<ReturnType<PrismaService['payrollRun']['findUnique']>>>, items: Awaited<ReturnType<PrismaService['payrollItem']['findMany']>>) {
     const rows: string[] = [];
     rows.push([
       'payrollRunId',
@@ -234,12 +308,7 @@ export class PayrollService {
       ].join(','));
     }
 
-    const fileName = `payroll-${run.runId}.csv`;
-    return {
-      mimeType: 'text/csv; charset=utf-8',
-      fileName,
-      content: rows.join('\n'),
-    };
+    return rows.join('\n');
   }
 
   private escapeCsv(value: unknown): string {
