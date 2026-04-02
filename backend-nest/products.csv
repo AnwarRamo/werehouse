@@ -1,0 +1,2 @@
+﻿sku,name,category,unitPrice,costPrice,reorderLevel,status
+SKU-CSV-001,CSV Product,General,100,70,15,active

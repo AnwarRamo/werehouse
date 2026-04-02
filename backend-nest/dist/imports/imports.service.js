@@ -189,10 +189,7 @@ let ImportsService = class ImportsService {
                 totalRows: rows.length,
             },
         });
-        await this.importsQueue.add(queue_constants_1.QUEUE_JOBS.IMPORT_EMPLOYEES, { importJobRecordId: job.id, rows }, {
-            attempts: 3,
-            backoff: { type: 'exponential', delay: 2_000 },
-        });
+        await this.enqueueImportJob(queue_constants_1.QUEUE_JOBS.IMPORT_EMPLOYEES, { importJobRecordId: job.id, rows });
         return { message: 'Employee import queued', jobId: job.jobId, status: 'queued', totalRows: rows.length };
     }
     async importProducts(file, userId) {
@@ -242,10 +239,7 @@ let ImportsService = class ImportsService {
                 totalRows: rows.length,
             },
         });
-        await this.importsQueue.add(queue_constants_1.QUEUE_JOBS.IMPORT_PRODUCTS, { importJobRecordId: job.id, rows }, {
-            attempts: 3,
-            backoff: { type: 'exponential', delay: 2_000 },
-        });
+        await this.enqueueImportJob(queue_constants_1.QUEUE_JOBS.IMPORT_PRODUCTS, { importJobRecordId: job.id, rows });
         return { message: 'Product import queued', jobId: job.jobId, status: 'queued', totalRows: rows.length };
     }
     async retry(jobId, userId) {
@@ -292,6 +286,26 @@ let ImportsService = class ImportsService {
                 errors: [{ row: 0, error: message || 'Unexpected import error' }],
             },
         });
+    }
+    async enqueueImportJob(jobName, payload) {
+        try {
+            await this.importsQueue.add(jobName, payload, {
+                attempts: 3,
+                backoff: { type: 'exponential', delay: 2_000 },
+            });
+            return;
+        }
+        catch {
+            if (jobName === queue_constants_1.QUEUE_JOBS.IMPORT_EMPLOYEES) {
+                await this.processEmployeesImportJob(payload.importJobRecordId, payload.rows);
+                return;
+            }
+            if (jobName === queue_constants_1.QUEUE_JOBS.IMPORT_PRODUCTS) {
+                await this.processProductsImportJob(payload.importJobRecordId, payload.rows);
+                return;
+            }
+            throw new Error('Unable to enqueue import job');
+        }
     }
     parseImportRows(buffer, fileName, mimeType) {
         const extension = (0, path_1.extname)(fileName || '').toLowerCase();

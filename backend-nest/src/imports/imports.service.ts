@@ -170,14 +170,7 @@ export class ImportsService {
       },
     });
 
-    await this.importsQueue.add(
-      QUEUE_JOBS.IMPORT_EMPLOYEES,
-      { importJobRecordId: job.id, rows } satisfies ImportQueuePayload,
-      {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 2_000 },
-      },
-    );
+    await this.enqueueImportJob(QUEUE_JOBS.IMPORT_EMPLOYEES, { importJobRecordId: job.id, rows });
 
     return { message: 'Employee import queued', jobId: job.jobId, status: 'queued', totalRows: rows.length };
   }
@@ -236,14 +229,7 @@ export class ImportsService {
       },
     });
 
-    await this.importsQueue.add(
-      QUEUE_JOBS.IMPORT_PRODUCTS,
-      { importJobRecordId: job.id, rows } satisfies ImportQueuePayload,
-      {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 2_000 },
-      },
-    );
+    await this.enqueueImportJob(QUEUE_JOBS.IMPORT_PRODUCTS, { importJobRecordId: job.id, rows });
 
     return { message: 'Product import queued', jobId: job.jobId, status: 'queued', totalRows: rows.length };
   }
@@ -296,6 +282,28 @@ export class ImportsService {
         errors: [{ row: 0, error: message || 'Unexpected import error' }],
       },
     });
+  }
+
+  private async enqueueImportJob(jobName: string, payload: ImportQueuePayload) {
+    try {
+      await this.importsQueue.add(jobName, payload, {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2_000 },
+      });
+      return;
+    } catch {
+      if (jobName === QUEUE_JOBS.IMPORT_EMPLOYEES) {
+        await this.processEmployeesImportJob(payload.importJobRecordId, payload.rows);
+        return;
+      }
+
+      if (jobName === QUEUE_JOBS.IMPORT_PRODUCTS) {
+        await this.processProductsImportJob(payload.importJobRecordId, payload.rows);
+        return;
+      }
+
+      throw new Error('Unable to enqueue import job');
+    }
   }
 
   private parseImportRows(buffer: Buffer, fileName?: string, mimeType?: string): ParseResult {

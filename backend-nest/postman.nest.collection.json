@@ -2,7 +2,7 @@
   "info": {
     "name": "Warehouse Backend Nest - Full API",
     "_postman_id": "b8ebf2b8-9f8c-4f68-85f8-8035a8b04a9b",
-    "description": "Full Postman collection for backend-nest (auth, employees, devices, attendance, payroll, inventory, imports).",
+    "description": "Full Postman collection for backend-nest (auth, employees, devices, attendance, payroll, inventory, imports) with Prisma/PostgreSQL identifiers.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -93,6 +93,13 @@
           }
         },
         {
+          "name": "POST Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/logout"
+          }
+        },
+        {
           "name": "GET Me",
           "request": {
             "method": "GET",
@@ -168,16 +175,16 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"employeeId\": \"EMP9200\",\n  \"name\": \"Postman Employee\",\n  \"email\": \"postman.employee@example.com\",\n  \"hourlyRate\": 18.5,\n  \"currency\": \"SYP\",\n  \"department\": \"Warehouse\",\n  \"roleId\": \"{{roleId}}\",\n  \"status\": \"active\",\n  \"scheduledStart\": \"09:00\",\n  \"scheduledEnd\": \"17:00\"\n}"
+              "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"name\": \"Postman Employee\",\n  \"email\": \"postman.employee@example.com\",\n  \"hourlyRate\": 18.5,\n  \"currency\": \"SYP\",\n  \"department\": \"Warehouse\",\n  \"roleId\": \"{{roleId}}\",\n  \"status\": \"active\",\n  \"scheduledStart\": \"09:00\",\n  \"scheduledEnd\": \"17:00\"\n}"
             },
             "url": "{{baseUrl}}/employees"
           }
         },
         {
-          "name": "GET Employee by MongoId",
+          "name": "GET Employee by employeeId",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/employees/{{employeeMongoId}}"
+            "url": "{{baseUrl}}/employees/{{employeeId}}"
           }
         },
         {
@@ -194,14 +201,14 @@
               "mode": "raw",
               "raw": "{\n  \"department\": \"Operations\",\n  \"hourlyRate\": 20\n}"
             },
-            "url": "{{baseUrl}}/employees/{{employeeMongoId}}"
+            "url": "{{baseUrl}}/employees/{{employeeId}}"
           }
         },
         {
           "name": "DELETE Employee",
           "request": {
             "method": "DELETE",
-            "url": "{{baseUrl}}/employees/{{employeeMongoId}}"
+            "url": "{{baseUrl}}/employees/{{employeeId}}"
           }
         }
       ]
@@ -228,16 +235,16 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"deviceId\": \"DEV9200\",\n  \"name\": \"Postman Device\",\n  \"location\": \"Front Gate\",\n  \"model\": \"ZK Teco\",\n  \"port\": 4370\n}"
+              "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"name\": \"Postman Device\",\n  \"location\": \"Front Gate\",\n  \"model\": \"ZK Teco\",\n  \"port\": 4370\n}"
             },
             "url": "{{baseUrl}}/devices"
           }
         },
         {
-          "name": "GET Device by MongoId",
+          "name": "GET Device by deviceId",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/devices/{{deviceMongoId}}"
+            "url": "{{baseUrl}}/devices/{{deviceId}}"
           }
         },
         {
@@ -254,14 +261,14 @@
               "mode": "raw",
               "raw": "{\n  \"location\": \"Warehouse Entrance\",\n  \"name\": \"Device Updated\"\n}"
             },
-            "url": "{{baseUrl}}/devices/{{deviceMongoId}}"
+            "url": "{{baseUrl}}/devices/{{deviceId}}"
           }
         },
         {
           "name": "GET Device Stats",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/devices/{{deviceMongoId}}/stats"
+            "url": "{{baseUrl}}/devices/{{deviceId}}/stats"
           }
         }
       ]
@@ -302,16 +309,16 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"employeeId\": \"{{employeeBusinessId}}\",\n  \"deviceId\": \"{{deviceBusinessId}}\",\n  \"timestamp\": \"2026-03-29T08:30:00.000Z\",\n  \"eventType\": \"check_in\",\n  \"source\": \"manual\"\n}"
+              "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"deviceId\": \"{{deviceId}}\",\n  \"timestamp\": \"2026-03-29T08:30:00.000Z\",\n  \"eventType\": \"check_in\",\n  \"source\": \"manual\"\n}"
             },
             "url": "{{baseUrl}}/attendance"
           }
         },
         {
-          "name": "GET Attendance by MongoId",
+          "name": "GET Attendance by attendanceId",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/attendance/{{attendanceMongoId}}"
+            "url": "{{baseUrl}}/attendance/{{attendanceId}}"
           }
         },
         {
@@ -328,21 +335,21 @@
               "mode": "raw",
               "raw": "{\n  \"notes\": \"Updated from Postman\"\n}"
             },
-            "url": "{{baseUrl}}/attendance/{{attendanceMongoId}}"
+            "url": "{{baseUrl}}/attendance/{{attendanceId}}"
           }
         },
         {
           "name": "GET Employee Attendance by Date",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/attendance/employee/{{employeeBusinessId}}/date/2026-03-29"
+            "url": "{{baseUrl}}/attendance/employee/{{employeeId}}/date/2026-03-29"
           }
         },
         {
           "name": "GET Employee Attendance by Period",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/attendance/employee/{{employeeBusinessId}}/period?startDate=2026-03-01&endDate=2026-03-31"
+            "url": "{{baseUrl}}/attendance/employee/{{employeeId}}/period?startDate=2026-03-01&endDate=2026-03-31"
           }
         }
       ]
@@ -447,7 +454,7 @@
           "name": "GET Employee Payroll History",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/payroll/employee/{{employeeBusinessId}}"
+            "url": "{{baseUrl}}/payroll/employee/{{employeeId}}"
           }
         }
       ]
@@ -480,10 +487,10 @@
           }
         },
         {
-          "name": "GET Product by MongoId",
+          "name": "GET Product by productId",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/inventory/products/{{productMongoId}}"
+            "url": "{{baseUrl}}/inventory/products/{{productId}}"
           }
         },
         {
@@ -500,7 +507,7 @@
               "mode": "raw",
               "raw": "{\n  \"unitPrice\": 130,\n  \"reorderLevel\": 8\n}"
             },
-            "url": "{{baseUrl}}/inventory/products/{{productMongoId}}"
+            "url": "{{baseUrl}}/inventory/products/{{productId}}"
           }
         },
         {
@@ -733,13 +740,11 @@
     { "key": "password", "value": "password123" },
     { "key": "token", "value": "" },
     { "key": "roleId", "value": "" },
-    { "key": "employeeMongoId", "value": "" },
-    { "key": "employeeBusinessId", "value": "EMP9200" },
-    { "key": "deviceMongoId", "value": "" },
-    { "key": "deviceBusinessId", "value": "DEV9200" },
-    { "key": "attendanceMongoId", "value": "" },
+    { "key": "employeeId", "value": "EMP9200" },
+    { "key": "deviceId", "value": "DEV9200" },
+    { "key": "attendanceId", "value": "" },
     { "key": "payrollRunId", "value": "" },
-    { "key": "productMongoId", "value": "" },
+    { "key": "productId", "value": "" },
     { "key": "productSku", "value": "SKU-9200" },
     { "key": "importJobId", "value": "" }
   ]

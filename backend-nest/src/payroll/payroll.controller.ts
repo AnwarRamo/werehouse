@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Query, Res, UseGuards } from '@nestjs/common';
 import { Req } from '@nestjs/common';
 import { Request } from 'express';
+import { Response } from 'express';
 import { PayrollService } from './payroll.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
@@ -99,8 +100,20 @@ export class PayrollController {
 
   @Get(':runId/export')
   @Permissions('view_payroll')
-  export(@Param('runId') runId: string) {
-    return this.payrollService.export(runId);
+  async export(@Param('runId') runId: string, @Req() req: Request, @Res() res: Response) {
+    const payload = await this.payrollService.export(runId);
+    this.audit.log(
+      {
+        action: 'payroll.export',
+        targetType: 'payroll_run',
+        targetId: runId,
+      },
+      req,
+    );
+
+    res.setHeader('Content-Type', payload.mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${payload.fileName}"`);
+    res.status(200).send(payload.content);
   }
 
   @Get('employee/:employeeId')

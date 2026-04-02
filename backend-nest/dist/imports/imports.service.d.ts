@@ -120,6 +120,7 @@ export declare class ImportsService {
         errorRows: number;
     }>;
     markImportJobFailed(importJobRecordId: string, message: string): Promise<void>;
+    private enqueueImportJob;
     private parseImportRows;
     private value;
     private resolveDefaultRoleId;

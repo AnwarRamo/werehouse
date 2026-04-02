@@ -1,0 +1,2 @@
+﻿employeeId,name,email,hourlyRate,currency,department,status,scheduledStart,scheduledEnd,roleId
+EMP900010,CSV Employee,csv.employee@warehouse.local,14.5,SYP,Warehouse,active,08:00,16:00,

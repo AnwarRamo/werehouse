@@ -91,10 +91,7 @@ let PayrollService = class PayrollService {
                 totalEmployees: 0,
             },
         });
-        await this.payrollQueue.add(queue_constants_1.QUEUE_JOBS.PAYROLL_CALCULATE, { payrollRunId: run.id, dto, userId }, {
-            attempts: 3,
-            backoff: { type: 'exponential', delay: 2_000 },
-        });
+        await this.enqueuePayrollJob({ payrollRunId: run.id, dto, userId });
         return { message: 'Payroll calculation queued', payrollRun: run };
     }
     async getRun(runId) {
@@ -193,6 +190,18 @@ let PayrollService = class PayrollService {
                 notes: message || 'Payroll calculation failed',
             },
         });
+    }
+    async enqueuePayrollJob(payload) {
+        try {
+            await this.payrollQueue.add(queue_constants_1.QUEUE_JOBS.PAYROLL_CALCULATE, payload, {
+                attempts: 3,
+                backoff: { type: 'exponential', delay: 2_000 },
+            });
+            return;
+        }
+        catch {
+            await this.processPayrollRunJob(payload);
+        }
     }
     async processPayrollRun(runId, dto, userId) {
         const activeEmployeesCount = await this.prisma.employee.count({ where: { status: 'active' } });

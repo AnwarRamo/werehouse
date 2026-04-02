@@ -227,6 +227,7 @@ export declare class PayrollService {
         notes: string | null;
     }>;
     markPayrollRunFailed(payrollRunId: string, message: string): Promise<void>;
+    private enqueuePayrollJob;
     private processPayrollRun;
 }
 export {};

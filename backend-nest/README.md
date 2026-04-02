@@ -16,12 +16,10 @@ Default bootstrap admin (created automatically):
 - password: password123
 
 ## Database Configuration
-This project is now in a phased migration to SQL.
+This backend uses SQL only.
 
-- SQL (PostgreSQL + TypeORM): auth, employees, devices
-- MongoDB (Mongoose): attendance, payroll, inventory, imports
-
-Note: Imports still reads MongoDB collections for employee/product/role import flows.
+- SQL (PostgreSQL + Prisma): auth, employees, devices, attendance, payroll, inventory, imports
+- File-based CSV/XLSX imports are handled without MongoDB dependencies.
 
 Create a .env file in backend-nest and set:
 
@@ -30,7 +28,6 @@ Create a .env file in backend-nest and set:
 - JWT_EXPIRE=24h
 - DATABASE_URL=postgres://postgres:postgres@localhost:5432/warehouse_system
 - DB_SYNCHRONIZE=true
-- MONGODB_URI=mongodb://localhost:27017/warehouse_system
 
 ## Implemented Modules
 - auth

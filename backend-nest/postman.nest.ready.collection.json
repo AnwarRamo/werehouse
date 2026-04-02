@@ -75,6 +75,13 @@
           }
         },
         {
+          "name": "POST Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/logout"
+          }
+        },
+        {
           "name": "GET Me",
           "request": {
             "method": "GET",

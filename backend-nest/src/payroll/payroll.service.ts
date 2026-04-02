@@ -99,14 +99,7 @@ export class PayrollService {
       },
     });
 
-    await this.payrollQueue.add(
-      QUEUE_JOBS.PAYROLL_CALCULATE,
-      { payrollRunId: run.id, dto, userId } satisfies PayrollQueuePayload,
-      {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 2_000 },
-      },
-    );
+    await this.enqueuePayrollJob({ payrollRunId: run.id, dto, userId });
 
     return { message: 'Payroll calculation queued', payrollRun: run };
   }
@@ -202,7 +195,59 @@ export class PayrollService {
   async export(runId: string) {
     const run = await this.prisma.payrollRun.findUnique({ where: { id: runId } });
     if (!run) throw new NotFoundException('Payroll run not found');
-    return { message: 'Export payroll functionality to be implemented', runId, format: 'csv' };
+
+    const items = await this.prisma.payrollItem.findMany({
+      where: { payrollRunId: runId },
+      orderBy: { employeeId: 'asc' },
+    });
+
+    const rows: string[] = [];
+    rows.push([
+      'payrollRunId',
+      'periodStart',
+      'periodEnd',
+      'employeeId',
+      'employeeName',
+      'department',
+      'hoursWorked',
+      'hourlyRate',
+      'grossPay',
+      'totalDeductions',
+      'netPay',
+      'anomalies',
+    ].join(','));
+
+    for (const item of items) {
+      rows.push([
+        this.escapeCsv(run.runId),
+        this.escapeCsv(run.periodStart.toISOString().slice(0, 10)),
+        this.escapeCsv(run.periodEnd.toISOString().slice(0, 10)),
+        this.escapeCsv(item.employeeId),
+        this.escapeCsv(item.employeeName),
+        this.escapeCsv(item.department),
+        this.escapeCsv(Number(item.hoursWorked)),
+        this.escapeCsv(Number(item.hourlyRate)),
+        this.escapeCsv(Number(item.grossPay)),
+        this.escapeCsv(Number(item.totalDeductions)),
+        this.escapeCsv(Number(item.netPay)),
+        this.escapeCsv((item.anomalies || []).join('; ')),
+      ].join(','));
+    }
+
+    const fileName = `payroll-${run.runId}.csv`;
+    return {
+      mimeType: 'text/csv; charset=utf-8',
+      fileName,
+      content: rows.join('\n'),
+    };
+  }
+
+  private escapeCsv(value: unknown): string {
+    const text = String(value ?? '');
+    if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+    return text;
   }
 
   async processPayrollRunJob(payload: PayrollQueuePayload) {
@@ -217,6 +262,18 @@ export class PayrollService {
         notes: message || 'Payroll calculation failed',
       },
     });
+  }
+
+  private async enqueuePayrollJob(payload: PayrollQueuePayload) {
+    try {
+      await this.payrollQueue.add(QUEUE_JOBS.PAYROLL_CALCULATE, payload, {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2_000 },
+      });
+      return;
+    } catch {
+      await this.processPayrollRunJob(payload);
+    }
   }
 
   private async processPayrollRun(runId: string, dto: CalculatePayrollDto, userId?: string) {
