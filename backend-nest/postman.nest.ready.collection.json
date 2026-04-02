@@ -371,6 +371,32 @@
           }
         },
         {
+          "name": "POST Calculate Payroll Async (save payrollRunId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.payrollRun && data.payrollRun.id) { pm.collectionVariables.set('payrollRunId', data.payrollRun.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"periodStart\": \"2026-03-25\",\n  \"periodEnd\": \"2026-04-02\",\n  \"gracePeriodMinutes\": 5\n}"
+            },
+            "url": "{{baseUrl}}/payroll/calculate/async"
+          }
+        },
+        {
           "name": "PUT Approve Payroll",
           "request": {
             "method": "PUT",
@@ -405,8 +431,20 @@
       "name": "08 Imports",
       "item": [
         {
+          "name": "GET Import History",
+          "request": { "method": "GET", "url": "{{baseUrl}}/imports/history?page=1&limit=20" }
+        },
+        {
+          "name": "GET Import Stats",
+          "request": { "method": "GET", "url": "{{baseUrl}}/imports/stats" }
+        },
+        {
           "name": "GET Employees Template",
           "request": { "method": "GET", "url": "{{baseUrl}}/imports/templates/employees" }
+        },
+        {
+          "name": "GET Products Template",
+          "request": { "method": "GET", "url": "{{baseUrl}}/imports/templates/products" }
         },
         {
           "name": "POST Validate Employees CSV",
@@ -452,6 +490,110 @@
               ]
             },
             "url": "{{baseUrl}}/imports/employees"
+          }
+        },
+        {
+          "name": "POST Import Employees CSV Async (save importJobId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.jobId) { pm.collectionVariables.set('importJobId', data.jobId); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "employees.csv"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/employees/async"
+          }
+        },
+        {
+          "name": "POST Validate Products CSV",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "products.csv"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/products/validate"
+          }
+        },
+        {
+          "name": "POST Import Products CSV (save importJobId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.jobId) { pm.collectionVariables.set('importJobId', data.jobId); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "products.csv"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/products"
+          }
+        },
+        {
+          "name": "POST Import Products CSV Async (save importJobId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.jobId) { pm.collectionVariables.set('importJobId', data.jobId); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "products.csv"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/products/async"
           }
         },
         {

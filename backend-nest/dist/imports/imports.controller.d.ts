@@ -3,21 +3,22 @@ import { ImportsService } from './imports.service';
 export declare class ImportsController {
     private readonly importsService;
     constructor(importsService: ImportsService);
+    private static readonly uploadOptions;
     history(query: any): Promise<{
         imports: {
             id: string;
-            status: string;
-            createdAt: Date;
-            updatedAt: Date;
             jobId: string;
             entity: string;
             fileName: string;
             uploadedBy: string;
             uploadedAt: Date;
+            status: string;
             totalRows: number;
             successRows: number;
             errorRows: number;
             errors: import("@prisma/client/runtime/client").JsonValue;
+            createdAt: Date;
+            updatedAt: Date;
         }[];
         pagination: {
             page: number;
@@ -37,18 +38,18 @@ export declare class ImportsController {
     details(jobId: string): Promise<{
         errorSummary: Record<string, number>;
         id: string;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
         jobId: string;
         entity: string;
         fileName: string;
         uploadedBy: string;
         uploadedAt: Date;
+        status: string;
         totalRows: number;
         successRows: number;
         errorRows: number;
         errors: import("@prisma/client/runtime/client").JsonValue;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     employeesTemplate(res: Response): void;
     productsTemplate(res: Response): void;
@@ -59,6 +60,12 @@ export declare class ImportsController {
         totalRows: number;
         successRows: number;
         errorRows: number;
+    }>;
+    importEmployeesAsync(file: any, user: any): Promise<{
+        message: string;
+        jobId: string;
+        status: string;
+        totalRows: number;
     }>;
     validateEmployees(file: any): Promise<{
         totalRows: number;
@@ -77,6 +84,12 @@ export declare class ImportsController {
         totalRows: number;
         successRows: number;
         errorRows: number;
+    }>;
+    importProductsAsync(file: any, user: any): Promise<{
+        message: string;
+        jobId: string;
+        status: string;
+        totalRows: number;
     }>;
     validateProducts(file: any): Promise<{
         totalRows: number;

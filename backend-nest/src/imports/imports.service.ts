@@ -1,15 +1,31 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { parse } from 'csv-parse/sync';
+import { parse as parseCsv } from 'csv-parse/sync';
+import { extname } from 'path';
+import { Queue } from 'bullmq';
+import * as XLSX from 'xlsx';
+import { QUEUE_JOBS, QUEUE_NAMES } from '../queues/queue.constants';
 
 type ParsedRow = Record<string, string>;
 type RowError = { row: number; error: string };
 type ParseResult = { rows: ParsedRow[]; headers: string[] };
 
+const IMPORT_BATCH_SIZE = 50;
+const IMPORT_MAX_ROWS = 50_000;
+
+type ImportQueuePayload = {
+  importJobRecordId: string;
+  rows: ParsedRow[];
+};
+
 @Injectable()
 export class ImportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @InjectQueue(QUEUE_NAMES.IMPORTS) private readonly importsQueue: Queue,
+  ) {}
 
   async history(query: any) {
     const page = Number(query.page || 1);
@@ -17,6 +33,7 @@ export class ImportsService {
     const skip = (page - 1) * limit;
     const where: Prisma.ImportJobWhereInput = {};
     if (query.entity) where.entity = query.entity;
+    if (query.status) where.status = query.status;
 
     const [imports, total] = await Promise.all([
       this.prisma.importJob.findMany({
@@ -84,23 +101,26 @@ export class ImportsService {
   }
 
   async validateEmployeesImport(file: any) {
-    if (!file?.buffer) throw new BadRequestException('CSV file is required in field: file');
-    const { rows, headers } = this.parseCsvRows(file.buffer);
+    if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
+    const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
     this.assertEmployeesHeaders(headers);
     const result = await this.processEmployeesRows(rows, false);
-    return { message: 'Employees CSV validation completed (dry-run)', ...result };
+    return { message: 'Employees import validation completed (dry-run)', ...result };
   }
 
   async validateProductsImport(file: any) {
-    if (!file?.buffer) throw new BadRequestException('CSV file is required in field: file');
-    const { rows, headers } = this.parseCsvRows(file.buffer);
+    if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
+    const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
     this.assertProductsHeaders(headers);
     const result = await this.processProductsRows(rows, false);
-    return { message: 'Products CSV validation completed (dry-run)', ...result };
+    return { message: 'Products import validation completed (dry-run)', ...result };
   }
 
   async importEmployees(file: any, userId: string) {
-    if (!file?.buffer) throw new BadRequestException('CSV file is required in field: file');
+    if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
+
+    const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
+    this.assertEmployeesHeaders(headers);
 
     const jobId = `IMP-EMP-${Date.now()}`;
     const job = await this.prisma.importJob.create({
@@ -110,11 +130,10 @@ export class ImportsService {
         fileName: file?.originalname || 'employees.csv',
         uploadedBy: userId || 'system',
         status: 'processing',
+        totalRows: rows.length,
       },
     });
 
-    const { rows, headers } = this.parseCsvRows(file.buffer);
-    this.assertEmployeesHeaders(headers);
     const result = await this.processEmployeesRows(rows, true);
     const { totalRows, successRows, errorRows, errors } = result;
     const status = this.jobStatus(totalRows, successRows, errorRows);
@@ -133,8 +152,41 @@ export class ImportsService {
     return { message: 'Employee import processed', jobId: job.jobId, status, totalRows, successRows, errorRows };
   }
 
+  async importEmployeesAsync(file: any, userId: string) {
+    if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
+
+    const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
+    this.assertEmployeesHeaders(headers);
+
+    const jobId = `IMP-EMP-${Date.now()}`;
+    const job = await this.prisma.importJob.create({
+      data: {
+        jobId,
+        entity: 'employees',
+        fileName: file?.originalname || 'employees.csv',
+        uploadedBy: userId || 'system',
+        status: 'queued',
+        totalRows: rows.length,
+      },
+    });
+
+    await this.importsQueue.add(
+      QUEUE_JOBS.IMPORT_EMPLOYEES,
+      { importJobRecordId: job.id, rows } satisfies ImportQueuePayload,
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2_000 },
+      },
+    );
+
+    return { message: 'Employee import queued', jobId: job.jobId, status: 'queued', totalRows: rows.length };
+  }
+
   async importProducts(file: any, userId: string) {
-    if (!file?.buffer) throw new BadRequestException('CSV file is required in field: file');
+    if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
+
+    const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
+    this.assertProductsHeaders(headers);
 
     const jobId = `IMP-PROD-${Date.now()}`;
     const job = await this.prisma.importJob.create({
@@ -144,11 +196,10 @@ export class ImportsService {
         fileName: file?.originalname || 'products.csv',
         uploadedBy: userId || 'system',
         status: 'processing',
+        totalRows: rows.length,
       },
     });
 
-    const { rows, headers } = this.parseCsvRows(file.buffer);
-    this.assertProductsHeaders(headers);
     const result = await this.processProductsRows(rows, true);
     const { totalRows, successRows, errorRows, errors } = result;
     const status = this.jobStatus(totalRows, successRows, errorRows);
@@ -165,6 +216,36 @@ export class ImportsService {
     });
 
     return { message: 'Product import processed', jobId: job.jobId, status, totalRows, successRows, errorRows };
+  }
+
+  async importProductsAsync(file: any, userId: string) {
+    if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
+
+    const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
+    this.assertProductsHeaders(headers);
+
+    const jobId = `IMP-PROD-${Date.now()}`;
+    const job = await this.prisma.importJob.create({
+      data: {
+        jobId,
+        entity: 'products',
+        fileName: file?.originalname || 'products.csv',
+        uploadedBy: userId || 'system',
+        status: 'queued',
+        totalRows: rows.length,
+      },
+    });
+
+    await this.importsQueue.add(
+      QUEUE_JOBS.IMPORT_PRODUCTS,
+      { importJobRecordId: job.id, rows } satisfies ImportQueuePayload,
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2_000 },
+      },
+    );
+
+    return { message: 'Product import queued', jobId: job.jobId, status: 'queued', totalRows: rows.length };
   }
 
   async retry(jobId: string, userId: string) {
@@ -185,24 +266,97 @@ export class ImportsService {
     return { message: 'Retry initiated', originalJobId: jobId, retryJobId: retryJob.jobId, status: retryJob.status };
   }
 
-  private parseCsvRows(buffer: Buffer): ParseResult {
+  async processEmployeesImportJob(importJobRecordId: string, rows: ParsedRow[]) {
+    await this.prisma.importJob.update({ where: { id: importJobRecordId }, data: { status: 'processing' } });
+    const { totalRows, successRows, errorRows, errors } = await this.processEmployeesRows(rows, true);
+    const status = this.jobStatus(totalRows, successRows, errorRows);
+    await this.prisma.importJob.update({
+      where: { id: importJobRecordId },
+      data: { status, totalRows, successRows, errorRows, errors },
+    });
+    return { status, totalRows, successRows, errorRows };
+  }
+
+  async processProductsImportJob(importJobRecordId: string, rows: ParsedRow[]) {
+    await this.prisma.importJob.update({ where: { id: importJobRecordId }, data: { status: 'processing' } });
+    const { totalRows, successRows, errorRows, errors } = await this.processProductsRows(rows, true);
+    const status = this.jobStatus(totalRows, successRows, errorRows);
+    await this.prisma.importJob.update({
+      where: { id: importJobRecordId },
+      data: { status, totalRows, successRows, errorRows, errors },
+    });
+    return { status, totalRows, successRows, errorRows };
+  }
+
+  async markImportJobFailed(importJobRecordId: string, message: string) {
+    await this.prisma.importJob.update({
+      where: { id: importJobRecordId },
+      data: {
+        status: 'failed',
+        errors: [{ row: 0, error: message || 'Unexpected import error' }],
+      },
+    });
+  }
+
+  private parseImportRows(buffer: Buffer, fileName?: string, mimeType?: string): ParseResult {
+    const extension = extname(fileName || '').toLowerCase();
+    const detectedFormat =
+      extension === '.xlsx' ||
+      extension === '.xls' ||
+      mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+      mimeType === 'application/vnd.ms-excel'
+        ? 'xlsx'
+        : 'csv';
+
+    if (detectedFormat === 'xlsx') {
+      const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false, raw: false });
+      const sheetName = workbook.SheetNames[0];
+      if (!sheetName) throw new BadRequestException('Excel file must contain at least one worksheet');
+
+      const worksheet = workbook.Sheets[sheetName];
+      const parsed = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { defval: '', raw: false });
+      const first = parsed[0] || {};
+      const headers = Object.keys(first).map((key) => this.normalizeHeader(key));
+      const rows = parsed.map((row) => {
+        const normalized: ParsedRow = {};
+        for (const [key, value] of Object.entries(row)) {
+          normalized[this.normalizeHeader(key)] = String(value ?? '').trim();
+        }
+        return normalized;
+      });
+
+      if (rows.length > IMPORT_MAX_ROWS) {
+        throw new BadRequestException(
+          `Import file is too large. Maximum allowed rows is ${IMPORT_MAX_ROWS}. Split the file and retry.`,
+        );
+      }
+
+      return { rows, headers };
+    }
+
     const text = buffer.toString('utf8');
-    const parsed = parse(text, { columns: true, skip_empty_lines: true, trim: true, bom: true }) as Record<string, any>[];
+    const parsed = parseCsv(text, { columns: true, skip_empty_lines: true, trim: true, bom: true }) as Record<string, any>[];
     const first = parsed[0] || {};
-    const headers = Object.keys(first).map((key) => key.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    const headers = Object.keys(first).map((key) => this.normalizeHeader(key));
     const rows = parsed.map((row) => {
       const normalized: ParsedRow = {};
       for (const [key, value] of Object.entries(row)) {
-        normalized[key.toLowerCase().replace(/[^a-z0-9]/g, '')] = String(value ?? '').trim();
+        normalized[this.normalizeHeader(key)] = String(value ?? '').trim();
       }
       return normalized;
     });
+    if (rows.length > IMPORT_MAX_ROWS) {
+      throw new BadRequestException(
+        `Import file is too large. Maximum allowed rows is ${IMPORT_MAX_ROWS}. Split the file and retry.`,
+      );
+    }
+
     return { rows, headers };
   }
 
   private value(row: ParsedRow, aliases: string[]) {
     for (const key of aliases) {
-      const found = row[key.toLowerCase().replace(/[^a-z0-9]/g, '')];
+      const found = row[this.normalizeHeader(key)];
       if (found !== undefined && found !== '') return found;
     }
     return '';
@@ -246,8 +400,8 @@ export class ImportsService {
   }
 
   private headerExists(headers: string[], aliases: string[]) {
-    const set = new Set(headers.map((h) => h.toLowerCase().replace(/[^a-z0-9]/g, '')));
-    return aliases.some((a) => set.has(a.toLowerCase().replace(/[^a-z0-9]/g, '')));
+    const set = new Set(headers.map((h) => this.normalizeHeader(h)));
+    return aliases.some((a) => set.has(this.normalizeHeader(a)));
   }
 
   private async processEmployeesRows(rows: ParsedRow[], persist: boolean) {
@@ -255,9 +409,11 @@ export class ImportsService {
     let successRows = 0;
     const defaultRoleId = persist ? await this.resolveDefaultRoleId() : '';
 
-    for (let i = 0; i < rows.length; i++) {
-      try {
-        const input = rows[i];
+    for (let offset = 0; offset < rows.length; offset += IMPORT_BATCH_SIZE) {
+      const batch = rows.slice(offset, offset + IMPORT_BATCH_SIZE);
+      const batchResults = await Promise.all(
+        batch.map(async (input, index) => {
+          try {
         const employeeId = this.value(input, ['employeeid', 'employee_id', 'id']);
         const name = this.value(input, ['name', 'fullname', 'full_name']);
         const email = this.value(input, ['email', 'mail']);
@@ -303,9 +459,19 @@ export class ImportsService {
             },
           });
         }
-        successRows++;
-      } catch (error: any) {
-        errors.push({ row: i + 1, error: error?.message || 'Unknown validation error' });
+            return null;
+          } catch (error: any) {
+            return { row: offset + index + 1, error: error?.message || 'Unknown validation error' };
+          }
+        }),
+      );
+
+      for (const result of batchResults) {
+        if (result) {
+          errors.push(result);
+        } else {
+          successRows++;
+        }
       }
     }
 
@@ -316,9 +482,11 @@ export class ImportsService {
     const errors: RowError[] = [];
     let successRows = 0;
 
-    for (let i = 0; i < rows.length; i++) {
-      try {
-        const input = rows[i];
+    for (let offset = 0; offset < rows.length; offset += IMPORT_BATCH_SIZE) {
+      const batch = rows.slice(offset, offset + IMPORT_BATCH_SIZE);
+      const batchResults = await Promise.all(
+        batch.map(async (input, index) => {
+          try {
         const sku = this.value(input, ['sku']);
         const name = this.value(input, ['name']);
         const category = this.value(input, ['category']);
@@ -356,13 +524,29 @@ export class ImportsService {
             },
           });
         }
-        successRows++;
-      } catch (error: any) {
-        errors.push({ row: i + 1, error: error?.message || 'Unknown validation error' });
+            return null;
+          } catch (error: any) {
+            return { row: offset + index + 1, error: error?.message || 'Unknown validation error' };
+          }
+        }),
+      );
+
+      for (const result of batchResults) {
+        if (result) {
+          errors.push(result);
+        } else {
+          successRows++;
+        }
       }
     }
 
     return { totalRows: rows.length, successRows, errorRows: errors.length, errors };
+  }
+
+  private normalizeHeader(value: string) {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
   }
 
   private jobStatus(totalRows: number, successRows: number, errorRows: number) {

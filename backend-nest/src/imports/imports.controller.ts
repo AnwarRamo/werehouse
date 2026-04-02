@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Param,
@@ -21,6 +22,31 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ImportsController {
   constructor(private readonly importsService: ImportsService) {}
+
+  private static readonly uploadOptions = {
+    fileFilter: (_req: any, file: any, cb: (error: any, acceptFile: boolean) => void) => {
+      const allowedExtensions = ['.csv', '.xlsx', '.xls'];
+      const allowedMimeTypes = [
+        'text/csv',
+        'application/csv',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ];
+      const originalName = String(file?.originalname || '').toLowerCase();
+      const hasAllowedExtension = allowedExtensions.some((ext) => originalName.endsWith(ext));
+      const hasAllowedMime = allowedMimeTypes.includes(String(file?.mimetype || '').toLowerCase());
+
+      if (!hasAllowedExtension && !hasAllowedMime) {
+        cb(new BadRequestException('Only CSV/XLS/XLSX files are allowed'), false);
+        return;
+      }
+
+      cb(null, true);
+    },
+    limits: {
+      fileSize: 10 * 1024 * 1024,
+    },
+  };
 
   @Get('history')
   @Permissions('view_imports')
@@ -60,28 +86,42 @@ export class ImportsController {
 
   @Post('employees')
   @Permissions('run_imports')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', ImportsController.uploadOptions))
   importEmployees(@UploadedFile() file: any, @CurrentUser() user: any) {
     return this.importsService.importEmployees(file, user?.userId);
   }
 
+  @Post('employees/async')
+  @Permissions('run_imports')
+  @UseInterceptors(FileInterceptor('file', ImportsController.uploadOptions))
+  importEmployeesAsync(@UploadedFile() file: any, @CurrentUser() user: any) {
+    return this.importsService.importEmployeesAsync(file, user?.userId);
+  }
+
   @Post('employees/validate')
   @Permissions('run_imports')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', ImportsController.uploadOptions))
   validateEmployees(@UploadedFile() file: any) {
     return this.importsService.validateEmployeesImport(file);
   }
 
   @Post('products')
   @Permissions('run_imports')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', ImportsController.uploadOptions))
   importProducts(@UploadedFile() file: any, @CurrentUser() user: any) {
     return this.importsService.importProducts(file, user?.userId);
   }
 
+  @Post('products/async')
+  @Permissions('run_imports')
+  @UseInterceptors(FileInterceptor('file', ImportsController.uploadOptions))
+  importProductsAsync(@UploadedFile() file: any, @CurrentUser() user: any) {
+    return this.importsService.importProductsAsync(file, user?.userId);
+  }
+
   @Post('products/validate')
   @Permissions('run_imports')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', ImportsController.uploadOptions))
   validateProducts(@UploadedFile() file: any) {
     return this.importsService.validateProductsImport(file);
   }

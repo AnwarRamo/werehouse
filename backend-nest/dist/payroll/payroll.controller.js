@@ -36,6 +36,9 @@ let PayrollController = class PayrollController {
     calculate(dto, user) {
         return this.payrollService.calculate(dto, user?.userId);
     }
+    calculateAsync(dto, user) {
+        return this.payrollService.calculateAsync(dto, user?.userId);
+    }
     getById(runId) {
         return this.payrollService.getRun(runId);
     }
@@ -99,6 +102,15 @@ __decorate([
     __metadata("design:paramtypes", [calculate_payroll_dto_1.CalculatePayrollDto, Object]),
     __metadata("design:returntype", void 0)
 ], PayrollController.prototype, "calculate", null);
+__decorate([
+    (0, common_1.Post)('calculate/async'),
+    (0, permissions_decorator_1.Permissions)('run_payroll'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [calculate_payroll_dto_1.CalculatePayrollDto, Object]),
+    __metadata("design:returntype", void 0)
+], PayrollController.prototype, "calculateAsync", null);
 __decorate([
     (0, common_1.Get)(':runId'),
     (0, permissions_decorator_1.Permissions)('view_payroll'),

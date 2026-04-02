@@ -35,6 +35,12 @@ export class PayrollController {
     return this.payrollService.calculate(dto, user?.userId);
   }
 
+  @Post('calculate/async')
+  @Permissions('run_payroll')
+  calculateAsync(@Body() dto: CalculatePayrollDto, @CurrentUser() user: any) {
+    return this.payrollService.calculateAsync(dto, user?.userId);
+  }
+
   @Get(':runId')
   @Permissions('view_payroll')
   getById(@Param('runId') runId: string) {

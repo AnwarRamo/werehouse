@@ -48,11 +48,17 @@ let ImportsController = class ImportsController {
     importEmployees(file, user) {
         return this.importsService.importEmployees(file, user?.userId);
     }
+    importEmployeesAsync(file, user) {
+        return this.importsService.importEmployeesAsync(file, user?.userId);
+    }
     validateEmployees(file) {
         return this.importsService.validateEmployeesImport(file);
     }
     importProducts(file, user) {
         return this.importsService.importProducts(file, user?.userId);
+    }
+    importProductsAsync(file, user) {
+        return this.importsService.importProductsAsync(file, user?.userId);
     }
     validateProducts(file) {
         return this.importsService.validateProductsImport(file);
@@ -62,6 +68,28 @@ let ImportsController = class ImportsController {
     }
 };
 exports.ImportsController = ImportsController;
+ImportsController.uploadOptions = {
+    fileFilter: (_req, file, cb) => {
+        const allowedExtensions = ['.csv', '.xlsx', '.xls'];
+        const allowedMimeTypes = [
+            'text/csv',
+            'application/csv',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ];
+        const originalName = String(file?.originalname || '').toLowerCase();
+        const hasAllowedExtension = allowedExtensions.some((ext) => originalName.endsWith(ext));
+        const hasAllowedMime = allowedMimeTypes.includes(String(file?.mimetype || '').toLowerCase());
+        if (!hasAllowedExtension && !hasAllowedMime) {
+            cb(new common_1.BadRequestException('Only CSV/XLS/XLSX files are allowed'), false);
+            return;
+        }
+        cb(null, true);
+    },
+    limits: {
+        fileSize: 10 * 1024 * 1024,
+    },
+};
 __decorate([
     (0, common_1.Get)('history'),
     (0, permissions_decorator_1.Permissions)('view_imports'),
@@ -104,7 +132,7 @@ __decorate([
 __decorate([
     (0, common_1.Post)('employees'),
     (0, permissions_decorator_1.Permissions)('run_imports'),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', ImportsController.uploadOptions)),
     __param(0, (0, common_1.UploadedFile)()),
     __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
@@ -112,9 +140,19 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ImportsController.prototype, "importEmployees", null);
 __decorate([
+    (0, common_1.Post)('employees/async'),
+    (0, permissions_decorator_1.Permissions)('run_imports'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', ImportsController.uploadOptions)),
+    __param(0, (0, common_1.UploadedFile)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], ImportsController.prototype, "importEmployeesAsync", null);
+__decorate([
     (0, common_1.Post)('employees/validate'),
     (0, permissions_decorator_1.Permissions)('run_imports'),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', ImportsController.uploadOptions)),
     __param(0, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
@@ -123,7 +161,7 @@ __decorate([
 __decorate([
     (0, common_1.Post)('products'),
     (0, permissions_decorator_1.Permissions)('run_imports'),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', ImportsController.uploadOptions)),
     __param(0, (0, common_1.UploadedFile)()),
     __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
@@ -131,9 +169,19 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ImportsController.prototype, "importProducts", null);
 __decorate([
+    (0, common_1.Post)('products/async'),
+    (0, permissions_decorator_1.Permissions)('run_imports'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', ImportsController.uploadOptions)),
+    __param(0, (0, common_1.UploadedFile)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], ImportsController.prototype, "importProductsAsync", null);
+__decorate([
     (0, common_1.Post)('products/validate'),
     (0, permissions_decorator_1.Permissions)('run_imports'),
-    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', ImportsController.uploadOptions)),
     __param(0, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),

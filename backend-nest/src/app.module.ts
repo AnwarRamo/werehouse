@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import * as Joi from 'joi';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { BullModule } from '@nestjs/bullmq';
 import { AuthModule } from './auth';
 import { EmployeesModule } from './employees';
 import { DevicesModule } from './devices';
@@ -42,6 +43,7 @@ import { RequestLoggingMiddleware } from './common/middleware/request-logging.mi
         BCRYPT_ROUNDS: Joi.number().min(8).max(14).default(10),
         THROTTLE_TTL_MS: Joi.number().min(1_000).default(60_000),
         THROTTLE_LIMIT: Joi.number().min(10).default(120),
+        REDIS_URL: Joi.string().uri().default('redis://127.0.0.1:6379'),
       }),
     }),
     ThrottlerModule.forRootAsync({
@@ -52,6 +54,23 @@ import { RequestLoggingMiddleware } from './common/middleware/request-logging.mi
           limit: config.get<number>('THROTTLE_LIMIT', 120),
         },
       ],
+    }),
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: {
+          url: config.get<string>('REDIS_URL', 'redis://127.0.0.1:6379'),
+        },
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2_000,
+          },
+          removeOnComplete: 500,
+          removeOnFail: 500,
+        },
+      }),
     }),
     PrismaModule,
     HealthModule,

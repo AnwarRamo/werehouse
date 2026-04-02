@@ -8,14 +8,22 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PayrollService = void 0;
 const common_1 = require("@nestjs/common");
+const bullmq_1 = require("@nestjs/bullmq");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
+const bullmq_2 = require("bullmq");
+const queue_constants_1 = require("../queues/queue.constants");
+const PAYROLL_BATCH_SIZE = 250;
 let PayrollService = class PayrollService {
-    constructor(prisma) {
+    constructor(prisma, payrollQueue) {
         this.prisma = prisma;
+        this.payrollQueue = payrollQueue;
     }
     resolvePeriod(periodStart, periodEnd) {
         if (periodStart && periodEnd) {
@@ -53,12 +61,6 @@ let PayrollService = class PayrollService {
         return { payrollRuns, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
     }
     async calculate(dto, userId) {
-        const employees = await this.prisma.employee.findMany({
-            where: { status: 'active' },
-            take: 100,
-        });
-        if (employees.length === 0)
-            throw new common_1.BadRequestException('No active employees found');
         const runDateKey = dto.periodStart.slice(0, 10).replace(/-/g, '');
         const runId = `PAY${runDateKey}-${Date.now().toString().slice(-4)}`;
         const run = await this.prisma.payrollRun.create({
@@ -67,47 +69,33 @@ let PayrollService = class PayrollService {
                 periodStart: new Date(dto.periodStart),
                 periodEnd: new Date(dto.periodEnd),
                 runBy: userId,
-                status: 'draft',
+                status: 'processing',
                 approvalStatus: 'pending',
-                totalEmployees: employees.length,
+                totalEmployees: 0,
             },
         });
-        let totalGross = 0;
-        let totalNet = 0;
-        const items = [];
-        for (const e of employees) {
-            const hoursWorked = 160;
-            const hourlyRate = Number(e.hourlyRate);
-            const grossPay = Number((hoursWorked * hourlyRate).toFixed(2));
-            const totalDeductions = Number((grossPay * 0.08).toFixed(2));
-            const netPay = Number((grossPay - totalDeductions).toFixed(2));
-            totalGross += grossPay;
-            totalNet += netPay;
-            items.push({
-                payrollRunId: run.id,
-                employeeId: e.employeeId,
-                employeeName: e.name,
-                department: e.department,
-                hoursWorked: new client_1.Prisma.Decimal(hoursWorked),
-                hourlyRate: new client_1.Prisma.Decimal(hourlyRate),
-                grossPay: new client_1.Prisma.Decimal(grossPay),
-                totalDeductions: new client_1.Prisma.Decimal(totalDeductions),
-                netPay: new client_1.Prisma.Decimal(netPay),
-                anomalies: [],
-            });
-        }
-        if (items.length) {
-            await this.prisma.payrollItem.createMany({ data: items });
-        }
-        const updatedRun = await this.prisma.payrollRun.update({
-            where: { id: run.id },
-            data: {
-                totalGrossPay: new client_1.Prisma.Decimal(totalGross.toFixed(2)),
-                totalDeductions: new client_1.Prisma.Decimal((totalGross - totalNet).toFixed(2)),
-                totalNetPay: new client_1.Prisma.Decimal(totalNet.toFixed(2)),
-            },
-        });
+        const updatedRun = await this.processPayrollRun(run.id, dto, userId);
         return { message: 'Payroll calculated successfully', payrollRun: updatedRun };
+    }
+    async calculateAsync(dto, userId) {
+        const runDateKey = dto.periodStart.slice(0, 10).replace(/-/g, '');
+        const runId = `PAY${runDateKey}-${Date.now().toString().slice(-4)}`;
+        const run = await this.prisma.payrollRun.create({
+            data: {
+                runId,
+                periodStart: new Date(dto.periodStart),
+                periodEnd: new Date(dto.periodEnd),
+                runBy: userId,
+                status: 'queued',
+                approvalStatus: 'pending',
+                totalEmployees: 0,
+            },
+        });
+        await this.payrollQueue.add(queue_constants_1.QUEUE_JOBS.PAYROLL_CALCULATE, { payrollRunId: run.id, dto, userId }, {
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 2_000 },
+        });
+        return { message: 'Payroll calculation queued', payrollRun: run };
     }
     async getRun(runId) {
         const payrollRun = await this.prisma.payrollRun.findUnique({ where: { id: runId } });
@@ -194,10 +182,87 @@ let PayrollService = class PayrollService {
             throw new common_1.NotFoundException('Payroll run not found');
         return { message: 'Export payroll functionality to be implemented', runId, format: 'csv' };
     }
+    async processPayrollRunJob(payload) {
+        return this.processPayrollRun(payload.payrollRunId, payload.dto, payload.userId);
+    }
+    async markPayrollRunFailed(payrollRunId, message) {
+        await this.prisma.payrollRun.update({
+            where: { id: payrollRunId },
+            data: {
+                status: 'failed',
+                notes: message || 'Payroll calculation failed',
+            },
+        });
+    }
+    async processPayrollRun(runId, dto, userId) {
+        const activeEmployeesCount = await this.prisma.employee.count({ where: { status: 'active' } });
+        if (activeEmployeesCount === 0) {
+            throw new common_1.BadRequestException('No active employees found');
+        }
+        await this.prisma.payrollRun.update({
+            where: { id: runId },
+            data: {
+                status: 'processing',
+                totalEmployees: activeEmployeesCount,
+            },
+        });
+        let totalGross = 0;
+        let totalNet = 0;
+        let processedEmployees = 0;
+        let skip = 0;
+        while (true) {
+            const employees = await this.prisma.employee.findMany({
+                where: { status: 'active' },
+                orderBy: { employeeId: 'asc' },
+                skip,
+                take: PAYROLL_BATCH_SIZE,
+            });
+            if (employees.length === 0) {
+                break;
+            }
+            const items = employees.map((employee) => {
+                const hoursWorked = 160;
+                const hourlyRate = Number(employee.hourlyRate);
+                const grossPay = Number((hoursWorked * hourlyRate).toFixed(2));
+                const totalDeductions = Number((grossPay * 0.08).toFixed(2));
+                const netPay = Number((grossPay - totalDeductions).toFixed(2));
+                totalGross += grossPay;
+                totalNet += netPay;
+                processedEmployees += 1;
+                return {
+                    payrollRunId: runId,
+                    employeeId: employee.employeeId,
+                    employeeName: employee.name,
+                    department: employee.department,
+                    hoursWorked: new client_1.Prisma.Decimal(hoursWorked),
+                    hourlyRate: new client_1.Prisma.Decimal(hourlyRate),
+                    grossPay: new client_1.Prisma.Decimal(grossPay),
+                    totalDeductions: new client_1.Prisma.Decimal(totalDeductions),
+                    netPay: new client_1.Prisma.Decimal(netPay),
+                    anomalies: [],
+                };
+            });
+            await this.prisma.payrollItem.createMany({ data: items });
+            skip += employees.length;
+        }
+        const updatedRun = await this.prisma.payrollRun.update({
+            where: { id: runId },
+            data: {
+                status: 'completed',
+                totalEmployees: processedEmployees,
+                totalGrossPay: new client_1.Prisma.Decimal(totalGross.toFixed(2)),
+                totalDeductions: new client_1.Prisma.Decimal((totalGross - totalNet).toFixed(2)),
+                totalNetPay: new client_1.Prisma.Decimal(totalNet.toFixed(2)),
+            },
+        });
+        return updatedRun;
+    }
 };
 exports.PayrollService = PayrollService;
 exports.PayrollService = PayrollService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __param(1, (0, bullmq_1.InjectQueue)(queue_constants_1.QUEUE_NAMES.PAYROLL)),
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        bullmq_2.Queue])
 ], PayrollService);
 //# sourceMappingURL=payroll.service.js.map

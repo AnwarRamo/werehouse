@@ -382,6 +382,23 @@
           }
         },
         {
+          "name": "POST Calculate Payroll Async",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"periodStart\": \"2026-03-01\",\n  \"periodEnd\": \"2026-03-31\",\n  \"gracePeriodMinutes\": 5\n}"
+            },
+            "url": "{{baseUrl}}/payroll/calculate/async"
+          }
+        },
+        {
           "name": "GET Payroll Run by Id",
           "request": {
             "method": "GET",
@@ -633,6 +650,23 @@
           }
         },
         {
+          "name": "POST Import Employees CSV Async",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/employees/async"
+          }
+        },
+        {
           "name": "POST Validate Products CSV (Dry Run)",
           "request": {
             "method": "POST",
@@ -664,6 +698,23 @@
               ]
             },
             "url": "{{baseUrl}}/imports/products"
+          }
+        },
+        {
+          "name": "POST Import Products CSV Async",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/products/async"
           }
         },
         {

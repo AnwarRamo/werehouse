@@ -1,4 +1,12 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: warehouse_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+
   postgres:
     image: postgres:16-alpine
     container_name: warehouse_postgres
@@ -26,6 +34,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       NODE_ENV: production
       PORT: 5001
@@ -46,6 +56,7 @@ services:
       BCRYPT_ROUNDS: 10
       THROTTLE_TTL_MS: 60000
       THROTTLE_LIMIT: 120
+      REDIS_URL: redis://redis:6379
     ports:
       - "5001:5001"
     command: sh -c "npx prisma db push --skip-generate && node dist/main"

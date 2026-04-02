@@ -45,6 +45,7 @@ const core_1 = require("@nestjs/core");
 const config_1 = require("@nestjs/config");
 const Joi = __importStar(require("joi"));
 const throttler_1 = require("@nestjs/throttler");
+const bullmq_1 = require("@nestjs/bullmq");
 const auth_1 = require("./auth");
 const employees_1 = require("./employees");
 const devices_1 = require("./devices");
@@ -90,6 +91,7 @@ exports.AppModule = AppModule = __decorate([
                     BCRYPT_ROUNDS: Joi.number().min(8).max(14).default(10),
                     THROTTLE_TTL_MS: Joi.number().min(1_000).default(60_000),
                     THROTTLE_LIMIT: Joi.number().min(10).default(120),
+                    REDIS_URL: Joi.string().uri().default('redis://127.0.0.1:6379'),
                 }),
             }),
             throttler_1.ThrottlerModule.forRootAsync({
@@ -100,6 +102,23 @@ exports.AppModule = AppModule = __decorate([
                         limit: config.get('THROTTLE_LIMIT', 120),
                     },
                 ],
+            }),
+            bullmq_1.BullModule.forRootAsync({
+                inject: [config_1.ConfigService],
+                useFactory: (config) => ({
+                    connection: {
+                        url: config.get('REDIS_URL', 'redis://127.0.0.1:6379'),
+                    },
+                    defaultJobOptions: {
+                        attempts: 3,
+                        backoff: {
+                            type: 'exponential',
+                            delay: 2_000,
+                        },
+                        removeOnComplete: 500,
+                        removeOnFail: 500,
+                    },
+                }),
             }),
             prisma_module_1.PrismaModule,
             health_module_1.HealthModule,
