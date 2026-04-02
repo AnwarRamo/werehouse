@@ -35,7 +35,7 @@ export class DevicesController {
   @Get(':deviceId')
   @Permissions('view_devices')
   getOne(@Param('deviceId') deviceId: string) {
-    return this.devicesService.getByMongoId(deviceId);
+    return this.devicesService.getByDeviceId(deviceId);
   }
 
   @Put(':deviceId')

@@ -1,22 +1,27 @@
-import { Model } from 'mongoose';
-import { AttendanceRecord, AttendanceRecordDocument } from './schemas/attendance-record.schema';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 export declare class AttendanceService {
-    private attendanceModel;
-    constructor(attendanceModel: Model<AttendanceRecordDocument>);
+    private readonly prisma;
+    constructor(prisma: PrismaService);
+    private resolveRange;
     list(query: any): Promise<{
-        records: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, AttendanceRecord, {}, {}> & AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, AttendanceRecord, {}, {}> & AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        records: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            date: string;
+            employeeId: string;
+            timestamp: Date;
+            type: string;
+            deviceId: string | null;
+            location: string | null;
+            source: string;
+            verified: boolean;
+            notes: string | null;
+            shiftPair: Prisma.JsonValue | null;
+        }[];
         pagination: {
             page: number;
             limit: number;
@@ -26,42 +31,54 @@ export declare class AttendanceService {
     }>;
     create(dto: CreateAttendanceDto): Promise<{
         message: string;
-        record: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, AttendanceRecord, {}, {}> & AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, AttendanceRecord, {}, {}> & AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
+        record: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            date: string;
+            employeeId: string;
+            timestamp: Date;
+            type: string;
+            deviceId: string | null;
+            location: string | null;
+            source: string;
+            verified: boolean;
+            notes: string | null;
+            shiftPair: Prisma.JsonValue | null;
+        };
     }>;
-    getById(recordId: string): Promise<import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, AttendanceRecord, {}, {}> & AttendanceRecord & {
-        _id: import("mongoose").Types.ObjectId;
-    } & {
-        __v: number;
-    }, {}, {}> & import("mongoose").Document<unknown, {}, AttendanceRecord, {}, {}> & AttendanceRecord & {
-        _id: import("mongoose").Types.ObjectId;
-    } & {
-        __v: number;
-    } & Required<{
-        _id: import("mongoose").Types.ObjectId;
-    }>>;
+    getById(recordId: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        date: string;
+        employeeId: string;
+        timestamp: Date;
+        type: string;
+        deviceId: string | null;
+        location: string | null;
+        source: string;
+        verified: boolean;
+        notes: string | null;
+        shiftPair: Prisma.JsonValue | null;
+    }>;
     update(recordId: string, dto: UpdateAttendanceDto): Promise<{
         message: string;
-        record: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, AttendanceRecord, {}, {}> & AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, AttendanceRecord, {}, {}> & AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
+        record: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            date: string;
+            employeeId: string;
+            timestamp: Date;
+            type: string;
+            deviceId: string | null;
+            location: string | null;
+            source: string;
+            verified: boolean;
+            notes: string | null;
+            shiftPair: Prisma.JsonValue | null;
+        };
     }>;
     stats(startDate: string, endDate: string): Promise<{
         period: {
@@ -79,33 +96,41 @@ export declare class AttendanceService {
             startDate: string;
             endDate: string;
         };
-        anomalies: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, AttendanceRecord, {}, {}> & AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, AttendanceRecord, {}, {}> & AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        anomalies: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            date: string;
+            employeeId: string;
+            timestamp: Date;
+            type: string;
+            deviceId: string | null;
+            location: string | null;
+            source: string;
+            verified: boolean;
+            notes: string | null;
+            shiftPair: Prisma.JsonValue | null;
+        }[];
         anomalyCount: number;
     }>;
     employeeOnDate(employeeId: string, date: string): Promise<{
         employeeId: string;
         date: string;
-        records: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, AttendanceRecord, {}, {}> & AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, AttendanceRecord, {}, {}> & AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        records: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            date: string;
+            employeeId: string;
+            timestamp: Date;
+            type: string;
+            deviceId: string | null;
+            location: string | null;
+            source: string;
+            verified: boolean;
+            notes: string | null;
+            shiftPair: Prisma.JsonValue | null;
+        }[];
         recordCount: number;
     }>;
     employeePeriod(employeeId: string, startDate: string, endDate: string): Promise<{
@@ -114,17 +139,21 @@ export declare class AttendanceService {
             startDate: string;
             endDate: string;
         };
-        records: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, AttendanceRecord, {}, {}> & AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, AttendanceRecord, {}, {}> & AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        records: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            date: string;
+            employeeId: string;
+            timestamp: Date;
+            type: string;
+            deviceId: string | null;
+            location: string | null;
+            source: string;
+            verified: boolean;
+            notes: string | null;
+            shiftPair: Prisma.JsonValue | null;
+        }[];
         statistics: {
             totalDays: number;
             totalRecords: number;

@@ -1,16 +1,24 @@
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Model } from 'mongoose';
-import { User, UserDocument } from './schemas/user.schema';
-import { Role, RoleDocument } from './schemas/role.schema';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { PrismaService } from '../prisma/prisma.service';
 export declare class AuthService {
-    private userModel;
-    private roleModel;
-    private jwtService;
+    private readonly prisma;
+    private readonly jwtService;
+    private readonly config;
+    private readonly bcryptRounds;
+    private readonly adminUsername;
+    private readonly adminEmail;
+    private readonly adminBootstrapPassword;
+    private readonly devAdminUsername;
+    private readonly devAdminEmail;
+    private readonly devAdminPassword;
     private static readonly ADMIN_PERMISSIONS;
-    constructor(userModel: Model<UserDocument>, roleModel: Model<RoleDocument>, jwtService: JwtService);
+    constructor(prisma: PrismaService, jwtService: JwtService, config: ConfigService);
+    private isProtectedAdminIdentity;
+    private upsertProtectedAdminUser;
     ensureAdminBootstrap(): Promise<void>;
     login(dto: LoginDto): Promise<{
         token: string;
@@ -40,7 +48,7 @@ export declare class AuthService {
         status: string;
         role: string;
         permissions: string[];
-        lastLogin: Date | undefined;
+        lastLogin: Date | null;
     }>;
     createUser(dto: CreateUserDto): Promise<{
         message: string;
@@ -52,27 +60,27 @@ export declare class AuthService {
         };
     }>;
     listUsers(): Promise<{
-        users: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, User, {}, {}> & User & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, User, {}, {}> & User & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        users: {
+            id: string;
+            username: string;
+            email: string;
+            status: string;
+            roleId: string;
+            role: {
+                id: string;
+                name: string;
+                description: string | null;
+                permissions: string[];
+            } | null;
+            lastLogin: Date | null;
+        }[];
     }>;
-    getRoles(): Promise<(import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, Role, {}, {}> & Role & {
-        _id: import("mongoose").Types.ObjectId;
-    } & {
-        __v: number;
-    }, {}, {}> & import("mongoose").Document<unknown, {}, Role, {}, {}> & Role & {
-        _id: import("mongoose").Types.ObjectId;
-    } & {
-        __v: number;
-    } & Required<{
-        _id: import("mongoose").Types.ObjectId;
-    }>)[]>;
+    getRoles(): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        name: string;
+        description: string | null;
+        permissions: string[];
+    }[]>;
 }

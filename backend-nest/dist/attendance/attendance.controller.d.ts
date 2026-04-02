@@ -5,17 +5,21 @@ export declare class AttendanceController {
     private readonly attendanceService;
     constructor(attendanceService: AttendanceService);
     list(query: any): Promise<{
-        records: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/attendance-record.schema").AttendanceRecord, {}, {}> & import("./schemas/attendance-record.schema").AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/attendance-record.schema").AttendanceRecord, {}, {}> & import("./schemas/attendance-record.schema").AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        records: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            date: string;
+            employeeId: string;
+            timestamp: Date;
+            type: string;
+            deviceId: string | null;
+            location: string | null;
+            source: string;
+            verified: boolean;
+            notes: string | null;
+            shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
+        }[];
         pagination: {
             page: number;
             limit: number;
@@ -39,47 +43,59 @@ export declare class AttendanceController {
             startDate: string;
             endDate: string;
         };
-        anomalies: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/attendance-record.schema").AttendanceRecord, {}, {}> & import("./schemas/attendance-record.schema").AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/attendance-record.schema").AttendanceRecord, {}, {}> & import("./schemas/attendance-record.schema").AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        anomalies: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            date: string;
+            employeeId: string;
+            timestamp: Date;
+            type: string;
+            deviceId: string | null;
+            location: string | null;
+            source: string;
+            verified: boolean;
+            notes: string | null;
+            shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
+        }[];
         anomalyCount: number;
     }>;
     create(dto: CreateAttendanceDto): Promise<{
         message: string;
-        record: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/attendance-record.schema").AttendanceRecord, {}, {}> & import("./schemas/attendance-record.schema").AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/attendance-record.schema").AttendanceRecord, {}, {}> & import("./schemas/attendance-record.schema").AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
+        record: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            date: string;
+            employeeId: string;
+            timestamp: Date;
+            type: string;
+            deviceId: string | null;
+            location: string | null;
+            source: string;
+            verified: boolean;
+            notes: string | null;
+            shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
+        };
     }>;
     employeeOnDate(employeeId: string, date: string): Promise<{
         employeeId: string;
         date: string;
-        records: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/attendance-record.schema").AttendanceRecord, {}, {}> & import("./schemas/attendance-record.schema").AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/attendance-record.schema").AttendanceRecord, {}, {}> & import("./schemas/attendance-record.schema").AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        records: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            date: string;
+            employeeId: string;
+            timestamp: Date;
+            type: string;
+            deviceId: string | null;
+            location: string | null;
+            source: string;
+            verified: boolean;
+            notes: string | null;
+            shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
+        }[];
         recordCount: number;
     }>;
     employeePeriod(employeeId: string, startDate: string, endDate: string): Promise<{
@@ -88,45 +104,57 @@ export declare class AttendanceController {
             startDate: string;
             endDate: string;
         };
-        records: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/attendance-record.schema").AttendanceRecord, {}, {}> & import("./schemas/attendance-record.schema").AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/attendance-record.schema").AttendanceRecord, {}, {}> & import("./schemas/attendance-record.schema").AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        records: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            date: string;
+            employeeId: string;
+            timestamp: Date;
+            type: string;
+            deviceId: string | null;
+            location: string | null;
+            source: string;
+            verified: boolean;
+            notes: string | null;
+            shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
+        }[];
         statistics: {
             totalDays: number;
             totalRecords: number;
         };
     }>;
-    getById(recordId: string): Promise<import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/attendance-record.schema").AttendanceRecord, {}, {}> & import("./schemas/attendance-record.schema").AttendanceRecord & {
-        _id: import("mongoose").Types.ObjectId;
-    } & {
-        __v: number;
-    }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/attendance-record.schema").AttendanceRecord, {}, {}> & import("./schemas/attendance-record.schema").AttendanceRecord & {
-        _id: import("mongoose").Types.ObjectId;
-    } & {
-        __v: number;
-    } & Required<{
-        _id: import("mongoose").Types.ObjectId;
-    }>>;
+    getById(recordId: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        date: string;
+        employeeId: string;
+        timestamp: Date;
+        type: string;
+        deviceId: string | null;
+        location: string | null;
+        source: string;
+        verified: boolean;
+        notes: string | null;
+        shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
+    }>;
     update(recordId: string, dto: UpdateAttendanceDto): Promise<{
         message: string;
-        record: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/attendance-record.schema").AttendanceRecord, {}, {}> & import("./schemas/attendance-record.schema").AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/attendance-record.schema").AttendanceRecord, {}, {}> & import("./schemas/attendance-record.schema").AttendanceRecord & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
+        record: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            date: string;
+            employeeId: string;
+            timestamp: Date;
+            type: string;
+            deviceId: string | null;
+            location: string | null;
+            source: string;
+            verified: boolean;
+            notes: string | null;
+            shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
+        };
     }>;
 }

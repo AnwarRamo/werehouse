@@ -5,17 +5,19 @@ export declare class DevicesController {
     private readonly devicesService;
     constructor(devicesService: DevicesService);
     list(query: any): Promise<{
-        devices: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/device.schema").Device, {}, {}> & import("./schemas/device.schema").Device & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/device.schema").Device, {}, {}> & import("./schemas/device.schema").Device & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        devices: {
+            id: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            deviceId: string;
+            location: string;
+            model: string;
+            ip: string | null;
+            port: number | null;
+            lastSync: Date | null;
+        }[];
         pagination: {
             page: number;
             limit: number;
@@ -25,42 +27,48 @@ export declare class DevicesController {
     }>;
     create(dto: CreateDeviceDto): Promise<{
         message: string;
-        device: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/device.schema").Device, {}, {}> & import("./schemas/device.schema").Device & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/device.schema").Device, {}, {}> & import("./schemas/device.schema").Device & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
+        device: {
+            id: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            deviceId: string;
+            location: string;
+            model: string;
+            ip: string | null;
+            port: number | null;
+            lastSync: Date | null;
+        };
     }>;
-    getOne(deviceId: string): Promise<import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/device.schema").Device, {}, {}> & import("./schemas/device.schema").Device & {
-        _id: import("mongoose").Types.ObjectId;
-    } & {
-        __v: number;
-    }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/device.schema").Device, {}, {}> & import("./schemas/device.schema").Device & {
-        _id: import("mongoose").Types.ObjectId;
-    } & {
-        __v: number;
-    } & Required<{
-        _id: import("mongoose").Types.ObjectId;
-    }>>;
+    getOne(deviceId: string): Promise<{
+        id: string;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        name: string;
+        deviceId: string;
+        location: string;
+        model: string;
+        ip: string | null;
+        port: number | null;
+        lastSync: Date | null;
+    }>;
     update(deviceId: string, dto: UpdateDeviceDto): Promise<{
         message: string;
-        device: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/device.schema").Device, {}, {}> & import("./schemas/device.schema").Device & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/device.schema").Device, {}, {}> & import("./schemas/device.schema").Device & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
+        device: {
+            id: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            deviceId: string;
+            location: string;
+            model: string;
+            ip: string | null;
+            port: number | null;
+            lastSync: Date | null;
+        };
     }>;
     stats(deviceId: string): Promise<{
         deviceId: string;

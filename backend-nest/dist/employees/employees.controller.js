@@ -37,7 +37,7 @@ let EmployeesController = class EmployeesController {
         return this.employeesService.create(dto);
     }
     getOne(employeeId) {
-        return this.employeesService.getByMongoId(employeeId);
+        return this.employeesService.getByEmployeeId(employeeId);
     }
     update(employeeId, dto) {
         return this.employeesService.update(employeeId, dto);

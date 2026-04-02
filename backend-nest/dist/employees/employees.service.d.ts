@@ -1,10 +1,10 @@
-import { Model } from 'mongoose';
-import { Employee, EmployeeDocument } from './schemas/employee.schema';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 export declare class EmployeesService {
-    private employeeModel;
-    constructor(employeeModel: Model<EmployeeDocument>);
+    private readonly prisma;
+    constructor(prisma: PrismaService);
     list(query: {
         page?: number;
         limit?: number;
@@ -12,17 +12,21 @@ export declare class EmployeesService {
         status?: string;
         search?: string;
     }): Promise<{
-        employees: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, Employee, {}, {}> & Employee & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, Employee, {}, {}> & Employee & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        employees: {
+            id: string;
+            email: string;
+            roleId: string | null;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            employeeId: string;
+            hourlyRate: Prisma.Decimal;
+            currency: string;
+            scheduledStart: string | null;
+            scheduledEnd: string | null;
+            department: string;
+        }[];
         pagination: {
             page: number;
             limit: number;
@@ -40,58 +44,74 @@ export declare class EmployeesService {
     byDepartment(department: string): Promise<{
         department: string;
         count: number;
-        employees: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, Employee, {}, {}> & Employee & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, Employee, {}, {}> & Employee & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        employees: {
+            id: string;
+            email: string;
+            roleId: string | null;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            employeeId: string;
+            hourlyRate: Prisma.Decimal;
+            currency: string;
+            scheduledStart: string | null;
+            scheduledEnd: string | null;
+            department: string;
+        }[];
     }>;
     create(dto: CreateEmployeeDto): Promise<{
         message: string;
-        employee: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, Employee, {}, {}> & Employee & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, Employee, {}, {}> & Employee & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
+        employee: {
+            id: string;
+            email: string;
+            roleId: string | null;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            employeeId: string;
+            hourlyRate: Prisma.Decimal;
+            currency: string;
+            scheduledStart: string | null;
+            scheduledEnd: string | null;
+            department: string;
+        };
     }>;
-    getByMongoId(id: string): Promise<import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, Employee, {}, {}> & Employee & {
-        _id: import("mongoose").Types.ObjectId;
-    } & {
-        __v: number;
-    }, {}, {}> & import("mongoose").Document<unknown, {}, Employee, {}, {}> & Employee & {
-        _id: import("mongoose").Types.ObjectId;
-    } & {
-        __v: number;
-    } & Required<{
-        _id: import("mongoose").Types.ObjectId;
-    }>>;
-    update(id: string, dto: UpdateEmployeeDto): Promise<{
+    getByEmployeeId(employeeId: string): Promise<{
+        id: string;
+        email: string;
+        roleId: string | null;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        name: string;
+        employeeId: string;
+        hourlyRate: Prisma.Decimal;
+        currency: string;
+        scheduledStart: string | null;
+        scheduledEnd: string | null;
+        department: string;
+    }>;
+    update(employeeId: string, dto: UpdateEmployeeDto): Promise<{
         message: string;
-        employee: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, Employee, {}, {}> & Employee & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, Employee, {}, {}> & Employee & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
+        employee: {
+            id: string;
+            email: string;
+            roleId: string | null;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            employeeId: string;
+            hourlyRate: Prisma.Decimal;
+            currency: string;
+            scheduledStart: string | null;
+            scheduledEnd: string | null;
+            department: string;
+        };
     }>;
-    remove(id: string): Promise<{
+    remove(employeeId: string): Promise<{
         message: string;
     }>;
 }

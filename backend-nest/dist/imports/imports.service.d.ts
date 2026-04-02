@@ -1,30 +1,28 @@
-import { Model, Types } from 'mongoose';
-import { ImportJob, ImportJobDocument } from './schemas/import-job.schema';
-import { EmployeeDocument } from '../employees/schemas/employee.schema';
-import { ProductDocument } from '../inventory/schemas/product.schema';
-import { RoleDocument } from '../auth/schemas/role.schema';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 type RowError = {
     row: number;
     error: string;
 };
 export declare class ImportsService {
-    private importJobModel;
-    private employeeModel;
-    private productModel;
-    private roleModel;
-    constructor(importJobModel: Model<ImportJobDocument>, employeeModel: Model<EmployeeDocument>, productModel: Model<ProductDocument>, roleModel: Model<RoleDocument>);
+    private readonly prisma;
+    constructor(prisma: PrismaService);
     history(query: any): Promise<{
-        imports: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, ImportJob, {}, {}> & ImportJob & {
-            _id: Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, ImportJob, {}, {}> & ImportJob & {
-            _id: Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: Types.ObjectId;
-        }>)[];
+        imports: {
+            id: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            jobId: string;
+            entity: string;
+            fileName: string;
+            uploadedBy: string;
+            uploadedAt: Date;
+            totalRows: number;
+            successRows: number;
+            errorRows: number;
+            errors: Prisma.JsonValue;
+        }[];
         pagination: {
             page: number;
             limit: number;
@@ -42,27 +40,19 @@ export declare class ImportsService {
     }>;
     details(jobId: string): Promise<{
         errorSummary: Record<string, number>;
-        _id: Types.ObjectId;
-        $locals: Record<string, unknown>;
-        $op: "save" | "validate" | "remove" | null;
-        $where: Record<string, unknown>;
-        baseModelName?: string;
-        collection: import("mongoose").Collection;
-        db: import("mongoose").Connection;
-        errors: import("mongoose").Error.ValidationError & any[];
-        id?: any;
-        isNew: boolean;
-        schema: import("mongoose").Schema;
+        id: string;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
         jobId: string;
         entity: string;
         fileName: string;
         uploadedBy: string;
         uploadedAt: Date;
-        status: string;
         totalRows: number;
         successRows: number;
         errorRows: number;
-        __v: number;
+        errors: Prisma.JsonValue;
     }>;
     getEmployeesTemplateCsv(): string;
     getProductsTemplateCsv(): string;

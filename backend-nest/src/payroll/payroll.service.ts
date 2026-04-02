@@ -1,65 +1,83 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { PayrollRun, PayrollRunDocument } from './schemas/payroll-run.schema';
-import { PayrollItem, PayrollItemDocument } from './schemas/payroll-item.schema';
-import { Employee, EmployeeDocument } from '../employees/schemas/employee.schema';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 import { CalculatePayrollDto } from './dto/calculate-payroll.dto';
 
 @Injectable()
 export class PayrollService {
-  constructor(
-    @InjectModel(PayrollRun.name) private runModel: Model<PayrollRunDocument>,
-    @InjectModel(PayrollItem.name) private itemModel: Model<PayrollItemDocument>,
-    @InjectModel(Employee.name) private employeeModel: Model<EmployeeDocument>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async list(query: any) {
-    const page = Number(query.page || 1);
-    const limit = Number(query.limit || 50);
-    const skip = (page - 1) * limit;
+  private resolvePeriod(periodStart?: string, periodEnd?: string) {
+    if (periodStart && periodEnd) {
+      return { periodStart, periodEnd };
+    }
 
-    const filter: any = {};
-    if (query.status) filter.status = query.status;
-    if (query.approvalStatus) filter.approvalStatus = query.approvalStatus;
+    if (periodStart || periodEnd) {
+      throw new BadRequestException('Period start and end dates must be provided together');
+    }
 
-    const [payrollRuns, total] = await Promise.all([
-      this.runModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
-      this.runModel.countDocuments(filter),
-    ]);
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(start.getDate() - 30);
 
     return {
-      payrollRuns,
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      periodStart: start.toISOString().slice(0, 10),
+      periodEnd: end.toISOString().slice(0, 10),
     };
   }
 
+  async list(query: any) {
+    const page = Number(query.page || 1);
+    const limit = Math.min(Number(query.limit || 50), 200);
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.PayrollRunWhereInput = {};
+    if (query.status) where.status = query.status;
+    if (query.approvalStatus) where.approvalStatus = query.approvalStatus;
+
+    const [payrollRuns, total] = await Promise.all([
+      this.prisma.payrollRun.findMany({
+        where,
+        orderBy: { runDate: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.payrollRun.count({ where }),
+    ]);
+
+    return { payrollRuns, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
+  }
+
   async calculate(dto: CalculatePayrollDto, userId?: string) {
-    const employees = await this.employeeModel.find({ status: 'active' }).limit(100);
-    if (employees.length === 0) {
-      throw new BadRequestException('No active employees found');
-    }
+    const employees = await this.prisma.employee.findMany({
+      where: { status: 'active' },
+      take: 100,
+    });
+    if (employees.length === 0) throw new BadRequestException('No active employees found');
 
     const runDateKey = dto.periodStart.slice(0, 10).replace(/-/g, '');
     const runId = `PAY${runDateKey}-${Date.now().toString().slice(-4)}`;
 
-    const run = await this.runModel.create({
-      runId,
-      periodStart: new Date(dto.periodStart),
-      periodEnd: new Date(dto.periodEnd),
-      runBy: userId,
-      status: 'draft',
-      approvalStatus: 'pending',
-      totalEmployees: employees.length,
+    const run = await this.prisma.payrollRun.create({
+      data: {
+        runId,
+        periodStart: new Date(dto.periodStart),
+        periodEnd: new Date(dto.periodEnd),
+        runBy: userId,
+        status: 'draft',
+        approvalStatus: 'pending',
+        totalEmployees: employees.length,
+      },
     });
 
     let totalGross = 0;
     let totalNet = 0;
 
-    const items = [];
+    const items: Prisma.PayrollItemCreateManyInput[] = [];
     for (const e of employees) {
       const hoursWorked = 160;
-      const grossPay = Number((hoursWorked * Number(e.hourlyRate || 0)).toFixed(2));
+      const hourlyRate = Number(e.hourlyRate);
+      const grossPay = Number((hoursWorked * hourlyRate).toFixed(2));
       const totalDeductions = Number((grossPay * 0.08).toFixed(2));
       const netPay = Number((grossPay - totalDeductions).toFixed(2));
 
@@ -67,102 +85,116 @@ export class PayrollService {
       totalNet += netPay;
 
       items.push({
-        payrollRunId: String(run._id),
+        payrollRunId: run.id,
         employeeId: e.employeeId,
         employeeName: e.name,
         department: e.department,
-        hoursWorked,
-        hourlyRate: Number(e.hourlyRate),
-        grossPay,
-        totalDeductions,
-        netPay,
+        hoursWorked: new Prisma.Decimal(hoursWorked),
+        hourlyRate: new Prisma.Decimal(hourlyRate),
+        grossPay: new Prisma.Decimal(grossPay),
+        totalDeductions: new Prisma.Decimal(totalDeductions),
+        netPay: new Prisma.Decimal(netPay),
         anomalies: [],
       });
     }
 
-    await this.itemModel.insertMany(items, { ordered: false });
+    if (items.length) {
+      await this.prisma.payrollItem.createMany({ data: items });
+    }
 
-    run.totalGrossPay = Number(totalGross.toFixed(2));
-    run.totalDeductions = Number((totalGross - totalNet).toFixed(2));
-    run.totalNetPay = Number(totalNet.toFixed(2));
-    await run.save();
+    const updatedRun = await this.prisma.payrollRun.update({
+      where: { id: run.id },
+      data: {
+        totalGrossPay: new Prisma.Decimal(totalGross.toFixed(2)),
+        totalDeductions: new Prisma.Decimal((totalGross - totalNet).toFixed(2)),
+        totalNetPay: new Prisma.Decimal(totalNet.toFixed(2)),
+      },
+    });
 
-    return { message: 'Payroll calculated successfully', payrollRun: run };
+    return { message: 'Payroll calculated successfully', payrollRun: updatedRun };
   }
 
   async getRun(runId: string) {
-    const payrollRun = await this.runModel.findById(runId);
+    const payrollRun = await this.prisma.payrollRun.findUnique({ where: { id: runId } });
     if (!payrollRun) throw new NotFoundException('Payroll run not found');
-    const items = await this.itemModel.find({ payrollRunId: runId });
+    const items = await this.prisma.payrollItem.findMany({ where: { payrollRunId: runId } });
     return { payrollRun, items, itemCount: items.length };
   }
 
   async getEmployeeHistory(employeeId: string) {
-    const payrollItems = await this.itemModel.find({ employeeId }).sort({ createdAt: -1 });
+    const payrollItems = await this.prisma.payrollItem.findMany({
+      where: { employeeId },
+      orderBy: { createdAt: 'desc' },
+    });
     return { employeeId, payrollItems };
   }
 
   async approve(runId: string, userId?: string) {
-    const run = await this.runModel.findByIdAndUpdate(
-      runId,
-      {
+    const run = await this.prisma.payrollRun.findUnique({ where: { id: runId } });
+    if (!run) throw new NotFoundException('Payroll run not found');
+
+    const updated = await this.prisma.payrollRun.update({
+      where: { id: runId },
+      data: {
         status: 'approved',
         approvalStatus: 'approved',
         approvedBy: userId,
         approvalDate: new Date(),
       },
-      { new: true },
-    );
-    if (!run) throw new NotFoundException('Payroll run not found');
-    return { message: 'Payroll approved successfully', payrollRun: run };
+    });
+
+    return { message: 'Payroll approved successfully', payrollRun: updated };
   }
 
   async reject(runId: string, reason: string, userId?: string) {
     if (!reason) throw new BadRequestException('Rejection reason is required');
-    const run = await this.runModel.findByIdAndUpdate(
-      runId,
-      {
+    const run = await this.prisma.payrollRun.findUnique({ where: { id: runId } });
+    if (!run) throw new NotFoundException('Payroll run not found');
+
+    const updated = await this.prisma.payrollRun.update({
+      where: { id: runId },
+      data: {
         status: 'draft',
         approvalStatus: 'rejected',
         approvedBy: userId,
         notes: reason,
       },
-      { new: true },
-    );
-    if (!run) throw new NotFoundException('Payroll run not found');
-    return { message: 'Payroll rejected successfully', payrollRun: run };
+    });
+
+    return { message: 'Payroll rejected successfully', payrollRun: updated };
   }
 
   async summary(periodStart: string, periodEnd: string) {
-    if (!periodStart || !periodEnd) {
-      throw new BadRequestException('Period start and end dates are required');
-    }
+    const period = this.resolvePeriod(periodStart, periodEnd);
 
-    const runs = await this.runModel.find({
-      periodStart: { $gte: new Date(periodStart) },
-      periodEnd: { $lte: new Date(periodEnd) },
+    const runs = await this.prisma.payrollRun.findMany({
+      where: {
+        periodStart: { gte: new Date(period.periodStart), lte: new Date(period.periodEnd) },
+      },
     });
 
     return {
-      period: { periodStart, periodEnd },
+      period,
       summary: {
         totalRuns: runs.length,
-        totalNetPay: runs.reduce((s, r) => s + Number(r.totalNetPay || 0), 0),
-        totalGrossPay: runs.reduce((s, r) => s + Number(r.totalGrossPay || 0), 0),
+        totalNetPay: runs.reduce((s: number, r: (typeof runs)[number]) => s + Number(r.totalNetPay || 0), 0),
+        totalGrossPay: runs.reduce((s: number, r: (typeof runs)[number]) => s + Number(r.totalGrossPay || 0), 0),
       },
     };
   }
 
   async anomalies(runId: string) {
-    const anomalies = await this.itemModel.find({
-      payrollRunId: runId,
-      anomalies: { $exists: true, $ne: [] },
+    const anomalies = await this.prisma.payrollItem.findMany({
+      where: {
+        payrollRunId: runId,
+        NOT: { anomalies: { isEmpty: true } },
+      },
     });
 
     return {
       runId,
       anomalyCount: anomalies.length,
-      anomalies: anomalies.map((a) => ({
+      anomalies: anomalies.map((a: (typeof anomalies)[number]) => ({
         employeeId: a.employeeId,
         employeeName: a.employeeName,
         anomalies: a.anomalies,
@@ -171,7 +203,7 @@ export class PayrollService {
   }
 
   async export(runId: string) {
-    const run = await this.runModel.findById(runId);
+    const run = await this.prisma.payrollRun.findUnique({ where: { id: runId } });
     if (!run) throw new NotFoundException('Payroll run not found');
     return { message: 'Export payroll functionality to be implemented', runId, format: 'csv' };
   }

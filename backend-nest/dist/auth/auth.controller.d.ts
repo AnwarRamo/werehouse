@@ -1,13 +1,18 @@
 import { OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { AuditService } from '../common/services/audit.service';
 export declare class AuthController implements OnModuleInit {
     private readonly authService;
-    constructor(authService: AuthService);
+    private readonly config;
+    private readonly audit;
+    constructor(authService: AuthService, config: ConfigService, audit: AuditService);
     onModuleInit(): Promise<void>;
-    login(dto: LoginDto): Promise<{
+    login(dto: LoginDto, res: Response): Promise<{
         token: string;
         user: {
             id: string;
@@ -17,7 +22,7 @@ export declare class AuthController implements OnModuleInit {
             permissions: string[];
         };
     }>;
-    register(dto: RegisterDto): Promise<{
+    register(dto: RegisterDto, res: Response): Promise<{
         message: string;
         token: string;
         user: {
@@ -28,6 +33,9 @@ export declare class AuthController implements OnModuleInit {
             permissions: string[];
         };
     }>;
+    logout(res: Response): {
+        message: string;
+    };
     me(user: any): Promise<{
         id: string;
         username: string;
@@ -35,9 +43,9 @@ export declare class AuthController implements OnModuleInit {
         status: string;
         role: string;
         permissions: string[];
-        lastLogin: Date | undefined;
+        lastLogin: Date | null;
     }>;
-    createUser(dto: CreateUserDto): Promise<{
+    createUser(dto: CreateUserDto, user: any, req: Request): Promise<{
         message: string;
         user: {
             id: string;
@@ -47,27 +55,28 @@ export declare class AuthController implements OnModuleInit {
         };
     }>;
     listUsers(): Promise<{
-        users: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/user.schema").User, {}, {}> & import("./schemas/user.schema").User & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/user.schema").User, {}, {}> & import("./schemas/user.schema").User & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        users: {
+            id: string;
+            username: string;
+            email: string;
+            status: string;
+            roleId: string;
+            role: {
+                id: string;
+                name: string;
+                description: string | null;
+                permissions: string[];
+            } | null;
+            lastLogin: Date | null;
+        }[];
     }>;
-    getRoles(): Promise<(import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/role.schema").Role, {}, {}> & import("./schemas/role.schema").Role & {
-        _id: import("mongoose").Types.ObjectId;
-    } & {
-        __v: number;
-    }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/role.schema").Role, {}, {}> & import("./schemas/role.schema").Role & {
-        _id: import("mongoose").Types.ObjectId;
-    } & {
-        __v: number;
-    } & Required<{
-        _id: import("mongoose").Types.ObjectId;
-    }>)[]>;
+    getRoles(user: any, req: Request): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        name: string;
+        description: string | null;
+        permissions: string[];
+    }[]>;
+    private setAuthCookie;
 }

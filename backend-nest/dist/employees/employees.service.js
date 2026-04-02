@@ -8,38 +8,39 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var __param = (this && this.__param) || function (paramIndex, decorator) {
-    return function (target, key) { decorator(target, key, paramIndex); }
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmployeesService = void 0;
 const common_1 = require("@nestjs/common");
-const mongoose_1 = require("@nestjs/mongoose");
-const mongoose_2 = require("mongoose");
-const employee_schema_1 = require("./schemas/employee.schema");
+const client_1 = require("@prisma/client");
+const prisma_service_1 = require("../prisma/prisma.service");
 let EmployeesService = class EmployeesService {
-    constructor(employeeModel) {
-        this.employeeModel = employeeModel;
+    constructor(prisma) {
+        this.prisma = prisma;
     }
     async list(query) {
         const page = Number(query.page || 1);
-        const limit = Number(query.limit || 50);
+        const limit = Math.min(Number(query.limit || 50), 200);
         const skip = (page - 1) * limit;
-        const filter = {};
+        const where = {};
         if (query.department)
-            filter.department = query.department;
+            where.department = query.department;
         if (query.status)
-            filter.status = query.status;
+            where.status = query.status;
         if (query.search) {
-            filter.$or = [
-                { name: { $regex: query.search, $options: 'i' } },
-                { employeeId: { $regex: query.search, $options: 'i' } },
-                { email: { $regex: query.search, $options: 'i' } },
+            where.OR = [
+                { name: { contains: query.search, mode: 'insensitive' } },
+                { employeeId: { contains: query.search, mode: 'insensitive' } },
+                { email: { contains: query.search, mode: 'insensitive' } },
             ];
         }
         const [employees, total] = await Promise.all([
-            this.employeeModel.find(filter).skip(skip).limit(limit).exec(),
-            this.employeeModel.countDocuments(filter),
+            this.prisma.employee.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+            }),
+            this.prisma.employee.count({ where }),
         ]);
         return {
             employees,
@@ -52,7 +53,7 @@ let EmployeesService = class EmployeesService {
         };
     }
     async stats() {
-        const employees = await this.employeeModel.find();
+        const employees = await this.prisma.employee.findMany();
         const byDepartment = {};
         for (const e of employees) {
             byDepartment[e.department || 'Unassigned'] =
@@ -67,52 +68,73 @@ let EmployeesService = class EmployeesService {
         };
     }
     async byDepartment(department) {
-        const employees = await this.employeeModel.find({ department, status: 'active' });
+        const employees = await this.prisma.employee.findMany({
+            where: { department, status: 'active' },
+            orderBy: { createdAt: 'desc' },
+        });
         return { department, count: employees.length, employees };
     }
     async create(dto) {
-        const exists = await this.employeeModel.findOne({
-            $or: [{ employeeId: dto.employeeId }, { email: dto.email.toLowerCase() }],
+        const email = dto.email.toLowerCase();
+        const exists = await this.prisma.employee.findFirst({
+            where: {
+                OR: [
+                    { employeeId: dto.employeeId },
+                    { email: { equals: email, mode: 'insensitive' } },
+                ],
+            },
         });
         if (exists) {
             throw new common_1.BadRequestException('Employee ID or email already exists');
         }
-        const created = await this.employeeModel.create({
-            ...dto,
-            email: dto.email.toLowerCase(),
-            department: dto.department || 'Warehouse',
-            status: 'active',
+        const employee = await this.prisma.employee.create({
+            data: {
+                ...dto,
+                email,
+                hourlyRate: new client_1.Prisma.Decimal(dto.hourlyRate),
+                department: dto.department || 'Warehouse',
+                status: 'active',
+            },
         });
-        return { message: 'Employee created successfully', employee: created };
+        return { message: 'Employee created successfully', employee };
     }
-    async getByMongoId(id) {
-        const employee = await this.employeeModel.findById(id);
+    async getByEmployeeId(employeeId) {
+        const employee = await this.prisma.employee.findUnique({ where: { employeeId } });
         if (!employee)
             throw new common_1.NotFoundException('Employee not found');
         return employee;
     }
-    async update(id, dto) {
-        const employee = await this.employeeModel.findByIdAndUpdate(id, dto, {
-            new: true,
-            runValidators: true,
+    async update(employeeId, dto) {
+        const employee = await this.prisma.employee.findUnique({ where: { employeeId } });
+        if (!employee)
+            throw new common_1.NotFoundException('Employee not found');
+        if (dto.email) {
+            dto.email = dto.email.toLowerCase();
+        }
+        const updated = await this.prisma.employee.update({
+            where: { employeeId },
+            data: {
+                ...dto,
+                email: dto.email,
+                hourlyRate: dto.hourlyRate !== undefined ? new client_1.Prisma.Decimal(dto.hourlyRate) : undefined,
+            },
         });
-        if (!employee)
-            throw new common_1.NotFoundException('Employee not found');
-        return { message: 'Employee updated successfully', employee };
+        return { message: 'Employee updated successfully', employee: updated };
     }
-    async remove(id) {
-        const employee = await this.employeeModel.findByIdAndUpdate(id, {
-            status: 'terminated',
-        }, { new: true });
+    async remove(employeeId) {
+        const employee = await this.prisma.employee.findUnique({ where: { employeeId } });
         if (!employee)
             throw new common_1.NotFoundException('Employee not found');
+        await this.prisma.employee.update({
+            where: { employeeId },
+            data: { status: 'terminated' },
+        });
         return { message: 'Employee terminated successfully' };
     }
 };
 exports.EmployeesService = EmployeesService;
 exports.EmployeesService = EmployeesService = __decorate([
     (0, common_1.Injectable)(),
-    __param(0, (0, mongoose_1.InjectModel)(employee_schema_1.Employee.name)),
-    __metadata("design:paramtypes", [mongoose_2.Model])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
 ], EmployeesService);
 //# sourceMappingURL=employees.service.js.map

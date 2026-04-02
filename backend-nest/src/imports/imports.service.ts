@@ -1,11 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 import { parse } from 'csv-parse/sync';
-import { ImportJob, ImportJobDocument } from './schemas/import-job.schema';
-import { Employee, EmployeeDocument } from '../employees/schemas/employee.schema';
-import { Product, ProductDocument } from '../inventory/schemas/product.schema';
-import { Role, RoleDocument } from '../auth/schemas/role.schema';
 
 type ParsedRow = Record<string, string>;
 type RowError = { row: number; error: string };
@@ -13,30 +9,30 @@ type ParseResult = { rows: ParsedRow[]; headers: string[] };
 
 @Injectable()
 export class ImportsService {
-  constructor(
-    @InjectModel(ImportJob.name) private importJobModel: Model<ImportJobDocument>,
-    @InjectModel(Employee.name) private employeeModel: Model<EmployeeDocument>,
-    @InjectModel(Product.name) private productModel: Model<ProductDocument>,
-    @InjectModel(Role.name) private roleModel: Model<RoleDocument>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async history(query: any) {
     const page = Number(query.page || 1);
-    const limit = Number(query.limit || 50);
+    const limit = Math.min(Number(query.limit || 50), 200);
     const skip = (page - 1) * limit;
-    const filter: any = {};
-    if (query.entity) filter.entity = query.entity;
+    const where: Prisma.ImportJobWhereInput = {};
+    if (query.entity) where.entity = query.entity;
 
     const [imports, total] = await Promise.all([
-      this.importJobModel.find(filter).sort({ uploadedAt: -1 }).skip(skip).limit(limit),
-      this.importJobModel.countDocuments(filter),
+      this.prisma.importJob.findMany({
+        where,
+        orderBy: { uploadedAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.importJob.count({ where }),
     ]);
 
     return { imports, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
   }
 
   async stats() {
-    const jobs = await this.importJobModel.find();
+    const jobs = await this.prisma.importJob.findMany();
     const byEntity: Record<string, number> = {};
     const byStatus: Record<string, number> = {};
 
@@ -45,8 +41,8 @@ export class ImportsService {
       byStatus[job.status] = (byStatus[job.status] || 0) + 1;
     }
 
-    const totalRowsProcessed = jobs.reduce((s, j) => s + (j.totalRows || 0), 0);
-    const totalRowsFailed = jobs.reduce((s, j) => s + (j.errorRows || 0), 0);
+    const totalRowsProcessed = jobs.reduce((s: number, j: (typeof jobs)[number]) => s + (j.totalRows || 0), 0);
+    const totalRowsFailed = jobs.reduce((s: number, j: (typeof jobs)[number]) => s + (j.errorRows || 0), 0);
 
     return {
       totalImports: jobs.length,
@@ -61,16 +57,16 @@ export class ImportsService {
   }
 
   async details(jobId: string) {
-    const job = await this.importJobModel.findOne({ jobId });
+    const job = await this.prisma.importJob.findUnique({ where: { jobId } });
     if (!job) throw new NotFoundException('Import job not found');
 
     const errorSummary: Record<string, number> = {};
-    for (const e of job.errors || []) {
+    for (const e of (job.errors as RowError[] | undefined) || []) {
       const key = e.error || 'Unknown error';
       errorSummary[key] = (errorSummary[key] || 0) + 1;
     }
 
-    return { ...job.toObject(), errorSummary };
+    return { ...job, errorSummary };
   }
 
   getEmployeesTemplateCsv() {
@@ -89,44 +85,32 @@ export class ImportsService {
 
   async validateEmployeesImport(file: any) {
     if (!file?.buffer) throw new BadRequestException('CSV file is required in field: file');
-
     const { rows, headers } = this.parseCsvRows(file.buffer);
     this.assertEmployeesHeaders(headers);
     const result = await this.processEmployeesRows(rows, false);
-
-    return {
-      message: 'Employees CSV validation completed (dry-run)',
-      ...result,
-    };
+    return { message: 'Employees CSV validation completed (dry-run)', ...result };
   }
 
   async validateProductsImport(file: any) {
     if (!file?.buffer) throw new BadRequestException('CSV file is required in field: file');
-
     const { rows, headers } = this.parseCsvRows(file.buffer);
     this.assertProductsHeaders(headers);
     const result = await this.processProductsRows(rows, false);
-
-    return {
-      message: 'Products CSV validation completed (dry-run)',
-      ...result,
-    };
+    return { message: 'Products CSV validation completed (dry-run)', ...result };
   }
 
   async importEmployees(file: any, userId: string) {
     if (!file?.buffer) throw new BadRequestException('CSV file is required in field: file');
 
     const jobId = `IMP-EMP-${Date.now()}`;
-    const job = await this.importJobModel.create({
-      jobId,
-      entity: 'employees',
-      fileName: file?.originalname || 'employees.csv',
-      uploadedBy: userId || 'system',
-      status: 'processing',
-      totalRows: 0,
-      successRows: 0,
-      errorRows: 0,
-      errors: [],
+    const job = await this.prisma.importJob.create({
+      data: {
+        jobId,
+        entity: 'employees',
+        fileName: file?.originalname || 'employees.csv',
+        uploadedBy: userId || 'system',
+        status: 'processing',
+      },
     });
 
     const { rows, headers } = this.parseCsvRows(file.buffer);
@@ -135,35 +119,32 @@ export class ImportsService {
     const { totalRows, successRows, errorRows, errors } = result;
     const status = this.jobStatus(totalRows, successRows, errorRows);
 
-    await this.importJobModel.updateOne(
-      { _id: job._id },
-      { $set: { status, totalRows, successRows, errorRows, errors } },
-    );
+    await this.prisma.importJob.update({
+      where: { id: job.id },
+      data: {
+        status,
+        totalRows,
+        successRows,
+        errorRows,
+        errors,
+      },
+    });
 
-    return {
-      message: 'Employee import processed',
-      jobId: job.jobId,
-      status,
-      totalRows,
-      successRows,
-      errorRows,
-    };
+    return { message: 'Employee import processed', jobId: job.jobId, status, totalRows, successRows, errorRows };
   }
 
   async importProducts(file: any, userId: string) {
     if (!file?.buffer) throw new BadRequestException('CSV file is required in field: file');
 
     const jobId = `IMP-PROD-${Date.now()}`;
-    const job = await this.importJobModel.create({
-      jobId,
-      entity: 'products',
-      fileName: file?.originalname || 'products.csv',
-      uploadedBy: userId || 'system',
-      status: 'processing',
-      totalRows: 0,
-      successRows: 0,
-      errorRows: 0,
-      errors: [],
+    const job = await this.prisma.importJob.create({
+      data: {
+        jobId,
+        entity: 'products',
+        fileName: file?.originalname || 'products.csv',
+        uploadedBy: userId || 'system',
+        status: 'processing',
+      },
     });
 
     const { rows, headers } = this.parseCsvRows(file.buffer);
@@ -172,103 +153,77 @@ export class ImportsService {
     const { totalRows, successRows, errorRows, errors } = result;
     const status = this.jobStatus(totalRows, successRows, errorRows);
 
-    await this.importJobModel.updateOne(
-      { _id: job._id },
-      { $set: { status, totalRows, successRows, errorRows, errors } },
-    );
+    await this.prisma.importJob.update({
+      where: { id: job.id },
+      data: {
+        status,
+        totalRows,
+        successRows,
+        errorRows,
+        errors,
+      },
+    });
 
-    return {
-      message: 'Product import processed',
-      jobId: job.jobId,
-      status,
-      totalRows,
-      successRows,
-      errorRows,
-    };
+    return { message: 'Product import processed', jobId: job.jobId, status, totalRows, successRows, errorRows };
   }
 
   async retry(jobId: string, userId: string) {
-    const original = await this.importJobModel.findOne({ jobId });
+    const original = await this.prisma.importJob.findUnique({ where: { jobId } });
     if (!original) throw new NotFoundException('Import job not found');
 
-    const retryJob = await this.importJobModel.create({
-      jobId: `${jobId}-RETRY-${Date.now()}`,
-      entity: original.entity,
-      fileName: `${original.fileName} (Retry)`,
-      uploadedBy: userId || 'system',
-      status: 'pending',
-      totalRows: original.errorRows || 0,
-      successRows: 0,
-      errorRows: 0,
-      errors: [],
+    const retryJob = await this.prisma.importJob.create({
+      data: {
+        jobId: `${jobId}-RETRY-${Date.now()}`,
+        entity: original.entity,
+        fileName: `${original.fileName} (Retry)`,
+        uploadedBy: userId || 'system',
+        status: 'pending',
+        totalRows: original.errorRows || 0,
+      },
     });
 
-    return {
-      message: 'Retry initiated',
-      originalJobId: jobId,
-      retryJobId: retryJob.jobId,
-      status: retryJob.status,
-    };
+    return { message: 'Retry initiated', originalJobId: jobId, retryJobId: retryJob.jobId, status: retryJob.status };
   }
 
   private parseCsvRows(buffer: Buffer): ParseResult {
     const text = buffer.toString('utf8');
-    const parsed = parse(text, {
-      columns: true,
-      skip_empty_lines: true,
-      trim: true,
-      bom: true,
-    }) as Record<string, any>[];
-
+    const parsed = parse(text, { columns: true, skip_empty_lines: true, trim: true, bom: true }) as Record<string, any>[];
     const first = parsed[0] || {};
     const headers = Object.keys(first).map((key) => key.toLowerCase().replace(/[^a-z0-9]/g, ''));
-
     const rows = parsed.map((row) => {
       const normalized: ParsedRow = {};
       for (const [key, value] of Object.entries(row)) {
-        const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
-        normalized[normalizedKey] = String(value ?? '').trim();
+        normalized[key.toLowerCase().replace(/[^a-z0-9]/g, '')] = String(value ?? '').trim();
       }
       return normalized;
     });
-
     return { rows, headers };
   }
 
   private value(row: ParsedRow, aliases: string[]) {
     for (const key of aliases) {
-      const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const found = row[normalized];
+      const found = row[key.toLowerCase().replace(/[^a-z0-9]/g, '')];
       if (found !== undefined && found !== '') return found;
     }
     return '';
   }
 
-  private async resolveDefaultRoleId() {
-    const preferred = await this.roleModel.findOne({ name: { $in: ['staff', 'admin'] } });
-    if (preferred?._id) return preferred._id;
-
-    const firstRole = await this.roleModel.findOne();
-    if (firstRole?._id) return firstRole._id;
-
-    const created = await this.roleModel.create({
-      name: 'staff',
-      description: 'Default staff role for imported employees',
-      permissions: [],
+  private async resolveDefaultRoleId(): Promise<string> {
+    const preferred = await this.prisma.role.findFirst({ where: { name: { in: ['staff', 'admin'] } } });
+    if (preferred?.id) return preferred.id;
+    const first = await this.prisma.role.findFirst();
+    if (first?.id) return first.id;
+    const created = await this.prisma.role.create({
+      data: { name: 'staff', description: 'Default staff role', permissions: [] },
     });
-    return created._id;
+    return created.id;
   }
 
-  private async resolveRoleId(roleIdRaw: string, fallbackRoleId: Types.ObjectId) {
+  private async resolveRoleId(roleIdRaw: string, fallbackRoleId: string): Promise<string> {
     if (!roleIdRaw) return fallbackRoleId;
-    if (!Types.ObjectId.isValid(roleIdRaw)) {
-      throw new Error('roleId is not a valid Mongo ObjectId');
-    }
-
-    const role = await this.roleModel.findById(roleIdRaw);
+    const role = await this.prisma.role.findUnique({ where: { id: roleIdRaw } });
     if (!role) throw new Error('roleId not found');
-
-    return role._id;
+    return role.id;
   }
 
   private assertEmployeesHeaders(headers: string[]) {
@@ -280,34 +235,27 @@ export class ImportsService {
     ]
       .filter((aliases) => !this.headerExists(headers, aliases))
       .map((aliases) => aliases[0]);
-
-    if (missing.length > 0) {
-      throw new BadRequestException(`Missing required CSV headers: ${missing.join(', ')}`);
-    }
+    if (missing.length > 0) throw new BadRequestException(`Missing required CSV headers: ${missing.join(', ')}`);
   }
 
   private assertProductsHeaders(headers: string[]) {
     const missing = [['sku'], ['name'], ['category'], ['unitprice', 'unit_price', 'price'], ['costprice', 'cost_price']]
       .filter((aliases) => !this.headerExists(headers, aliases))
       .map((aliases) => aliases[0]);
-
-    if (missing.length > 0) {
-      throw new BadRequestException(`Missing required CSV headers: ${missing.join(', ')}`);
-    }
+    if (missing.length > 0) throw new BadRequestException(`Missing required CSV headers: ${missing.join(', ')}`);
   }
 
   private headerExists(headers: string[], aliases: string[]) {
-    const normalizedHeaders = new Set(headers.map((h) => h.toLowerCase().replace(/[^a-z0-9]/g, '')));
-    return aliases.some((alias) => normalizedHeaders.has(alias.toLowerCase().replace(/[^a-z0-9]/g, '')));
+    const set = new Set(headers.map((h) => h.toLowerCase().replace(/[^a-z0-9]/g, '')));
+    return aliases.some((a) => set.has(a.toLowerCase().replace(/[^a-z0-9]/g, '')));
   }
 
   private async processEmployeesRows(rows: ParsedRow[], persist: boolean) {
     const errors: RowError[] = [];
     let successRows = 0;
-    const defaultRoleId = persist ? await this.resolveDefaultRoleId() : undefined;
+    const defaultRoleId = persist ? await this.resolveDefaultRoleId() : '';
 
-    for (let i = 0; i < rows.length; i += 1) {
-      const rowNumber = i + 1;
+    for (let i = 0; i < rows.length; i++) {
       try {
         const input = rows[i];
         const employeeId = this.value(input, ['employeeid', 'employee_id', 'id']);
@@ -316,66 +264,59 @@ export class ImportsService {
         const hourlyRateRaw = this.value(input, ['hourlyrate', 'hourly_rate', 'rate']);
         const currency = this.value(input, ['currency']) || 'SYP';
         const department = this.value(input, ['department']) || 'Warehouse';
-        const scheduledStart = this.value(input, ['scheduledstart', 'scheduled_start', 'start']);
-        const scheduledEnd = this.value(input, ['scheduledend', 'scheduled_end', 'end']);
+        const scheduledStart = this.value(input, ['scheduledstart', 'scheduled_start', 'start']) || undefined;
+        const scheduledEnd = this.value(input, ['scheduledend', 'scheduled_end', 'end']) || undefined;
         const status = this.value(input, ['status']) || 'active';
         const roleIdRaw = this.value(input, ['roleid', 'role_id']);
 
-        if (!employeeId || !name || !email || !hourlyRateRaw) {
-          throw new Error('Missing required fields: employeeId, name, email, hourlyRate');
-        }
-
+        if (!employeeId || !name || !email || !hourlyRateRaw) throw new Error('Missing required fields: employeeId, name, email, hourlyRate');
         const hourlyRate = Number(hourlyRateRaw);
-        if (Number.isNaN(hourlyRate) || hourlyRate < 0) {
-          throw new Error('hourlyRate must be a valid non-negative number');
-        }
-
-        if (!['active', 'inactive', 'on_leave', 'terminated'].includes(status)) {
-          throw new Error('status must be one of: active, inactive, on_leave, terminated');
-        }
+        if (Number.isNaN(hourlyRate) || hourlyRate < 0) throw new Error('hourlyRate must be a valid non-negative number');
+        if (!['active', 'inactive', 'on_leave', 'terminated'].includes(status)) throw new Error('status must be one of: active, inactive, on_leave, terminated');
 
         if (persist) {
-          const roleId = await this.resolveRoleId(roleIdRaw, defaultRoleId as Types.ObjectId);
-          await this.employeeModel.updateOne(
-            { employeeId },
-            {
-              $set: {
-                employeeId,
-                name,
-                email: email.toLowerCase(),
-                hourlyRate,
-                currency,
-                department,
-                scheduledStart: scheduledStart || undefined,
-                scheduledEnd: scheduledEnd || undefined,
-                status,
-                roleId,
-              },
+          const roleId = await this.resolveRoleId(roleIdRaw, defaultRoleId);
+          await this.prisma.employee.upsert({
+            where: { employeeId },
+            update: {
+              name,
+              email: email.toLowerCase(),
+              hourlyRate: new Prisma.Decimal(hourlyRate),
+              currency,
+              department,
+              scheduledStart,
+              scheduledEnd,
+              status: status as any,
+              roleId,
             },
-            { upsert: true },
-          );
+            create: {
+              employeeId,
+              name,
+              email: email.toLowerCase(),
+              hourlyRate: new Prisma.Decimal(hourlyRate),
+              currency,
+              department,
+              scheduledStart,
+              scheduledEnd,
+              status: status as any,
+              roleId,
+            },
+          });
         }
-
-        successRows += 1;
+        successRows++;
       } catch (error: any) {
-        errors.push({ row: rowNumber, error: error?.message || 'Unknown validation error' });
+        errors.push({ row: i + 1, error: error?.message || 'Unknown validation error' });
       }
     }
 
-    return {
-      totalRows: rows.length,
-      successRows,
-      errorRows: errors.length,
-      errors,
-    };
+    return { totalRows: rows.length, successRows, errorRows: errors.length, errors };
   }
 
   private async processProductsRows(rows: ParsedRow[], persist: boolean) {
     const errors: RowError[] = [];
     let successRows = 0;
 
-    for (let i = 0; i < rows.length; i += 1) {
-      const rowNumber = i + 1;
+    for (let i = 0; i < rows.length; i++) {
       try {
         const input = rows[i];
         const sku = this.value(input, ['sku']);
@@ -386,56 +327,46 @@ export class ImportsService {
         const reorderLevelRaw = this.value(input, ['reorderlevel', 'reorder_level', 'reorder']);
         const status = this.value(input, ['status']) || 'active';
 
-        if (!sku || !name || !category || !unitPriceRaw || !costPriceRaw) {
-          throw new Error('Missing required fields: sku, name, category, unitPrice, costPrice');
-        }
-
+        if (!sku || !name || !category || !unitPriceRaw || !costPriceRaw) throw new Error('Missing required fields: sku, name, category, unitPrice, costPrice');
         const unitPrice = Number(unitPriceRaw);
         const costPrice = Number(costPriceRaw);
         const reorderLevel = reorderLevelRaw ? Number(reorderLevelRaw) : 10;
-
-        if (Number.isNaN(unitPrice) || Number.isNaN(costPrice) || Number.isNaN(reorderLevel)) {
-          throw new Error('unitPrice, costPrice and reorderLevel must be valid numbers');
-        }
-        if (unitPrice < 0 || costPrice < 0 || reorderLevel < 0) {
-          throw new Error('unitPrice, costPrice and reorderLevel must be non-negative numbers');
-        }
+        if (Number.isNaN(unitPrice) || Number.isNaN(costPrice) || Number.isNaN(reorderLevel)) throw new Error('unitPrice, costPrice and reorderLevel must be valid numbers');
+        if (unitPrice < 0 || costPrice < 0 || reorderLevel < 0) throw new Error('unitPrice, costPrice and reorderLevel must be non-negative numbers');
 
         if (persist) {
-          await this.productModel.updateOne(
-            { sku },
-            {
-              $set: {
-                sku,
-                name,
-                category,
-                unitPrice,
-                costPrice,
-                reorderLevel,
-                status,
-              },
+          await this.prisma.product.upsert({
+            where: { sku },
+            update: {
+              name,
+              category,
+              unitPrice: new Prisma.Decimal(unitPrice),
+              costPrice: new Prisma.Decimal(costPrice),
+              reorderLevel,
+              status,
             },
-            { upsert: true },
-          );
+            create: {
+              sku,
+              name,
+              category,
+              unitPrice: new Prisma.Decimal(unitPrice),
+              costPrice: new Prisma.Decimal(costPrice),
+              reorderLevel,
+              status,
+            },
+          });
         }
-
-        successRows += 1;
+        successRows++;
       } catch (error: any) {
-        errors.push({ row: rowNumber, error: error?.message || 'Unknown validation error' });
+        errors.push({ row: i + 1, error: error?.message || 'Unknown validation error' });
       }
     }
 
-    return {
-      totalRows: rows.length,
-      successRows,
-      errorRows: errors.length,
-      errors,
-    };
+    return { totalRows: rows.length, successRows, errorRows: errors.length, errors };
   }
 
   private jobStatus(totalRows: number, successRows: number, errorRows: number) {
-    if (totalRows === 0) return 'completed';
-    if (errorRows === 0) return 'completed';
+    if (totalRows === 0 || errorRows === 0) return 'completed';
     if (successRows === 0) return 'failed';
     return 'partial';
   }

@@ -8,31 +8,31 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var __param = (this && this.__param) || function (paramIndex, decorator) {
-    return function (target, key) { decorator(target, key, paramIndex); }
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DevicesService = void 0;
 const common_1 = require("@nestjs/common");
-const mongoose_1 = require("@nestjs/mongoose");
-const mongoose_2 = require("mongoose");
-const device_schema_1 = require("./schemas/device.schema");
+const prisma_service_1 = require("../prisma/prisma.service");
 let DevicesService = class DevicesService {
-    constructor(deviceModel) {
-        this.deviceModel = deviceModel;
+    constructor(prisma) {
+        this.prisma = prisma;
     }
     async list(query) {
         const page = Number(query.page || 1);
-        const limit = Number(query.limit || 50);
+        const limit = Math.min(Number(query.limit || 50), 200);
         const skip = (page - 1) * limit;
-        const filter = {};
+        const where = {};
         if (query.location)
-            filter.location = query.location;
+            where.location = query.location;
         if (query.status)
-            filter.status = query.status;
+            where.status = query.status;
         const [devices, total] = await Promise.all([
-            this.deviceModel.find(filter).skip(skip).limit(limit).sort({ createdAt: -1 }),
-            this.deviceModel.countDocuments(filter),
+            this.prisma.device.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+            }),
+            this.prisma.device.count({ where }),
         ]);
         return {
             devices,
@@ -45,45 +45,48 @@ let DevicesService = class DevicesService {
         };
     }
     async create(dto) {
-        const existing = await this.deviceModel.findOne({ deviceId: dto.deviceId });
+        const existing = await this.prisma.device.findUnique({ where: { deviceId: dto.deviceId } });
         if (existing) {
             throw new common_1.BadRequestException('Device ID already exists');
         }
-        const device = await this.deviceModel.create({
-            ...dto,
-            model: dto.model || 'ZK Teco',
-            status: 'active',
-            lastSync: new Date(),
+        const device = await this.prisma.device.create({
+            data: {
+                ...dto,
+                model: dto.model || 'ZK Teco',
+                status: 'active',
+                lastSync: new Date(),
+            },
         });
         return {
             message: 'Device created successfully',
             device,
         };
     }
-    async getByMongoId(id) {
-        const device = await this.deviceModel.findById(id);
+    async getByDeviceId(deviceId) {
+        const device = await this.prisma.device.findUnique({ where: { deviceId } });
         if (!device)
             throw new common_1.NotFoundException('Device not found');
         return device;
     }
-    async update(id, dto) {
-        const device = await this.deviceModel.findByIdAndUpdate(id, dto, {
-            new: true,
-            runValidators: true,
-        });
+    async update(deviceId, dto) {
+        const device = await this.prisma.device.findUnique({ where: { deviceId } });
         if (!device)
             throw new common_1.NotFoundException('Device not found');
+        const updated = await this.prisma.device.update({
+            where: { deviceId },
+            data: dto,
+        });
         return {
             message: 'Device updated successfully',
-            device,
+            device: updated,
         };
     }
-    async stats(id) {
-        const device = await this.deviceModel.findById(id);
+    async stats(deviceId) {
+        const device = await this.prisma.device.findUnique({ where: { deviceId } });
         if (!device)
             throw new common_1.NotFoundException('Device not found');
         return {
-            deviceId: String(device._id),
+            deviceId: device.deviceId,
             note: 'Detailed device event analytics can be added as next migration step.',
         };
     }
@@ -91,7 +94,6 @@ let DevicesService = class DevicesService {
 exports.DevicesService = DevicesService;
 exports.DevicesService = DevicesService = __decorate([
     (0, common_1.Injectable)(),
-    __param(0, (0, mongoose_1.InjectModel)(device_schema_1.Device.name)),
-    __metadata("design:paramtypes", [mongoose_2.Model])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
 ], DevicesService);
 //# sourceMappingURL=devices.service.js.map

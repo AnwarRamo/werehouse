@@ -23,6 +23,10 @@ let PermissionsGuard = class PermissionsGuard {
             return true;
         }
         const request = context.switchToHttp().getRequest();
+        const userRoles = request.user?.roles || [];
+        if (userRoles.includes('admin')) {
+            return true;
+        }
         const userPermissions = request.user?.permissions || [];
         const hasPermission = requiredPermissions.some((p) => userPermissions.includes(p));
         if (!hasPermission) {

@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  description String?
+  permissions String[] @default([])
+  users       User[]
+  employees   Employee[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("roles")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  roleId       String   @db.Uuid
+  role         Role     @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  status       String   @default("active")
+  lastLogin    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Employee {
+  id             String   @id @default(uuid()) @db.Uuid
+  employeeId     String   @unique
+  name           String
+  email          String   @unique
+  hourlyRate     Decimal  @db.Decimal(10, 2)
+  currency       String   @default("SYP")
+  scheduledStart String?
+  scheduledEnd   String?
+  department     String   @default("Warehouse")
+  roleId         String?  @db.Uuid
+  role           Role?    @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  status         String   @default("active")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("employees")
+}
+
+model Device {
+  id        String   @id @default(uuid()) @db.Uuid
+  deviceId  String   @unique
+  name      String
+  location  String
+  model     String   @default("ZK Teco")
+  ip        String?
+  port      Int?
+  status    String   @default("active")
+  lastSync  DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("devices")
+}
+
+model AttendanceRecord {
+  id         String   @id @default(uuid()) @db.Uuid
+  employeeId String
+  timestamp  DateTime
+  type       String
+  deviceId   String?
+  location   String?
+  source     String   @default("device")
+  verified   Boolean  @default(false)
+  notes      String?
+  date       String
+  shiftPair  Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([employeeId, timestamp])
+  @@index([date, employeeId])
+  @@index([deviceId, timestamp])
+  @@map("attendance_records")
+}
+
+model Product {
+  id           String       @id @default(uuid()) @db.Uuid
+  sku          String       @unique
+  name         String
+  category     String
+  unitPrice    Decimal      @db.Decimal(12, 2)
+  costPrice    Decimal      @db.Decimal(12, 2)
+  reorderLevel Int          @default(10)
+  status       String       @default("active")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  stockLevels StockLevel[]
+
+  @@map("products")
+}
+
+model StockLevel {
+  id        String   @id @default(uuid()) @db.Uuid
+  sku       String
+  location  String
+  quantity  Int      @default(0)
+  reserved  Int      @default(0)
+  available Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product? @relation(fields: [sku], references: [sku], onDelete: Cascade)
+
+  @@unique([sku, location])
+  @@map("stock_levels")
+}
+
+model ImportJob {
+  id          String   @id @default(uuid()) @db.Uuid
+  jobId       String   @unique
+  entity      String
+  fileName    String
+  uploadedBy  String
+  uploadedAt  DateTime @default(now())
+  status      String   @default("pending")
+  totalRows   Int      @default(0)
+  successRows Int      @default(0)
+  errorRows   Int      @default(0)
+  errors      Json     @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("import_jobs")
+}
+
+model PayrollRun {
+  id               String      @id @default(uuid()) @db.Uuid
+  runId            String      @unique
+  periodStart      DateTime    @db.Date
+  periodEnd        DateTime    @db.Date
+  periodType       String      @default("monthly")
+  runDate          DateTime    @default(now())
+  runBy            String?
+  status           String      @default("draft")
+  approvalStatus   String      @default("pending")
+  approvedBy       String?
+  approvalDate     DateTime?
+  totalEmployees   Int         @default(0)
+  totalGrossPay    Decimal     @default(0) @db.Decimal(14, 2)
+  totalDeductions  Decimal     @default(0) @db.Decimal(14, 2)
+  totalNetPay      Decimal     @default(0) @db.Decimal(14, 2)
+  currency         String      @default("SYP")
+  notes            String?
+  items            PayrollItem[]
+
+  @@map("payroll_runs")
+}
+
+model PayrollItem {
+  id              String   @id @default(uuid()) @db.Uuid
+  payrollRunId    String   @db.Uuid
+  employeeId      String
+  employeeName    String
+  department      String?
+  hoursWorked     Decimal  @db.Decimal(8, 2)
+  hourlyRate      Decimal  @db.Decimal(10, 2)
+  grossPay        Decimal  @db.Decimal(14, 2)
+  totalDeductions Decimal  @db.Decimal(14, 2)
+  netPay          Decimal  @db.Decimal(14, 2)
+  anomalies       String[] @default([])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  run PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+
+  @@unique([payrollRunId, employeeId])
+  @@map("payroll_items")
+}

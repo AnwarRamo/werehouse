@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
 const common_1 = require("@nestjs/common");
+const config_1 = require("@nestjs/config");
 const auth_service_1 = require("./auth.service");
 const login_dto_1 = require("./dto/login.dto");
 const register_dto_1 = require("./dto/register.dto");
@@ -22,47 +23,99 @@ const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const permissions_guard_1 = require("../common/guards/permissions.guard");
 const permissions_decorator_1 = require("../common/decorators/permissions.decorator");
 const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
+const audit_service_1 = require("../common/services/audit.service");
 let AuthController = class AuthController {
-    constructor(authService) {
+    constructor(authService, config, audit) {
         this.authService = authService;
+        this.config = config;
+        this.audit = audit;
     }
     async onModuleInit() {
         await this.authService.ensureAdminBootstrap();
     }
-    login(dto) {
-        return this.authService.login(dto);
+    async login(dto, res) {
+        const result = await this.authService.login(dto);
+        this.setAuthCookie(res, result.token);
+        return result;
     }
-    register(dto) {
-        return this.authService.register(dto);
+    async register(dto, res) {
+        const result = await this.authService.register(dto);
+        this.setAuthCookie(res, result.token);
+        return result;
+    }
+    logout(res) {
+        const cookieName = this.config.get('JWT_COOKIE_NAME', 'warehouse_access_token');
+        res.clearCookie(cookieName);
+        return { message: 'Logged out successfully' };
     }
     me(user) {
         return this.authService.me(user.userId);
     }
-    createUser(dto) {
-        return this.authService.createUser(dto);
+    async createUser(dto, user, req) {
+        const result = await this.authService.createUser(dto);
+        this.audit.log({
+            action: 'user.create',
+            actorId: user?.userId,
+            actorUsername: user?.username,
+            targetType: 'user',
+            targetId: result.user?.id,
+            metadata: { username: result.user?.username, role: result.user?.role },
+        }, req);
+        return result;
     }
     listUsers() {
         return this.authService.listUsers();
     }
-    getRoles() {
-        return this.authService.getRoles();
+    async getRoles(user, req) {
+        const roles = await this.authService.getRoles();
+        this.audit.log({
+            action: 'role.read',
+            actorId: user?.userId,
+            actorUsername: user?.username,
+            targetType: 'role',
+            metadata: { count: roles.length },
+        }, req);
+        return roles;
+    }
+    setAuthCookie(res, token) {
+        const cookieName = this.config.get('JWT_COOKIE_NAME', 'warehouse_access_token');
+        const secure = this.config.get('JWT_COOKIE_SECURE', false);
+        const sameSiteRaw = this.config.get('JWT_COOKIE_SAME_SITE', 'lax').toLowerCase();
+        const maxAge = this.config.get('JWT_COOKIE_MAX_AGE_MS', 86_400_000);
+        const sameSite = sameSiteRaw === 'strict' || sameSiteRaw === 'none' ? sameSiteRaw : 'lax';
+        res.cookie(cookieName, token, {
+            httpOnly: true,
+            secure,
+            sameSite,
+            maxAge,
+            path: '/',
+        });
     }
 };
 exports.AuthController = AuthController;
 __decorate([
     (0, common_1.Post)('login'),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [login_dto_1.LoginDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [login_dto_1.LoginDto, Object]),
+    __metadata("design:returntype", Promise)
 ], AuthController.prototype, "login", null);
 __decorate([
     (0, common_1.Post)('register'),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [register_dto_1.RegisterDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [register_dto_1.RegisterDto, Object]),
+    __metadata("design:returntype", Promise)
 ], AuthController.prototype, "register", null);
+__decorate([
+    (0, common_1.Post)('logout'),
+    __param(0, (0, common_1.Res)({ passthrough: true })),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "logout", null);
 __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Get)('me'),
@@ -76,9 +129,11 @@ __decorate([
     (0, permissions_decorator_1.Permissions)('manage_users'),
     (0, common_1.Post)('users'),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_user_dto_1.CreateUserDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [create_user_dto_1.CreateUserDto, Object, Object]),
+    __metadata("design:returntype", Promise)
 ], AuthController.prototype, "createUser", null);
 __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
@@ -92,12 +147,16 @@ __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
     (0, permissions_decorator_1.Permissions)('manage_roles'),
     (0, common_1.Get)('roles'),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
 ], AuthController.prototype, "getRoles", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
-    __metadata("design:paramtypes", [auth_service_1.AuthService])
+    __metadata("design:paramtypes", [auth_service_1.AuthService,
+        config_1.ConfigService,
+        audit_service_1.AuditService])
 ], AuthController);
 //# sourceMappingURL=auth.controller.js.map

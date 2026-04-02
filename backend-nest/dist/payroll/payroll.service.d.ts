@@ -1,25 +1,30 @@
-import { Model } from 'mongoose';
-import { PayrollRun, PayrollRunDocument } from './schemas/payroll-run.schema';
-import { PayrollItem, PayrollItemDocument } from './schemas/payroll-item.schema';
-import { EmployeeDocument } from '../employees/schemas/employee.schema';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 import { CalculatePayrollDto } from './dto/calculate-payroll.dto';
 export declare class PayrollService {
-    private runModel;
-    private itemModel;
-    private employeeModel;
-    constructor(runModel: Model<PayrollRunDocument>, itemModel: Model<PayrollItemDocument>, employeeModel: Model<EmployeeDocument>);
+    private readonly prisma;
+    constructor(prisma: PrismaService);
+    private resolvePeriod;
     list(query: any): Promise<{
-        payrollRuns: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, PayrollRun, {}, {}> & PayrollRun & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, PayrollRun, {}, {}> & PayrollRun & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        payrollRuns: {
+            id: string;
+            status: string;
+            notes: string | null;
+            currency: string;
+            runId: string;
+            periodStart: Date;
+            periodEnd: Date;
+            periodType: string;
+            runDate: Date;
+            runBy: string | null;
+            approvalStatus: string;
+            approvedBy: string | null;
+            approvalDate: Date | null;
+            totalEmployees: number;
+            totalGrossPay: Prisma.Decimal;
+            totalDeductions: Prisma.Decimal;
+            totalNetPay: Prisma.Decimal;
+        }[];
         pagination: {
             page: number;
             limit: number;
@@ -29,84 +34,124 @@ export declare class PayrollService {
     }>;
     calculate(dto: CalculatePayrollDto, userId?: string): Promise<{
         message: string;
-        payrollRun: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, PayrollRun, {}, {}> & PayrollRun & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, PayrollRun, {}, {}> & PayrollRun & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
+        payrollRun: {
+            id: string;
+            status: string;
+            notes: string | null;
+            currency: string;
+            runId: string;
+            periodStart: Date;
+            periodEnd: Date;
+            periodType: string;
+            runDate: Date;
+            runBy: string | null;
+            approvalStatus: string;
+            approvedBy: string | null;
+            approvalDate: Date | null;
+            totalEmployees: number;
+            totalGrossPay: Prisma.Decimal;
+            totalDeductions: Prisma.Decimal;
+            totalNetPay: Prisma.Decimal;
+        };
     }>;
     getRun(runId: string): Promise<{
-        payrollRun: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, PayrollRun, {}, {}> & PayrollRun & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, PayrollRun, {}, {}> & PayrollRun & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
-        items: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, PayrollItem, {}, {}> & PayrollItem & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, PayrollItem, {}, {}> & PayrollItem & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        payrollRun: {
+            id: string;
+            status: string;
+            notes: string | null;
+            currency: string;
+            runId: string;
+            periodStart: Date;
+            periodEnd: Date;
+            periodType: string;
+            runDate: Date;
+            runBy: string | null;
+            approvalStatus: string;
+            approvedBy: string | null;
+            approvalDate: Date | null;
+            totalEmployees: number;
+            totalGrossPay: Prisma.Decimal;
+            totalDeductions: Prisma.Decimal;
+            totalNetPay: Prisma.Decimal;
+        };
+        items: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            employeeId: string;
+            anomalies: string[];
+            hourlyRate: Prisma.Decimal;
+            department: string | null;
+            totalDeductions: Prisma.Decimal;
+            payrollRunId: string;
+            employeeName: string;
+            hoursWorked: Prisma.Decimal;
+            grossPay: Prisma.Decimal;
+            netPay: Prisma.Decimal;
+        }[];
         itemCount: number;
     }>;
     getEmployeeHistory(employeeId: string): Promise<{
         employeeId: string;
-        payrollItems: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, PayrollItem, {}, {}> & PayrollItem & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, PayrollItem, {}, {}> & PayrollItem & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        payrollItems: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            employeeId: string;
+            anomalies: string[];
+            hourlyRate: Prisma.Decimal;
+            department: string | null;
+            totalDeductions: Prisma.Decimal;
+            payrollRunId: string;
+            employeeName: string;
+            hoursWorked: Prisma.Decimal;
+            grossPay: Prisma.Decimal;
+            netPay: Prisma.Decimal;
+        }[];
     }>;
     approve(runId: string, userId?: string): Promise<{
         message: string;
-        payrollRun: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, PayrollRun, {}, {}> & PayrollRun & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, PayrollRun, {}, {}> & PayrollRun & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
+        payrollRun: {
+            id: string;
+            status: string;
+            notes: string | null;
+            currency: string;
+            runId: string;
+            periodStart: Date;
+            periodEnd: Date;
+            periodType: string;
+            runDate: Date;
+            runBy: string | null;
+            approvalStatus: string;
+            approvedBy: string | null;
+            approvalDate: Date | null;
+            totalEmployees: number;
+            totalGrossPay: Prisma.Decimal;
+            totalDeductions: Prisma.Decimal;
+            totalNetPay: Prisma.Decimal;
+        };
     }>;
     reject(runId: string, reason: string, userId?: string): Promise<{
         message: string;
-        payrollRun: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, PayrollRun, {}, {}> & PayrollRun & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, PayrollRun, {}, {}> & PayrollRun & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
+        payrollRun: {
+            id: string;
+            status: string;
+            notes: string | null;
+            currency: string;
+            runId: string;
+            periodStart: Date;
+            periodEnd: Date;
+            periodType: string;
+            runDate: Date;
+            runBy: string | null;
+            approvalStatus: string;
+            approvedBy: string | null;
+            approvalDate: Date | null;
+            totalEmployees: number;
+            totalGrossPay: Prisma.Decimal;
+            totalDeductions: Prisma.Decimal;
+            totalNetPay: Prisma.Decimal;
+        };
     }>;
     summary(periodStart: string, periodEnd: string): Promise<{
         period: {

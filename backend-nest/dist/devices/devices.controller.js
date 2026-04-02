@@ -31,7 +31,7 @@ let DevicesController = class DevicesController {
         return this.devicesService.create(dto);
     }
     getOne(deviceId) {
-        return this.devicesService.getByMongoId(deviceId);
+        return this.devicesService.getByDeviceId(deviceId);
     }
     update(deviceId, dto) {
         return this.devicesService.update(deviceId, dto);

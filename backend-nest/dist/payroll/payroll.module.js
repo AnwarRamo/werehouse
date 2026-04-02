@@ -8,26 +8,17 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PayrollModule = void 0;
 const common_1 = require("@nestjs/common");
-const mongoose_1 = require("@nestjs/mongoose");
 const payroll_controller_1 = require("./payroll.controller");
 const payroll_service_1 = require("./payroll.service");
-const payroll_run_schema_1 = require("./schemas/payroll-run.schema");
-const payroll_item_schema_1 = require("./schemas/payroll-item.schema");
-const employee_schema_1 = require("../employees/schemas/employee.schema");
+const audit_service_1 = require("../common/services/audit.service");
 let PayrollModule = class PayrollModule {
 };
 exports.PayrollModule = PayrollModule;
 exports.PayrollModule = PayrollModule = __decorate([
     (0, common_1.Module)({
-        imports: [
-            mongoose_1.MongooseModule.forFeature([
-                { name: payroll_run_schema_1.PayrollRun.name, schema: payroll_run_schema_1.PayrollRunSchema },
-                { name: payroll_item_schema_1.PayrollItem.name, schema: payroll_item_schema_1.PayrollItemSchema },
-                { name: employee_schema_1.Employee.name, schema: employee_schema_1.EmployeeSchema },
-            ]),
-        ],
+        imports: [],
         controllers: [payroll_controller_1.PayrollController],
-        providers: [payroll_service_1.PayrollService],
+        providers: [payroll_service_1.PayrollService, audit_service_1.AuditService],
     })
 ], PayrollModule);
 //# sourceMappingURL=payroll.module.js.map

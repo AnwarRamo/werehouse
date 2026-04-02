@@ -8,120 +8,147 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var __param = (this && this.__param) || function (paramIndex, decorator) {
-    return function (target, key) { decorator(target, key, paramIndex); }
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InventoryService = void 0;
 const common_1 = require("@nestjs/common");
-const mongoose_1 = require("@nestjs/mongoose");
-const mongoose_2 = require("mongoose");
-const product_schema_1 = require("./schemas/product.schema");
-const stock_level_schema_1 = require("./schemas/stock-level.schema");
+const client_1 = require("@prisma/client");
+const prisma_service_1 = require("../prisma/prisma.service");
 let InventoryService = class InventoryService {
-    constructor(productModel, stockModel) {
-        this.productModel = productModel;
-        this.stockModel = stockModel;
+    constructor(prisma) {
+        this.prisma = prisma;
     }
     async listProducts(query) {
         const page = Number(query.page || 1);
-        const limit = Number(query.limit || 50);
+        const limit = Math.min(Number(query.limit || 50), 200);
         const skip = (page - 1) * limit;
-        const filter = {};
+        const where = {};
         if (query.category)
-            filter.category = query.category;
+            where.category = query.category;
         if (query.status)
-            filter.status = query.status;
+            where.status = query.status;
         if (query.search) {
-            filter.$or = [
-                { sku: { $regex: query.search, $options: 'i' } },
-                { name: { $regex: query.search, $options: 'i' } },
+            where.OR = [
+                { sku: { contains: query.search, mode: 'insensitive' } },
+                { name: { contains: query.search, mode: 'insensitive' } },
             ];
         }
         const [products, total] = await Promise.all([
-            this.productModel.find(filter).skip(skip).limit(limit).sort({ createdAt: -1 }),
-            this.productModel.countDocuments(filter),
+            this.prisma.product.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+            }),
+            this.prisma.product.count({ where }),
         ]);
         return { products, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
     }
     async createProduct(dto) {
-        const existing = await this.productModel.findOne({ sku: dto.sku });
+        const existing = await this.prisma.product.findUnique({ where: { sku: dto.sku } });
         if (existing)
             throw new common_1.BadRequestException('SKU already exists');
-        const product = await this.productModel.create({
-            ...dto,
-            category: dto.category,
-            reorderLevel: dto.reorderLevel || 10,
-            status: 'active',
+        const product = await this.prisma.product.create({
+            data: {
+                ...dto,
+                unitPrice: new client_1.Prisma.Decimal(dto.unitPrice),
+                costPrice: new client_1.Prisma.Decimal(dto.costPrice),
+                reorderLevel: dto.reorderLevel || 10,
+                status: 'active',
+            },
         });
         return { message: 'Product created successfully', product };
     }
     async getProduct(productId) {
-        const product = await this.productModel.findById(productId);
+        const product = await this.prisma.product.findUnique({ where: { id: productId } });
         if (!product)
             throw new common_1.NotFoundException('Product not found');
-        const stockLevels = await this.stockModel.find({ sku: product.sku });
+        const stockLevels = await this.prisma.stockLevel.findMany({ where: { sku: product.sku } });
         return { product, stockLevels };
     }
     async updateProduct(productId, dto) {
         delete dto.sku;
-        const product = await this.productModel.findByIdAndUpdate(productId, dto, {
-            new: true,
-            runValidators: true,
-        });
-        if (!product)
+        const existing = await this.prisma.product.findUnique({ where: { id: productId } });
+        if (!existing)
             throw new common_1.NotFoundException('Product not found');
+        const product = await this.prisma.product.update({
+            where: { id: productId },
+            data: {
+                ...dto,
+                unitPrice: dto.unitPrice !== undefined ? new client_1.Prisma.Decimal(dto.unitPrice) : undefined,
+                costPrice: dto.costPrice !== undefined ? new client_1.Prisma.Decimal(dto.costPrice) : undefined,
+                reorderLevel: dto.reorderLevel,
+                status: dto.status,
+            },
+        });
         return { message: 'Product updated successfully', product };
     }
     async stockBySku(sku) {
-        const stockLevels = await this.stockModel.find({ sku });
+        const stockLevels = await this.prisma.stockLevel.findMany({ where: { sku } });
         return { sku, locations: stockLevels.length, stockLevels };
     }
     async adjustStock(dto) {
-        let stock = await this.stockModel.findOne({ sku: dto.sku, location: dto.location });
+        let stock = await this.prisma.stockLevel.findUnique({
+            where: { sku_location: { sku: dto.sku, location: dto.location } },
+        });
         if (!stock) {
-            stock = await this.stockModel.create({
-                sku: dto.sku,
-                location: dto.location,
-                quantity: 0,
-                reserved: 0,
-                available: 0,
+            stock = await this.prisma.stockLevel.create({
+                data: { sku: dto.sku, location: dto.location, quantity: 0, reserved: 0, available: 0 },
             });
         }
-        stock.quantity = Math.max(0, stock.quantity + dto.change);
-        stock.available = Math.max(0, stock.quantity - stock.reserved);
-        await stock.save();
-        return { message: 'Stock adjusted successfully', stockLevel: stock };
+        const quantity = Math.max(0, stock.quantity + dto.change);
+        const reserved = stock.reserved;
+        const updated = await this.prisma.stockLevel.update({
+            where: { sku_location: { sku: dto.sku, location: dto.location } },
+            data: {
+                quantity,
+                available: Math.max(0, quantity - reserved),
+            },
+        });
+        return { message: 'Stock adjusted successfully', stockLevel: updated };
     }
     async reserveStock(dto) {
-        const stock = await this.stockModel.findOne({ sku: dto.sku, location: dto.location });
+        const stock = await this.prisma.stockLevel.findUnique({
+            where: { sku_location: { sku: dto.sku, location: dto.location } },
+        });
         if (!stock)
             throw new common_1.NotFoundException('Stock level not found');
         if (stock.available < dto.quantity) {
             throw new common_1.BadRequestException('Insufficient stock available');
         }
-        stock.reserved += dto.quantity;
-        stock.available = Math.max(0, stock.quantity - stock.reserved);
-        await stock.save();
-        return { message: 'Stock reserved successfully', stockLevel: stock };
+        const reserved = stock.reserved + dto.quantity;
+        const updated = await this.prisma.stockLevel.update({
+            where: { sku_location: { sku: dto.sku, location: dto.location } },
+            data: {
+                reserved,
+                available: Math.max(0, stock.quantity - reserved),
+            },
+        });
+        return { message: 'Stock reserved successfully', stockLevel: updated };
     }
     async releaseReservation(dto) {
-        const stock = await this.stockModel.findOne({ sku: dto.sku, location: dto.location });
+        const stock = await this.prisma.stockLevel.findUnique({
+            where: { sku_location: { sku: dto.sku, location: dto.location } },
+        });
         if (!stock)
             throw new common_1.NotFoundException('Stock level not found');
         if (stock.reserved < dto.quantity) {
             throw new common_1.BadRequestException('Cannot release more than reserved');
         }
-        stock.reserved -= dto.quantity;
-        stock.available = Math.max(0, stock.quantity - stock.reserved);
-        await stock.save();
-        return { message: 'Reservation released successfully', stockLevel: stock };
+        const reserved = stock.reserved - dto.quantity;
+        const updated = await this.prisma.stockLevel.update({
+            where: { sku_location: { sku: dto.sku, location: dto.location } },
+            data: {
+                reserved,
+                available: Math.max(0, stock.quantity - reserved),
+            },
+        });
+        return { message: 'Reservation released successfully', stockLevel: updated };
     }
     async lowStockAlerts() {
-        const products = await this.productModel.find({ status: 'active' });
+        const products = await this.prisma.product.findMany({ where: { status: 'active' } });
         const alerts = [];
         for (const p of products) {
-            const stocks = await this.stockModel.find({ sku: p.sku });
+            const stocks = await this.prisma.stockLevel.findMany({ where: { sku: p.sku } });
             const totalAvailable = stocks.reduce((s, x) => s + x.available, 0);
             if (totalAvailable < p.reorderLevel) {
                 alerts.push({ sku: p.sku, name: p.name, available: totalAvailable, reorderLevel: p.reorderLevel });
@@ -130,12 +157,12 @@ let InventoryService = class InventoryService {
         return { alerts, count: alerts.length };
     }
     async stats() {
-        const [products, stock] = await Promise.all([
-            this.productModel.countDocuments(),
-            this.stockModel.find(),
+        const [totalProducts, stock] = await Promise.all([
+            this.prisma.product.count(),
+            this.prisma.stockLevel.findMany(),
         ]);
         return {
-            totalProducts: products,
+            totalProducts,
             totalStockRecords: stock.length,
             totalQuantity: stock.reduce((s, x) => s + x.quantity, 0),
             totalReserved: stock.reduce((s, x) => s + x.reserved, 0),
@@ -145,9 +172,6 @@ let InventoryService = class InventoryService {
 exports.InventoryService = InventoryService;
 exports.InventoryService = InventoryService = __decorate([
     (0, common_1.Injectable)(),
-    __param(0, (0, mongoose_1.InjectModel)(product_schema_1.Product.name)),
-    __param(1, (0, mongoose_1.InjectModel)(stock_level_schema_1.StockLevel.name)),
-    __metadata("design:paramtypes", [mongoose_2.Model,
-        mongoose_2.Model])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
 ], InventoryService);
 //# sourceMappingURL=inventory.service.js.map

@@ -3,17 +3,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Employee, EmployeeDocument } from './schemas/employee.schema';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 
 @Injectable()
 export class EmployeesService {
-  constructor(
-    @InjectModel(Employee.name) private employeeModel: Model<EmployeeDocument>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async list(query: {
     page?: number;
@@ -23,23 +20,29 @@ export class EmployeesService {
     search?: string;
   }) {
     const page = Number(query.page || 1);
-    const limit = Number(query.limit || 50);
+    const limit = Math.min(Number(query.limit || 50), 200);
     const skip = (page - 1) * limit;
+    const where: Prisma.EmployeeWhereInput = {};
 
-    const filter: any = {};
-    if (query.department) filter.department = query.department;
-    if (query.status) filter.status = query.status;
+    if (query.department) where.department = query.department;
+    if (query.status) where.status = query.status;
+
     if (query.search) {
-      filter.$or = [
-        { name: { $regex: query.search, $options: 'i' } },
-        { employeeId: { $regex: query.search, $options: 'i' } },
-        { email: { $regex: query.search, $options: 'i' } },
+      where.OR = [
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { employeeId: { contains: query.search, mode: 'insensitive' } },
+        { email: { contains: query.search, mode: 'insensitive' } },
       ];
     }
 
     const [employees, total] = await Promise.all([
-      this.employeeModel.find(filter).skip(skip).limit(limit).exec(),
-      this.employeeModel.countDocuments(filter),
+      this.prisma.employee.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.employee.count({ where }),
     ]);
 
     return {
@@ -54,7 +57,7 @@ export class EmployeesService {
   }
 
   async stats() {
-    const employees = await this.employeeModel.find();
+    const employees = await this.prisma.employee.findMany();
     const byDepartment: Record<string, number> = {};
 
     for (const e of employees) {
@@ -64,63 +67,87 @@ export class EmployeesService {
 
     return {
       total: employees.length,
-      active: employees.filter((e) => e.status === 'active').length,
-      inactive: employees.filter((e) => e.status === 'inactive').length,
-      terminated: employees.filter((e) => e.status === 'terminated').length,
+      active: employees.filter((e: (typeof employees)[number]) => e.status === 'active').length,
+      inactive: employees.filter((e: (typeof employees)[number]) => e.status === 'inactive').length,
+      terminated: employees.filter((e: (typeof employees)[number]) => e.status === 'terminated').length,
       byDepartment,
     };
   }
 
   async byDepartment(department: string) {
-    const employees = await this.employeeModel.find({ department, status: 'active' });
+    const employees = await this.prisma.employee.findMany({
+      where: { department, status: 'active' },
+      orderBy: { createdAt: 'desc' },
+    });
     return { department, count: employees.length, employees };
   }
 
   async create(dto: CreateEmployeeDto) {
-    const exists = await this.employeeModel.findOne({
-      $or: [{ employeeId: dto.employeeId }, { email: dto.email.toLowerCase() }],
+    const email = dto.email.toLowerCase();
+    const exists = await this.prisma.employee.findFirst({
+      where: {
+        OR: [
+          { employeeId: dto.employeeId },
+          { email: { equals: email, mode: 'insensitive' } },
+        ],
+      },
     });
 
     if (exists) {
       throw new BadRequestException('Employee ID or email already exists');
     }
 
-    const created = await this.employeeModel.create({
-      ...dto,
-      email: dto.email.toLowerCase(),
-      department: dto.department || 'Warehouse',
-      status: 'active',
+    const employee = await this.prisma.employee.create({
+      data: {
+        ...dto,
+        email,
+        hourlyRate: new Prisma.Decimal(dto.hourlyRate),
+        department: dto.department || 'Warehouse',
+        status: 'active',
+      },
     });
 
-    return { message: 'Employee created successfully', employee: created };
+    return { message: 'Employee created successfully', employee };
   }
 
-  async getByMongoId(id: string) {
-    const employee = await this.employeeModel.findById(id);
+  async getByEmployeeId(employeeId: string) {
+    const employee = await this.prisma.employee.findUnique({ where: { employeeId } });
     if (!employee) throw new NotFoundException('Employee not found');
     return employee;
   }
 
-  async update(id: string, dto: UpdateEmployeeDto) {
-    const employee = await this.employeeModel.findByIdAndUpdate(id, dto, {
-      new: true,
-      runValidators: true,
+  async update(employeeId: string, dto: UpdateEmployeeDto) {
+    const employee = await this.prisma.employee.findUnique({ where: { employeeId } });
+
+    if (!employee) throw new NotFoundException('Employee not found');
+
+    if (dto.email) {
+      dto.email = dto.email.toLowerCase();
+    }
+
+    const updated = await this.prisma.employee.update({
+      where: { employeeId },
+      data: {
+        ...dto,
+        email: dto.email,
+        hourlyRate:
+          dto.hourlyRate !== undefined ? new Prisma.Decimal(dto.hourlyRate) : undefined,
+      },
     });
 
-    if (!employee) throw new NotFoundException('Employee not found');
-    return { message: 'Employee updated successfully', employee };
+    return { message: 'Employee updated successfully', employee: updated };
   }
 
-  async remove(id: string) {
-    const employee = await this.employeeModel.findByIdAndUpdate(
-      id,
-      {
-        status: 'terminated',
-      },
-      { new: true },
-    );
+  async remove(employeeId: string) {
+    const employee = await this.prisma.employee.findUnique({ where: { employeeId } });
 
     if (!employee) throw new NotFoundException('Employee not found');
+
+    await this.prisma.employee.update({
+      where: { employeeId },
+      data: { status: 'terminated' },
+    });
+
     return { message: 'Employee terminated successfully' };
   }
 }

@@ -1,15 +1,21 @@
 import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Req } from '@nestjs/common';
+import { Request } from 'express';
 import { PayrollService } from './payroll.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Permissions } from '../common/decorators/permissions.decorator';
 import { CalculatePayrollDto } from './dto/calculate-payroll.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { AuditService } from '../common/services/audit.service';
 
 @Controller('payroll')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class PayrollController {
-  constructor(private readonly payrollService: PayrollService) {}
+  constructor(
+    private readonly payrollService: PayrollService,
+    private readonly audit: AuditService,
+  ) {}
 
   @Get()
   @Permissions('view_payroll')
@@ -43,14 +49,46 @@ export class PayrollController {
 
   @Put(':runId/approve')
   @Permissions('approve_payroll')
-  approve(@Param('runId') runId: string, @CurrentUser() user: any) {
-    return this.payrollService.approve(runId, user?.userId);
+  async approve(
+    @Param('runId') runId: string,
+    @CurrentUser() user: any,
+    @Req() req: Request,
+  ) {
+    const result = await this.payrollService.approve(runId, user?.userId);
+    this.audit.log(
+      {
+        action: 'payroll.approve',
+        actorId: user?.userId,
+        actorUsername: user?.username,
+        targetType: 'payroll_run',
+        targetId: runId,
+      },
+      req,
+    );
+    return result;
   }
 
   @Put(':runId/reject')
   @Permissions('approve_payroll')
-  reject(@Param('runId') runId: string, @Body('reason') reason: string, @CurrentUser() user: any) {
-    return this.payrollService.reject(runId, reason, user?.userId);
+  async reject(
+    @Param('runId') runId: string,
+    @Body('reason') reason: string,
+    @CurrentUser() user: any,
+    @Req() req: Request,
+  ) {
+    const result = await this.payrollService.reject(runId, reason, user?.userId);
+    this.audit.log(
+      {
+        action: 'payroll.reject',
+        actorId: user?.userId,
+        actorUsername: user?.username,
+        targetType: 'payroll_run',
+        targetId: runId,
+        metadata: { reason },
+      },
+      req,
+    );
+    return result;
   }
 
   @Get(':runId/export')

@@ -14,15 +14,18 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PayrollController = void 0;
 const common_1 = require("@nestjs/common");
+const common_2 = require("@nestjs/common");
 const payroll_service_1 = require("./payroll.service");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const permissions_guard_1 = require("../common/guards/permissions.guard");
 const permissions_decorator_1 = require("../common/decorators/permissions.decorator");
 const calculate_payroll_dto_1 = require("./dto/calculate-payroll.dto");
 const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
+const audit_service_1 = require("../common/services/audit.service");
 let PayrollController = class PayrollController {
-    constructor(payrollService) {
+    constructor(payrollService, audit) {
         this.payrollService = payrollService;
+        this.audit = audit;
     }
     list(query) {
         return this.payrollService.list(query);
@@ -39,11 +42,28 @@ let PayrollController = class PayrollController {
     anomalies(runId) {
         return this.payrollService.anomalies(runId);
     }
-    approve(runId, user) {
-        return this.payrollService.approve(runId, user?.userId);
+    async approve(runId, user, req) {
+        const result = await this.payrollService.approve(runId, user?.userId);
+        this.audit.log({
+            action: 'payroll.approve',
+            actorId: user?.userId,
+            actorUsername: user?.username,
+            targetType: 'payroll_run',
+            targetId: runId,
+        }, req);
+        return result;
     }
-    reject(runId, reason, user) {
-        return this.payrollService.reject(runId, reason, user?.userId);
+    async reject(runId, reason, user, req) {
+        const result = await this.payrollService.reject(runId, reason, user?.userId);
+        this.audit.log({
+            action: 'payroll.reject',
+            actorId: user?.userId,
+            actorUsername: user?.username,
+            targetType: 'payroll_run',
+            targetId: runId,
+            metadata: { reason },
+        }, req);
+        return result;
     }
     export(runId) {
         return this.payrollService.export(runId);
@@ -100,9 +120,10 @@ __decorate([
     (0, permissions_decorator_1.Permissions)('approve_payroll'),
     __param(0, (0, common_1.Param)('runId')),
     __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __param(2, (0, common_2.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
 ], PayrollController.prototype, "approve", null);
 __decorate([
     (0, common_1.Put)(':runId/reject'),
@@ -110,9 +131,10 @@ __decorate([
     __param(0, (0, common_1.Param)('runId')),
     __param(1, (0, common_1.Body)('reason')),
     __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __param(3, (0, common_2.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [String, String, Object, Object]),
+    __metadata("design:returntype", Promise)
 ], PayrollController.prototype, "reject", null);
 __decorate([
     (0, common_1.Get)(':runId/export'),
@@ -133,6 +155,7 @@ __decorate([
 exports.PayrollController = PayrollController = __decorate([
     (0, common_1.Controller)('payroll'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
-    __metadata("design:paramtypes", [payroll_service_1.PayrollService])
+    __metadata("design:paramtypes", [payroll_service_1.PayrollService,
+        audit_service_1.AuditService])
 ], PayrollController);
 //# sourceMappingURL=payroll.controller.js.map

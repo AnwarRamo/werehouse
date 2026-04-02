@@ -48,7 +48,7 @@ export class EmployeesController {
   @Get(':employeeId')
   @Permissions('view_employees')
   getOne(@Param('employeeId') employeeId: string) {
-    return this.employeesService.getByMongoId(employeeId);
+    return this.employeesService.getByEmployeeId(employeeId);
   }
 
   @Put(':employeeId')

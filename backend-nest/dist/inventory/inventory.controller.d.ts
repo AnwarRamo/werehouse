@@ -6,17 +6,18 @@ export declare class InventoryController {
     private readonly inventoryService;
     constructor(inventoryService: InventoryService);
     listProducts(query: any): Promise<{
-        products: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/product.schema").Product, {}, {}> & import("./schemas/product.schema").Product & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/product.schema").Product, {}, {}> & import("./schemas/product.schema").Product & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        products: {
+            id: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            sku: string;
+            category: string;
+            unitPrice: import("@prisma/client-runtime-utils").Decimal;
+            costPrice: import("@prisma/client-runtime-utils").Decimal;
+            reorderLevel: number;
+        }[];
         pagination: {
             page: number;
             limit: number;
@@ -26,112 +27,110 @@ export declare class InventoryController {
     }>;
     createProduct(dto: CreateProductDto): Promise<{
         message: string;
-        product: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/product.schema").Product, {}, {}> & import("./schemas/product.schema").Product & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/product.schema").Product, {}, {}> & import("./schemas/product.schema").Product & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
+        product: {
+            id: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            sku: string;
+            category: string;
+            unitPrice: import("@prisma/client-runtime-utils").Decimal;
+            costPrice: import("@prisma/client-runtime-utils").Decimal;
+            reorderLevel: number;
+        };
     }>;
     getProduct(productId: string): Promise<{
-        product: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/product.schema").Product, {}, {}> & import("./schemas/product.schema").Product & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/product.schema").Product, {}, {}> & import("./schemas/product.schema").Product & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
-        stockLevels: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/stock-level.schema").StockLevel, {}, {}> & import("./schemas/stock-level.schema").StockLevel & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/stock-level.schema").StockLevel, {}, {}> & import("./schemas/stock-level.schema").StockLevel & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        product: {
+            id: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            sku: string;
+            category: string;
+            unitPrice: import("@prisma/client-runtime-utils").Decimal;
+            costPrice: import("@prisma/client-runtime-utils").Decimal;
+            reorderLevel: number;
+        };
+        stockLevels: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            location: string;
+            sku: string;
+            quantity: number;
+            reserved: number;
+            available: number;
+        }[];
     }>;
     updateProduct(productId: string, dto: Partial<CreateProductDto>): Promise<{
         message: string;
-        product: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/product.schema").Product, {}, {}> & import("./schemas/product.schema").Product & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/product.schema").Product, {}, {}> & import("./schemas/product.schema").Product & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
+        product: {
+            id: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            sku: string;
+            category: string;
+            unitPrice: import("@prisma/client-runtime-utils").Decimal;
+            costPrice: import("@prisma/client-runtime-utils").Decimal;
+            reorderLevel: number;
+        };
     }>;
     stockBySku(sku: string): Promise<{
         sku: string;
         locations: number;
-        stockLevels: (import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/stock-level.schema").StockLevel, {}, {}> & import("./schemas/stock-level.schema").StockLevel & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/stock-level.schema").StockLevel, {}, {}> & import("./schemas/stock-level.schema").StockLevel & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>)[];
+        stockLevels: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            location: string;
+            sku: string;
+            quantity: number;
+            reserved: number;
+            available: number;
+        }[];
     }>;
     adjustStock(dto: AdjustStockDto): Promise<{
         message: string;
-        stockLevel: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/stock-level.schema").StockLevel, {}, {}> & import("./schemas/stock-level.schema").StockLevel & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/stock-level.schema").StockLevel, {}, {}> & import("./schemas/stock-level.schema").StockLevel & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
+        stockLevel: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            location: string;
+            sku: string;
+            quantity: number;
+            reserved: number;
+            available: number;
+        };
     }>;
     reserveStock(dto: ReserveStockDto): Promise<{
         message: string;
-        stockLevel: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/stock-level.schema").StockLevel, {}, {}> & import("./schemas/stock-level.schema").StockLevel & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/stock-level.schema").StockLevel, {}, {}> & import("./schemas/stock-level.schema").StockLevel & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
+        stockLevel: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            location: string;
+            sku: string;
+            quantity: number;
+            reserved: number;
+            available: number;
+        };
     }>;
     releaseReservation(dto: ReserveStockDto): Promise<{
         message: string;
-        stockLevel: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, import("./schemas/stock-level.schema").StockLevel, {}, {}> & import("./schemas/stock-level.schema").StockLevel & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        }, {}, {}> & import("mongoose").Document<unknown, {}, import("./schemas/stock-level.schema").StockLevel, {}, {}> & import("./schemas/stock-level.schema").StockLevel & {
-            _id: import("mongoose").Types.ObjectId;
-        } & {
-            __v: number;
-        } & Required<{
-            _id: import("mongoose").Types.ObjectId;
-        }>;
+        stockLevel: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            location: string;
+            sku: string;
+            quantity: number;
+            reserved: number;
+            available: number;
+        };
     }>;
     lowStock(): Promise<{
         alerts: any[];

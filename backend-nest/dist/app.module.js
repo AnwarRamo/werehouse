@@ -1,15 +1,50 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
+const core_1 = require("@nestjs/core");
 const config_1 = require("@nestjs/config");
-const mongoose_1 = require("@nestjs/mongoose");
+const Joi = __importStar(require("joi"));
+const throttler_1 = require("@nestjs/throttler");
 const auth_1 = require("./auth");
 const employees_1 = require("./employees");
 const devices_1 = require("./devices");
@@ -18,19 +53,55 @@ const attendance_module_1 = require("./attendance/attendance.module");
 const payroll_module_1 = require("./payroll/payroll.module");
 const inventory_module_1 = require("./inventory/inventory.module");
 const imports_module_1 = require("./imports/imports.module");
+const prisma_module_1 = require("./prisma/prisma.module");
+const request_logging_middleware_1 = require("./common/middleware/request-logging.middleware");
 let AppModule = class AppModule {
+    configure(consumer) {
+        consumer.apply(request_logging_middleware_1.RequestLoggingMiddleware).forRoutes('*');
+    }
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            config_1.ConfigModule.forRoot({ isGlobal: true }),
-            mongoose_1.MongooseModule.forRootAsync({
-                inject: [config_1.ConfigService],
-                useFactory: (config) => ({
-                    uri: config.get('MONGODB_URI'),
+            config_1.ConfigModule.forRoot({
+                isGlobal: true,
+                validationSchema: Joi.object({
+                    NODE_ENV: Joi.string().valid('development', 'test', 'production').default('development'),
+                    PORT: Joi.number().default(5001),
+                    DATABASE_URL: Joi.string().uri().required(),
+                    JWT_SECRET: Joi.string().min(16).required(),
+                    JWT_EXPIRE: Joi.string().default('24h'),
+                    JWT_COOKIE_NAME: Joi.string().default('warehouse_access_token'),
+                    JWT_COOKIE_SECURE: Joi.boolean().default(false),
+                    JWT_COOKIE_SAME_SITE: Joi.string()
+                        .valid('strict', 'lax', 'none', 'Strict', 'Lax', 'None')
+                        .default('lax'),
+                    JWT_COOKIE_MAX_AGE_MS: Joi.number().min(60_000).default(86_400_000),
+                    ADMIN_USERNAME: Joi.string().default('admin'),
+                    ADMIN_EMAIL: Joi.string().email({ tlds: { allow: false } }).default('admin@warehouse.local'),
+                    ADMIN_BOOTSTRAP_PASSWORD: Joi.string().min(8).optional(),
+                    DEV_ADMIN_USERNAME: Joi.string().default('developer'),
+                    DEV_ADMIN_EMAIL: Joi.string()
+                        .email({ tlds: { allow: false } })
+                        .default('developer@warehouse.local'),
+                    DEV_ADMIN_PASSWORD: Joi.string().min(8).optional(),
+                    CORS_ORIGIN: Joi.string().allow('').optional(),
+                    BCRYPT_ROUNDS: Joi.number().min(8).max(14).default(10),
+                    THROTTLE_TTL_MS: Joi.number().min(1_000).default(60_000),
+                    THROTTLE_LIMIT: Joi.number().min(10).default(120),
                 }),
             }),
+            throttler_1.ThrottlerModule.forRootAsync({
+                inject: [config_1.ConfigService],
+                useFactory: (config) => [
+                    {
+                        ttl: config.get('THROTTLE_TTL_MS', 60_000),
+                        limit: config.get('THROTTLE_LIMIT', 120),
+                    },
+                ],
+            }),
+            prisma_module_1.PrismaModule,
             health_module_1.HealthModule,
             auth_1.AuthModule,
             employees_1.EmployeesModule,
@@ -39,6 +110,12 @@ exports.AppModule = AppModule = __decorate([
             payroll_module_1.PayrollModule,
             inventory_module_1.InventoryModule,
             imports_module_1.ImportsModule,
+        ],
+        providers: [
+            {
+                provide: core_1.APP_GUARD,
+                useClass: throttler_1.ThrottlerGuard,
+            },
         ],
     })
 ], AppModule);

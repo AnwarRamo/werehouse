@@ -1,0 +1,474 @@
+{
+  "info": {
+    "name": "Warehouse Backend Nest - Ready Tests",
+    "_postman_id": "d42a8a96-9b30-4a5f-b43f-7da8b728d001",
+    "description": "Validated collection for auth, employees, devices, attendance, inventory, payroll, and imports.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5001/api" },
+    { "key": "username", "value": "admin" },
+    { "key": "password", "value": "password123" },
+    { "key": "token", "value": "" },
+    { "key": "roleId", "value": "" },
+    { "key": "employeeId", "value": "EMP900001" },
+    { "key": "deviceId", "value": "DEV900001" },
+    { "key": "attendanceId", "value": "" },
+    { "key": "sku", "value": "SKU-TEST-001" },
+    { "key": "productId", "value": "" },
+    { "key": "payrollRunId", "value": "" },
+    { "key": "importJobId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 Health",
+      "item": [
+        {
+          "name": "GET Health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Auth",
+      "item": [
+        {
+          "name": "POST Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('login 200', function () { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json();",
+                  "if (data.token) { pm.collectionVariables.set('token', data.token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "GET Me",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/me"
+          }
+        },
+        {
+          "name": "GET Roles (save roleId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('roles 200', function () { pm.response.to.have.status(200); });",
+                  "const roles = pm.response.json();",
+                  "if (Array.isArray(roles) && roles.length > 0) { pm.collectionVariables.set('roleId', roles[0].id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/roles"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Employees",
+      "item": [
+        {
+          "name": "POST Create Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"name\": \"Postman Employee\",\n  \"email\": \"postman.employee@warehouse.local\",\n  \"hourlyRate\": 15.5,\n  \"roleId\": \"{{roleId}}\",\n  \"department\": \"Warehouse\",\n  \"scheduledStart\": \"08:00\",\n  \"scheduledEnd\": \"16:00\"\n}"
+            },
+            "url": "{{baseUrl}}/employees"
+          }
+        },
+        {
+          "name": "PUT Update Employee",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"department\": \"Operations\",\n  \"hourlyRate\": 16.25\n}"
+            },
+            "url": "{{baseUrl}}/employees/{{employeeId}}"
+          }
+        },
+        {
+          "name": "GET Employees",
+          "request": { "method": "GET", "url": "{{baseUrl}}/employees" }
+        },
+        {
+          "name": "GET Employee by employeeId",
+          "request": { "method": "GET", "url": "{{baseUrl}}/employees/{{employeeId}}" }
+        },
+        {
+          "name": "GET Employees Stats",
+          "request": { "method": "GET", "url": "{{baseUrl}}/employees/stats" }
+        }
+      ]
+    },
+    {
+      "name": "04 Devices",
+      "item": [
+        {
+          "name": "POST Create Device",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"name\": \"Postman Device\",\n  \"location\": \"Gate A\",\n  \"model\": \"ZK Teco\",\n  \"ip\": \"192.168.1.10\",\n  \"port\": 4370\n}"
+            },
+            "url": "{{baseUrl}}/devices"
+          }
+        },
+        {
+          "name": "PUT Update Device",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"location\": \"Gate B\"\n}"
+            },
+            "url": "{{baseUrl}}/devices/{{deviceId}}"
+          }
+        },
+        {
+          "name": "GET Devices",
+          "request": { "method": "GET", "url": "{{baseUrl}}/devices" }
+        },
+        {
+          "name": "GET Device by deviceId",
+          "request": { "method": "GET", "url": "{{baseUrl}}/devices/{{deviceId}}" }
+        },
+        {
+          "name": "GET Device Stats",
+          "request": { "method": "GET", "url": "{{baseUrl}}/devices/{{deviceId}}/stats" }
+        }
+      ]
+    },
+    {
+      "name": "05 Attendance",
+      "item": [
+        {
+          "name": "POST Create Attendance (save attendanceId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.record && data.record.id) { pm.collectionVariables.set('attendanceId', data.record.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"timestamp\": \"2026-04-02T08:00:00.000Z\",\n  \"type\": \"IN\",\n  \"deviceId\": \"{{deviceId}}\",\n  \"location\": \"Gate B\",\n  \"source\": \"manual\",\n  \"verified\": true,\n  \"notes\": \"postman checkin\"\n}"
+            },
+            "url": "{{baseUrl}}/attendance"
+          }
+        },
+        {
+          "name": "PUT Update Attendance",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"postman note updated\"\n}"
+            },
+            "url": "{{baseUrl}}/attendance/{{attendanceId}}"
+          }
+        },
+        {
+          "name": "GET Attendance",
+          "request": { "method": "GET", "url": "{{baseUrl}}/attendance" }
+        },
+        {
+          "name": "GET Attendance Stats",
+          "request": { "method": "GET", "url": "{{baseUrl}}/attendance/stats" }
+        },
+        {
+          "name": "GET Attendance Anomalies",
+          "request": { "method": "GET", "url": "{{baseUrl}}/attendance/anomalies" }
+        }
+      ]
+    },
+    {
+      "name": "06 Inventory",
+      "item": [
+        {
+          "name": "POST Create Product (save productId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.product && data.product.id) { pm.collectionVariables.set('productId', data.product.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{sku}}\",\n  \"name\": \"Postman Product\",\n  \"category\": \"General\",\n  \"unitPrice\": 100,\n  \"costPrice\": 70,\n  \"reorderLevel\": 5\n}"
+            },
+            "url": "{{baseUrl}}/inventory/products"
+          }
+        },
+        {
+          "name": "PUT Update Product",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Product Updated\",\n  \"unitPrice\": 110\n}"
+            },
+            "url": "{{baseUrl}}/inventory/products/{{productId}}"
+          }
+        },
+        {
+          "name": "POST Adjust Stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{sku}}\",\n  \"location\": \"A1\",\n  \"change\": 50,\n  \"reason\": \"initial load\"\n}"
+            },
+            "url": "{{baseUrl}}/inventory/stock/adjust"
+          }
+        },
+        {
+          "name": "POST Reserve Stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{sku}}\",\n  \"location\": \"A1\",\n  \"quantity\": 10,\n  \"reason\": \"order\"\n}"
+            },
+            "url": "{{baseUrl}}/inventory/stock/reserve"
+          }
+        },
+        {
+          "name": "POST Release Reservation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{sku}}\",\n  \"location\": \"A1\",\n  \"quantity\": 5,\n  \"reason\": \"order changed\"\n}"
+            },
+            "url": "{{baseUrl}}/inventory/stock/release"
+          }
+        },
+        {
+          "name": "GET Inventory Stats",
+          "request": { "method": "GET", "url": "{{baseUrl}}/inventory/stats" }
+        }
+      ]
+    },
+    {
+      "name": "07 Payroll",
+      "item": [
+        {
+          "name": "POST Calculate Payroll (save payrollRunId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.payrollRun && data.payrollRun.id) { pm.collectionVariables.set('payrollRunId', data.payrollRun.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"periodStart\": \"2026-03-25\",\n  \"periodEnd\": \"2026-04-02\",\n  \"gracePeriodMinutes\": 5\n}"
+            },
+            "url": "{{baseUrl}}/payroll/calculate"
+          }
+        },
+        {
+          "name": "PUT Approve Payroll",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/payroll/{{payrollRunId}}/approve"
+          }
+        },
+        {
+          "name": "PUT Reject Payroll",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"postman rejection test\"\n}"
+            },
+            "url": "{{baseUrl}}/payroll/{{payrollRunId}}/reject"
+          }
+        },
+        {
+          "name": "GET Payroll Summary",
+          "request": { "method": "GET", "url": "{{baseUrl}}/payroll/summary" }
+        },
+        {
+          "name": "GET Payroll by Id",
+          "request": { "method": "GET", "url": "{{baseUrl}}/payroll/{{payrollRunId}}" }
+        }
+      ]
+    },
+    {
+      "name": "08 Imports",
+      "item": [
+        {
+          "name": "GET Employees Template",
+          "request": { "method": "GET", "url": "{{baseUrl}}/imports/templates/employees" }
+        },
+        {
+          "name": "POST Validate Employees CSV",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "employees.csv"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/employees/validate"
+          }
+        },
+        {
+          "name": "POST Import Employees CSV (save importJobId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (data.jobId) { pm.collectionVariables.set('importJobId', data.jobId); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "employees.csv"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/imports/employees"
+          }
+        },
+        {
+          "name": "GET Import Job",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/imports/jobs/{{importJobId}}"
+          }
+        },
+        {
+          "name": "POST Retry Import Job",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/imports/jobs/{{importJobId}}/retry"
+          }
+        }
+      ]
+    }
+  ]
+}
