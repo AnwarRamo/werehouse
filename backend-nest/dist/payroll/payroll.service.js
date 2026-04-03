@@ -19,6 +19,7 @@ const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
 const bullmq_2 = require("bullmq");
 const queue_constants_1 = require("../queues/queue.constants");
+const pdf_lib_1 = require("pdf-lib");
 const PAYROLL_BATCH_SIZE = 250;
 let PayrollService = class PayrollService {
     constructor(prisma, payrollQueue) {
@@ -177,7 +178,112 @@ let PayrollService = class PayrollService {
         const run = await this.prisma.payrollRun.findUnique({ where: { id: runId } });
         if (!run)
             throw new common_1.NotFoundException('Payroll run not found');
-        return { message: 'Export payroll functionality to be implemented', runId, format: 'csv' };
+        const items = await this.prisma.payrollItem.findMany({
+            where: { payrollRunId: runId },
+            orderBy: { employeeId: 'asc' },
+        });
+        const fileName = `payroll-${run.runId}.csv`;
+        return {
+            mimeType: 'text/csv; charset=utf-8',
+            fileName,
+            content: this.buildCsv(run, items),
+        };
+    }
+    async exportPdf(runId) {
+        const run = await this.prisma.payrollRun.findUnique({ where: { id: runId } });
+        if (!run)
+            throw new common_1.NotFoundException('Payroll run not found');
+        const items = await this.prisma.payrollItem.findMany({
+            where: { payrollRunId: runId },
+            orderBy: { employeeId: 'asc' },
+        });
+        const pdf = await pdf_lib_1.PDFDocument.create();
+        const page = pdf.addPage([842, 595]);
+        const font = await pdf.embedFont(pdf_lib_1.StandardFonts.Helvetica);
+        const bold = await pdf.embedFont(pdf_lib_1.StandardFonts.HelveticaBold);
+        const margin = 24;
+        let y = 565;
+        page.drawText(`Payroll Report: ${run.runId}`, {
+            x: margin,
+            y,
+            size: 14,
+            font: bold,
+            color: (0, pdf_lib_1.rgb)(0.1, 0.1, 0.1),
+        });
+        y -= 20;
+        page.drawText(`Period: ${run.periodStart.toISOString().slice(0, 10)} to ${run.periodEnd.toISOString().slice(0, 10)}`, {
+            x: margin,
+            y,
+            size: 10,
+            font,
+            color: (0, pdf_lib_1.rgb)(0.2, 0.2, 0.2),
+        });
+        y -= 24;
+        const header = 'EmpID        Name                    Dept            Gross     Deductions   Net';
+        page.drawText(header, { x: margin, y, size: 10, font: bold });
+        y -= 14;
+        for (const item of items) {
+            if (y < 36) {
+                break;
+            }
+            const line = [
+                (item.employeeId || '').padEnd(12).slice(0, 12),
+                (item.employeeName || '').padEnd(24).slice(0, 24),
+                (item.department || '').padEnd(14).slice(0, 14),
+                Number(item.grossPay).toFixed(2).padStart(10),
+                Number(item.totalDeductions).toFixed(2).padStart(12),
+                Number(item.netPay).toFixed(2).padStart(8),
+            ].join(' ');
+            page.drawText(line, { x: margin, y, size: 9, font });
+            y -= 12;
+        }
+        const bytes = await pdf.save();
+        return {
+            mimeType: 'application/pdf',
+            fileName: `payroll-${run.runId}.pdf`,
+            content: Buffer.from(bytes),
+        };
+    }
+    buildCsv(run, items) {
+        const rows = [];
+        rows.push([
+            'payrollRunId',
+            'periodStart',
+            'periodEnd',
+            'employeeId',
+            'employeeName',
+            'department',
+            'hoursWorked',
+            'hourlyRate',
+            'grossPay',
+            'totalDeductions',
+            'netPay',
+            'anomalies',
+        ].join(','));
+        for (const item of items) {
+            rows.push([
+                this.escapeCsv(run.runId),
+                this.escapeCsv(run.periodStart.toISOString().slice(0, 10)),
+                this.escapeCsv(run.periodEnd.toISOString().slice(0, 10)),
+                this.escapeCsv(item.employeeId),
+                this.escapeCsv(item.employeeName),
+                this.escapeCsv(item.department),
+                this.escapeCsv(Number(item.hoursWorked)),
+                this.escapeCsv(Number(item.hourlyRate)),
+                this.escapeCsv(Number(item.grossPay)),
+                this.escapeCsv(Number(item.totalDeductions)),
+                this.escapeCsv(Number(item.netPay)),
+                this.escapeCsv((item.anomalies || []).join('; ')),
+            ].join(','));
+        }
+        return rows.join('\n');
+    }
+    escapeCsv(value) {
+        const text = String(value ?? '');
+        if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+            return `"${text.replace(/"/g, '""')}"`;
+        }
+        return text;
     }
     async processPayrollRunJob(payload) {
         return this.processPayrollRun(payload.payrollRunId, payload.dto, payload.userId);

@@ -14,6 +14,7 @@ export declare class PayrollService {
     private resolvePeriod;
     list(query: any): Promise<{
         payrollRuns: {
+            status: string;
             id: string;
             runId: string;
             periodStart: Date;
@@ -21,7 +22,6 @@ export declare class PayrollService {
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -42,6 +42,7 @@ export declare class PayrollService {
     calculate(dto: CalculatePayrollDto, userId?: string): Promise<{
         message: string;
         payrollRun: {
+            status: string;
             id: string;
             runId: string;
             periodStart: Date;
@@ -49,7 +50,6 @@ export declare class PayrollService {
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -64,6 +64,7 @@ export declare class PayrollService {
     calculateAsync(dto: CalculatePayrollDto, userId?: string): Promise<{
         message: string;
         payrollRun: {
+            status: string;
             id: string;
             runId: string;
             periodStart: Date;
@@ -71,7 +72,6 @@ export declare class PayrollService {
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -85,6 +85,7 @@ export declare class PayrollService {
     }>;
     getRun(runId: string): Promise<{
         payrollRun: {
+            status: string;
             id: string;
             runId: string;
             periodStart: Date;
@@ -92,7 +93,6 @@ export declare class PayrollService {
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -141,6 +141,7 @@ export declare class PayrollService {
     approve(runId: string, userId?: string): Promise<{
         message: string;
         payrollRun: {
+            status: string;
             id: string;
             runId: string;
             periodStart: Date;
@@ -148,7 +149,6 @@ export declare class PayrollService {
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -163,6 +163,7 @@ export declare class PayrollService {
     reject(runId: string, reason: string, userId?: string): Promise<{
         message: string;
         payrollRun: {
+            status: string;
             id: string;
             runId: string;
             periodStart: Date;
@@ -170,7 +171,6 @@ export declare class PayrollService {
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -203,11 +203,19 @@ export declare class PayrollService {
         }[];
     }>;
     export(runId: string): Promise<{
-        message: string;
-        runId: string;
-        format: string;
+        mimeType: string;
+        fileName: string;
+        content: string;
     }>;
+    exportPdf(runId: string): Promise<{
+        mimeType: string;
+        fileName: string;
+        content: Buffer<ArrayBuffer>;
+    }>;
+    private buildCsv;
+    private escapeCsv;
     processPayrollRunJob(payload: PayrollQueuePayload): Promise<{
+        status: string;
         id: string;
         runId: string;
         periodStart: Date;
@@ -215,7 +223,6 @@ export declare class PayrollService {
         periodType: string;
         runDate: Date;
         runBy: string | null;
-        status: string;
         approvalStatus: string;
         approvedBy: string | null;
         approvalDate: Date | null;

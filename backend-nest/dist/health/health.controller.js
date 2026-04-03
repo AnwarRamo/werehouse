@@ -8,25 +8,97 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HealthController = void 0;
 const common_1 = require("@nestjs/common");
+const config_1 = require("@nestjs/config");
+const ioredis_1 = __importDefault(require("ioredis"));
 const prisma_service_1 = require("../prisma/prisma.service");
 let HealthController = class HealthController {
-    constructor(prisma) {
+    constructor(prisma, config) {
         this.prisma = prisma;
+        this.config = config;
+        this.redis = new ioredis_1.default(this.config.get('REDIS_URL', 'redis://127.0.0.1:6379'), {
+            lazyConnect: true,
+            maxRetriesPerRequest: 1,
+            enableReadyCheck: false,
+        });
     }
-    async getHealth() {
-        await this.prisma.$queryRaw `SELECT 1 as ok`;
+    getLive() {
         return {
             status: 'ok',
+            check: 'liveness',
+            timestamp: new Date().toISOString(),
+        };
+    }
+    async getReady() {
+        const db = await this.checkDatabase();
+        const redis = await this.checkRedis();
+        return {
+            status: db === 'up' && redis === 'up' ? 'ok' : 'degraded',
+            check: 'readiness',
+            timestamp: new Date().toISOString(),
+            services: {
+                database: db,
+                redis,
+            },
+        };
+    }
+    async getHealth() {
+        const db = await this.checkDatabase();
+        const redis = await this.checkRedis();
+        const status = db === 'up' && redis === 'up' ? 'ok' : 'degraded';
+        return {
+            status,
             timestamp: new Date().toISOString(),
             framework: 'NestJS',
-            database: 'sql(prisma)',
+            services: {
+                database: db,
+                redis,
+            },
         };
+    }
+    async checkDatabase() {
+        try {
+            await this.prisma.$queryRaw `SELECT 1 as ok`;
+            return 'up';
+        }
+        catch {
+            return 'down';
+        }
+    }
+    async checkRedis() {
+        try {
+            if (this.redis.status === 'wait') {
+                await this.redis.connect();
+            }
+            await this.redis.ping();
+            return 'up';
+        }
+        catch {
+            return 'down';
+        }
+    }
+    async onModuleDestroy() {
+        await this.redis.quit();
     }
 };
 exports.HealthController = HealthController;
+__decorate([
+    (0, common_1.Get)('live'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], HealthController.prototype, "getLive", null);
+__decorate([
+    (0, common_1.Get)('ready'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], HealthController.prototype, "getReady", null);
 __decorate([
     (0, common_1.Get)(),
     __metadata("design:type", Function),
@@ -35,6 +107,7 @@ __decorate([
 ], HealthController.prototype, "getHealth", null);
 exports.HealthController = HealthController = __decorate([
     (0, common_1.Controller)('health'),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        config_1.ConfigService])
 ], HealthController);
 //# sourceMappingURL=health.controller.js.map

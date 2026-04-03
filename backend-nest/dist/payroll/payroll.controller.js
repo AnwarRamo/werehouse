@@ -68,8 +68,27 @@ let PayrollController = class PayrollController {
         }, req);
         return result;
     }
-    export(runId) {
-        return this.payrollService.export(runId);
+    async export(runId, req, res) {
+        const payload = await this.payrollService.export(runId);
+        this.audit.log({
+            action: 'payroll.export',
+            targetType: 'payroll_run',
+            targetId: runId,
+        }, req);
+        res.setHeader('Content-Type', payload.mimeType);
+        res.setHeader('Content-Disposition', `attachment; filename="${payload.fileName}"`);
+        res.status(200).send(payload.content);
+    }
+    async exportPdf(runId, req, res) {
+        const payload = await this.payrollService.exportPdf(runId);
+        this.audit.log({
+            action: 'payroll.export.pdf',
+            targetType: 'payroll_run',
+            targetId: runId,
+        }, req);
+        res.setHeader('Content-Type', payload.mimeType);
+        res.setHeader('Content-Disposition', `attachment; filename="${payload.fileName}"`);
+        res.status(200).send(payload.content);
     }
     employeeHistory(employeeId) {
         return this.payrollService.getEmployeeHistory(employeeId);
@@ -152,10 +171,22 @@ __decorate([
     (0, common_1.Get)(':runId/export'),
     (0, permissions_decorator_1.Permissions)('view_payroll'),
     __param(0, (0, common_1.Param)('runId')),
+    __param(1, (0, common_2.Req)()),
+    __param(2, (0, common_1.Res)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
 ], PayrollController.prototype, "export", null);
+__decorate([
+    (0, common_1.Get)(':runId/export/pdf'),
+    (0, permissions_decorator_1.Permissions)('view_payroll'),
+    __param(0, (0, common_1.Param)('runId')),
+    __param(1, (0, common_2.Req)()),
+    __param(2, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], PayrollController.prototype, "exportPdf", null);
 __decorate([
     (0, common_1.Get)('employee/:employeeId'),
     (0, permissions_decorator_1.Permissions)('view_payroll'),

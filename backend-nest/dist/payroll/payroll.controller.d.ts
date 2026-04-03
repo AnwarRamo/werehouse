@@ -1,4 +1,5 @@
 import { Request } from 'express';
+import { Response } from 'express';
 import { PayrollService } from './payroll.service';
 import { CalculatePayrollDto } from './dto/calculate-payroll.dto';
 import { AuditService } from '../common/services/audit.service';
@@ -8,6 +9,7 @@ export declare class PayrollController {
     constructor(payrollService: PayrollService, audit: AuditService);
     list(query: any): Promise<{
         payrollRuns: {
+            status: string;
             id: string;
             runId: string;
             periodStart: Date;
@@ -15,7 +17,6 @@ export declare class PayrollController {
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -47,6 +48,7 @@ export declare class PayrollController {
     calculate(dto: CalculatePayrollDto, user: any): Promise<{
         message: string;
         payrollRun: {
+            status: string;
             id: string;
             runId: string;
             periodStart: Date;
@@ -54,7 +56,6 @@ export declare class PayrollController {
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -69,6 +70,7 @@ export declare class PayrollController {
     calculateAsync(dto: CalculatePayrollDto, user: any): Promise<{
         message: string;
         payrollRun: {
+            status: string;
             id: string;
             runId: string;
             periodStart: Date;
@@ -76,7 +78,6 @@ export declare class PayrollController {
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -90,6 +91,7 @@ export declare class PayrollController {
     }>;
     getById(runId: string): Promise<{
         payrollRun: {
+            status: string;
             id: string;
             runId: string;
             periodStart: Date;
@@ -97,7 +99,6 @@ export declare class PayrollController {
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -137,6 +138,7 @@ export declare class PayrollController {
     approve(runId: string, user: any, req: Request): Promise<{
         message: string;
         payrollRun: {
+            status: string;
             id: string;
             runId: string;
             periodStart: Date;
@@ -144,7 +146,6 @@ export declare class PayrollController {
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -159,6 +160,7 @@ export declare class PayrollController {
     reject(runId: string, reason: string, user: any, req: Request): Promise<{
         message: string;
         payrollRun: {
+            status: string;
             id: string;
             runId: string;
             periodStart: Date;
@@ -166,7 +168,6 @@ export declare class PayrollController {
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -178,11 +179,8 @@ export declare class PayrollController {
             notes: string | null;
         };
     }>;
-    export(runId: string): Promise<{
-        message: string;
-        runId: string;
-        format: string;
-    }>;
+    export(runId: string, req: Request, res: Response): Promise<void>;
+    exportPdf(runId: string, req: Request, res: Response): Promise<void>;
     employeeHistory(employeeId: string): Promise<{
         employeeId: string;
         payrollItems: {
