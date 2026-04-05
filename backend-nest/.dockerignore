@@ -4,6 +4,8 @@ coverage
 .git
 .gitignore
 .vscode
+.env
+.env.*
 npm-debug.log*
 *.md
 postman.*.json
