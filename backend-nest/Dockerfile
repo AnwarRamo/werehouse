@@ -31,4 +31,4 @@ COPY --from=build /out/prisma ./prisma
 COPY --from=build /out/prisma.config.ts ./prisma.config.ts
 
 EXPOSE 5001
-CMD ["sh", "-c", "echo 'Running prisma db push...' && npx prisma db push; echo 'Prisma exit code:' $?; echo 'Starting node...'; node dist/main"
+CMD ["sh", "-c", "echo 'Running prisma db push...' && npx prisma db push; echo 'Prisma exit:' $?; echo 'Starting node dist/main...'; node dist/main"]
