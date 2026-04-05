@@ -68,7 +68,7 @@ From this folder:
 	- `docker compose down`
 
 The API container runs Prisma schema sync on startup:
-- `npx prisma db push --skip-generate`
+- `npx prisma db push`
 
 ### Build Image Only
 1. `docker build -t warehouse-backend:latest .`

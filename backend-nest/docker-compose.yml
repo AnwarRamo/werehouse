@@ -59,7 +59,7 @@ services:
       REDIS_URL: redis://redis:6379
     ports:
       - "5001:5001"
-    command: sh -c "npx prisma db push --skip-generate && node dist/main"
+    command: sh -c "npx prisma db push && node dist/main"
 
 volumes:
   postgres_data:
