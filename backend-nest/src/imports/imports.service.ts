@@ -371,7 +371,7 @@ export class ImportsService {
 
     if (isExcel) {
       const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(buffer);
+      await workbook.xlsx.load(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer);
       const worksheet = workbook.worksheets[0];
       if (!worksheet) throw new BadRequestException('Excel file must contain at least one worksheet');
 
