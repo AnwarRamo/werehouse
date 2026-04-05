@@ -1,18 +1,30 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaginationQueryParams } from '../common/types/query.types';
 import { CreateProductDto } from './dto/create-product.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { ReserveStockDto } from './dto/reserve-stock.dto';
 type UpdateProductDto = Partial<CreateProductDto> & {
     status?: string;
 };
+type InventoryListProductsQuery = PaginationQueryParams & {
+    category?: string;
+    status?: string;
+    search?: string;
+};
+type LowStockAlert = {
+    sku: string;
+    name: string;
+    available: number;
+    reorderLevel: number;
+};
 export declare class InventoryService {
     private readonly prisma;
     constructor(prisma: PrismaService);
-    listProducts(query: any): Promise<{
+    listProducts(query: InventoryListProductsQuery): Promise<{
         products: {
-            id: string;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
@@ -32,8 +44,8 @@ export declare class InventoryService {
     createProduct(dto: CreateProductDto): Promise<{
         message: string;
         product: {
-            id: string;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
@@ -46,8 +58,8 @@ export declare class InventoryService {
     }>;
     getProduct(productId: string): Promise<{
         product: {
-            id: string;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
@@ -71,8 +83,8 @@ export declare class InventoryService {
     updateProduct(productId: string, dto: UpdateProductDto): Promise<{
         message: string;
         product: {
-            id: string;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
@@ -137,7 +149,7 @@ export declare class InventoryService {
         };
     }>;
     lowStockAlerts(): Promise<{
-        alerts: any[];
+        alerts: LowStockAlert[];
         count: number;
     }>;
     stats(): Promise<{

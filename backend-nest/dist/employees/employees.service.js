@@ -13,14 +13,13 @@ exports.EmployeesService = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
+const pagination_util_1 = require("../common/utils/pagination.util");
 let EmployeesService = class EmployeesService {
     constructor(prisma) {
         this.prisma = prisma;
     }
     async list(query) {
-        const page = Number(query.page || 1);
-        const limit = Math.min(Number(query.limit || 50), 200);
-        const skip = (page - 1) * limit;
+        const { page, limit, skip } = (0, pagination_util_1.resolvePagination)(query);
         const where = {};
         if (query.department)
             where.department = query.department;
@@ -55,15 +54,24 @@ let EmployeesService = class EmployeesService {
     async stats() {
         const employees = await this.prisma.employee.findMany();
         const byDepartment = {};
+        let active = 0;
+        let inactive = 0;
+        let terminated = 0;
         for (const e of employees) {
             byDepartment[e.department || 'Unassigned'] =
                 (byDepartment[e.department || 'Unassigned'] || 0) + 1;
+            if (e.status === 'active')
+                active += 1;
+            if (e.status === 'inactive')
+                inactive += 1;
+            if (e.status === 'terminated')
+                terminated += 1;
         }
         return {
             total: employees.length,
-            active: employees.filter((e) => e.status === 'active').length,
-            inactive: employees.filter((e) => e.status === 'inactive').length,
-            terminated: employees.filter((e) => e.status === 'terminated').length,
+            active,
+            inactive,
+            terminated,
             byDepartment,
         };
     }

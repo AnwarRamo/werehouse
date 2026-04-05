@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Controller,
   Get,
   Param,
@@ -11,12 +10,14 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { ImportsService } from './imports.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Permissions } from '../common/decorators/permissions.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { AuthenticatedUser } from '../common/types/authenticated-user.types';
+import { ImportsHistoryQuery } from './imports.service';
 
 @Controller('imports')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -24,7 +25,11 @@ export class ImportsController {
   constructor(private readonly importsService: ImportsService) {}
 
   private static readonly uploadOptions = {
-    fileFilter: (_req: any, file: any, cb: (error: any, acceptFile: boolean) => void) => {
+    fileFilter: (
+      _req: Request,
+      file: Express.Multer.File,
+      cb: (error: Error | null, acceptFile: boolean) => void,
+    ) => {
       const allowedExtensions = ['.csv', '.xlsx', '.xls'];
       const allowedMimeTypes = [
         'text/csv',
@@ -37,7 +42,7 @@ export class ImportsController {
       const hasAllowedMime = allowedMimeTypes.includes(String(file?.mimetype || '').toLowerCase());
 
       if (!hasAllowedExtension && !hasAllowedMime) {
-        cb(new BadRequestException('Only CSV/XLS/XLSX files are allowed'), false);
+        cb(new Error('Only CSV/XLS/XLSX files are allowed'), false);
         return;
       }
 
@@ -50,7 +55,7 @@ export class ImportsController {
 
   @Get('history')
   @Permissions('view_imports')
-  history(@Query() query: any) {
+  history(@Query() query: ImportsHistoryQuery) {
     return this.importsService.history(query);
   }
 
@@ -87,48 +92,60 @@ export class ImportsController {
   @Post('employees')
   @Permissions('run_imports')
   @UseInterceptors(FileInterceptor('file', ImportsController.uploadOptions))
-  importEmployees(@UploadedFile() file: any, @CurrentUser() user: any) {
+  importEmployees(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.importsService.importEmployees(file, user?.userId);
   }
 
   @Post('employees/async')
   @Permissions('run_imports')
   @UseInterceptors(FileInterceptor('file', ImportsController.uploadOptions))
-  importEmployeesAsync(@UploadedFile() file: any, @CurrentUser() user: any) {
+  importEmployeesAsync(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.importsService.importEmployeesAsync(file, user?.userId);
   }
 
   @Post('employees/validate')
   @Permissions('run_imports')
   @UseInterceptors(FileInterceptor('file', ImportsController.uploadOptions))
-  validateEmployees(@UploadedFile() file: any) {
+  validateEmployees(@UploadedFile() file: Express.Multer.File) {
     return this.importsService.validateEmployeesImport(file);
   }
 
   @Post('products')
   @Permissions('run_imports')
   @UseInterceptors(FileInterceptor('file', ImportsController.uploadOptions))
-  importProducts(@UploadedFile() file: any, @CurrentUser() user: any) {
+  importProducts(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.importsService.importProducts(file, user?.userId);
   }
 
   @Post('products/async')
   @Permissions('run_imports')
   @UseInterceptors(FileInterceptor('file', ImportsController.uploadOptions))
-  importProductsAsync(@UploadedFile() file: any, @CurrentUser() user: any) {
+  importProductsAsync(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.importsService.importProductsAsync(file, user?.userId);
   }
 
   @Post('products/validate')
   @Permissions('run_imports')
   @UseInterceptors(FileInterceptor('file', ImportsController.uploadOptions))
-  validateProducts(@UploadedFile() file: any) {
+  validateProducts(@UploadedFile() file: Express.Multer.File) {
     return this.importsService.validateProductsImport(file);
   }
 
   @Post('jobs/:jobId/retry')
   @Permissions('run_imports')
-  retry(@Param('jobId') jobId: string, @CurrentUser() user: any) {
+  retry(@Param('jobId') jobId: string, @CurrentUser() user: AuthenticatedUser) {
     return this.importsService.retry(jobId, user?.userId);
   }
 }

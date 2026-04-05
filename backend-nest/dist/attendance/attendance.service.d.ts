@@ -1,25 +1,30 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaginationQueryParams } from '../common/types/query.types';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
+export type AttendanceListQuery = PaginationQueryParams & {
+    employeeId?: string;
+    date?: string;
+};
 export declare class AttendanceService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     private resolveRange;
-    list(query: any): Promise<{
+    list(query: AttendanceListQuery): Promise<{
         records: {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            date: string;
             employeeId: string;
-            timestamp: Date;
-            type: string;
             deviceId: string | null;
             location: string | null;
+            type: string;
+            timestamp: Date;
             source: string;
             verified: boolean;
             notes: string | null;
+            date: string;
             shiftPair: Prisma.JsonValue | null;
         }[];
         pagination: {
@@ -35,15 +40,15 @@ export declare class AttendanceService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            date: string;
             employeeId: string;
-            timestamp: Date;
-            type: string;
             deviceId: string | null;
             location: string | null;
+            type: string;
+            timestamp: Date;
             source: string;
             verified: boolean;
             notes: string | null;
+            date: string;
             shiftPair: Prisma.JsonValue | null;
         };
     }>;
@@ -51,15 +56,15 @@ export declare class AttendanceService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        date: string;
         employeeId: string;
-        timestamp: Date;
-        type: string;
         deviceId: string | null;
         location: string | null;
+        type: string;
+        timestamp: Date;
         source: string;
         verified: boolean;
         notes: string | null;
+        date: string;
         shiftPair: Prisma.JsonValue | null;
     }>;
     update(recordId: string, dto: UpdateAttendanceDto): Promise<{
@@ -68,15 +73,15 @@ export declare class AttendanceService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            date: string;
             employeeId: string;
-            timestamp: Date;
-            type: string;
             deviceId: string | null;
             location: string | null;
+            type: string;
+            timestamp: Date;
             source: string;
             verified: boolean;
             notes: string | null;
+            date: string;
             shiftPair: Prisma.JsonValue | null;
         };
     }>;
@@ -100,15 +105,15 @@ export declare class AttendanceService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            date: string;
             employeeId: string;
-            timestamp: Date;
-            type: string;
             deviceId: string | null;
             location: string | null;
+            type: string;
+            timestamp: Date;
             source: string;
             verified: boolean;
             notes: string | null;
+            date: string;
             shiftPair: Prisma.JsonValue | null;
         }[];
         anomalyCount: number;
@@ -120,15 +125,15 @@ export declare class AttendanceService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            date: string;
             employeeId: string;
-            timestamp: Date;
-            type: string;
             deviceId: string | null;
             location: string | null;
+            type: string;
+            timestamp: Date;
             source: string;
             verified: boolean;
             notes: string | null;
+            date: string;
             shiftPair: Prisma.JsonValue | null;
         }[];
         recordCount: number;
@@ -143,15 +148,15 @@ export declare class AttendanceService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            date: string;
             employeeId: string;
-            timestamp: Date;
-            type: string;
             deviceId: string | null;
             location: string | null;
+            type: string;
+            timestamp: Date;
             source: string;
             verified: boolean;
             notes: string | null;
+            date: string;
             shiftPair: Prisma.JsonValue | null;
         }[];
         statistics: {

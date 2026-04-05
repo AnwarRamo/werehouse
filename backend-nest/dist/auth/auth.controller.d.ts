@@ -6,6 +6,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { AuditService } from '../common/services/audit.service';
+import { AuthenticatedUser } from '../common/types/authenticated-user.types';
 export declare class AuthController implements OnModuleInit {
     private readonly authService;
     private readonly config;
@@ -36,7 +37,7 @@ export declare class AuthController implements OnModuleInit {
     logout(res: Response): {
         message: string;
     };
-    me(user: any): Promise<{
+    me(user: AuthenticatedUser): Promise<{
         id: string;
         username: string;
         email: string;
@@ -45,7 +46,7 @@ export declare class AuthController implements OnModuleInit {
         permissions: string[];
         lastLogin: Date | null;
     }>;
-    createUser(dto: CreateUserDto, user: any, req: Request): Promise<{
+    createUser(dto: CreateUserDto, user: AuthenticatedUser, req: Request): Promise<{
         message: string;
         user: {
             id: string;
@@ -70,7 +71,7 @@ export declare class AuthController implements OnModuleInit {
             lastLogin: Date | null;
         }[];
     }>;
-    getRoles(user: any, req: Request): Promise<{
+    getRoles(user: AuthenticatedUser, req: Request): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;

@@ -1,31 +1,31 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaginationQueryParams } from '../common/types/query.types';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+export type EmployeesListQuery = PaginationQueryParams & {
+    department?: string;
+    status?: string;
+    search?: string;
+};
 export declare class EmployeesService {
     private readonly prisma;
     constructor(prisma: PrismaService);
-    list(query: {
-        page?: number;
-        limit?: number;
-        department?: string;
-        status?: string;
-        search?: string;
-    }): Promise<{
+    list(query: EmployeesListQuery): Promise<{
         employees: {
-            id: string;
             email: string;
             roleId: string | null;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
             employeeId: string;
             hourlyRate: Prisma.Decimal;
-            currency: string;
+            department: string;
             scheduledStart: string | null;
             scheduledEnd: string | null;
-            department: string;
+            currency: string;
         }[];
         pagination: {
             page: number;
@@ -45,70 +45,70 @@ export declare class EmployeesService {
         department: string;
         count: number;
         employees: {
-            id: string;
             email: string;
             roleId: string | null;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
             employeeId: string;
             hourlyRate: Prisma.Decimal;
-            currency: string;
+            department: string;
             scheduledStart: string | null;
             scheduledEnd: string | null;
-            department: string;
+            currency: string;
         }[];
     }>;
     create(dto: CreateEmployeeDto): Promise<{
         message: string;
         employee: {
-            id: string;
             email: string;
             roleId: string | null;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
             employeeId: string;
             hourlyRate: Prisma.Decimal;
-            currency: string;
+            department: string;
             scheduledStart: string | null;
             scheduledEnd: string | null;
-            department: string;
+            currency: string;
         };
     }>;
     getByEmployeeId(employeeId: string): Promise<{
-        id: string;
         email: string;
         roleId: string | null;
         status: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
         employeeId: string;
         hourlyRate: Prisma.Decimal;
-        currency: string;
+        department: string;
         scheduledStart: string | null;
         scheduledEnd: string | null;
-        department: string;
+        currency: string;
     }>;
     update(employeeId: string, dto: UpdateEmployeeDto): Promise<{
         message: string;
         employee: {
-            id: string;
             email: string;
             roleId: string | null;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
             employeeId: string;
             hourlyRate: Prisma.Decimal;
-            currency: string;
+            department: string;
             scheduledStart: string | null;
             scheduledEnd: string | null;
-            department: string;
+            currency: string;
         };
     }>;
     remove(employeeId: string): Promise<{

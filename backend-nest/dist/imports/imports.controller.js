@@ -81,7 +81,7 @@ ImportsController.uploadOptions = {
         const hasAllowedExtension = allowedExtensions.some((ext) => originalName.endsWith(ext));
         const hasAllowedMime = allowedMimeTypes.includes(String(file?.mimetype || '').toLowerCase());
         if (!hasAllowedExtension && !hasAllowedMime) {
-            cb(new common_1.BadRequestException('Only CSV/XLS/XLSX files are allowed'), false);
+            cb(new Error('Only CSV/XLS/XLSX files are allowed'), false);
             return;
         }
         cb(null, true);

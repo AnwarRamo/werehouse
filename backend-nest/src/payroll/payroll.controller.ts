@@ -9,6 +9,8 @@ import { Permissions } from '../common/decorators/permissions.decorator';
 import { CalculatePayrollDto } from './dto/calculate-payroll.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditService } from '../common/services/audit.service';
+import { PayrollListQuery } from './payroll.service';
+import { AuthenticatedUser } from '../common/types/authenticated-user.types';
 
 @Controller('payroll')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -20,7 +22,7 @@ export class PayrollController {
 
   @Get()
   @Permissions('view_payroll')
-  list(@Query() query: any) {
+  list(@Query() query: PayrollListQuery) {
     return this.payrollService.list(query);
   }
 
@@ -32,13 +34,13 @@ export class PayrollController {
 
   @Post('calculate')
   @Permissions('run_payroll')
-  calculate(@Body() dto: CalculatePayrollDto, @CurrentUser() user: any) {
+  calculate(@Body() dto: CalculatePayrollDto, @CurrentUser() user: AuthenticatedUser) {
     return this.payrollService.calculate(dto, user?.userId);
   }
 
   @Post('calculate/async')
   @Permissions('run_payroll')
-  calculateAsync(@Body() dto: CalculatePayrollDto, @CurrentUser() user: any) {
+  calculateAsync(@Body() dto: CalculatePayrollDto, @CurrentUser() user: AuthenticatedUser) {
     return this.payrollService.calculateAsync(dto, user?.userId);
   }
 
@@ -58,7 +60,7 @@ export class PayrollController {
   @Permissions('approve_payroll')
   async approve(
     @Param('runId') runId: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Req() req: Request,
   ) {
     const result = await this.payrollService.approve(runId, user?.userId);
@@ -80,7 +82,7 @@ export class PayrollController {
   async reject(
     @Param('runId') runId: string,
     @Body('reason') reason: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Req() req: Request,
   ) {
     const result = await this.payrollService.reject(runId, reason, user?.userId);

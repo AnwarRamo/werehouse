@@ -12,14 +12,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DevicesService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const pagination_util_1 = require("../common/utils/pagination.util");
 let DevicesService = class DevicesService {
     constructor(prisma) {
         this.prisma = prisma;
     }
     async list(query) {
-        const page = Number(query.page || 1);
-        const limit = Math.min(Number(query.limit || 50), 200);
-        const skip = (page - 1) * limit;
+        const { page, limit, skip } = (0, pagination_util_1.resolvePagination)(query);
         const where = {};
         if (query.location)
             where.location = query.location;

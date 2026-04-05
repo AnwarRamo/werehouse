@@ -15,6 +15,7 @@ import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Permissions } from '../common/decorators/permissions.decorator';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { EmployeesListQuery } from './employees.service';
 
 @Controller('employees')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -23,7 +24,7 @@ export class EmployeesController {
 
   @Get()
   @Permissions('view_employees')
-  list(@Query() query: any) {
+  list(@Query() query: EmployeesListQuery) {
     return this.employeesService.list(query);
   }
 

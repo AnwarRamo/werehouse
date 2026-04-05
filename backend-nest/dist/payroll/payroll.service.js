@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const bullmq_1 = require("@nestjs/bullmq");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
+const pagination_util_1 = require("../common/utils/pagination.util");
 const bullmq_2 = require("bullmq");
 const queue_constants_1 = require("../queues/queue.constants");
 const pdf_lib_1 = require("pdf-lib");
@@ -42,9 +43,7 @@ let PayrollService = class PayrollService {
         };
     }
     async list(query) {
-        const page = Number(query.page || 1);
-        const limit = Math.min(Number(query.limit || 50), 200);
-        const skip = (page - 1) * limit;
+        const { page, limit, skip } = (0, pagination_util_1.resolvePagination)(query);
         const where = {};
         if (query.status)
             where.status = query.status;

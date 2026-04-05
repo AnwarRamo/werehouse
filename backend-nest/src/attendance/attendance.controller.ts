@@ -14,6 +14,7 @@ import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Permissions } from '../common/decorators/permissions.decorator';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
+import { AttendanceListQuery } from './attendance.service';
 
 @Controller('attendance')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -22,7 +23,7 @@ export class AttendanceController {
 
   @Get()
   @Permissions('view_attendance')
-  list(@Query() query: any) {
+  list(@Query() query: AttendanceListQuery) {
     return this.attendanceService.list(query);
   }
 

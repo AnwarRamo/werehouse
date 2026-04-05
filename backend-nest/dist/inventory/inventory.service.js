@@ -13,14 +13,13 @@ exports.InventoryService = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
+const pagination_util_1 = require("../common/utils/pagination.util");
 let InventoryService = class InventoryService {
     constructor(prisma) {
         this.prisma = prisma;
     }
     async listProducts(query) {
-        const page = Number(query.page || 1);
-        const limit = Math.min(Number(query.limit || 50), 200);
-        const skip = (page - 1) * limit;
+        const { page, limit, skip } = (0, pagination_util_1.resolvePagination)(query);
         const where = {};
         if (query.category)
             where.category = query.category;
@@ -66,18 +65,18 @@ let InventoryService = class InventoryService {
         return { product, stockLevels };
     }
     async updateProduct(productId, dto) {
-        delete dto.sku;
+        const { sku: _ignoredSku, ...safeDto } = dto;
         const existing = await this.prisma.product.findUnique({ where: { id: productId } });
         if (!existing)
             throw new common_1.NotFoundException('Product not found');
         const product = await this.prisma.product.update({
             where: { id: productId },
             data: {
-                ...dto,
-                unitPrice: dto.unitPrice !== undefined ? new client_1.Prisma.Decimal(dto.unitPrice) : undefined,
-                costPrice: dto.costPrice !== undefined ? new client_1.Prisma.Decimal(dto.costPrice) : undefined,
-                reorderLevel: dto.reorderLevel,
-                status: dto.status,
+                ...safeDto,
+                unitPrice: safeDto.unitPrice !== undefined ? new client_1.Prisma.Decimal(safeDto.unitPrice) : undefined,
+                costPrice: safeDto.costPrice !== undefined ? new client_1.Prisma.Decimal(safeDto.costPrice) : undefined,
+                reorderLevel: safeDto.reorderLevel,
+                status: safeDto.status,
             },
         });
         return { message: 'Product updated successfully', product };
@@ -145,15 +144,25 @@ let InventoryService = class InventoryService {
         return { message: 'Reservation released successfully', stockLevel: updated };
     }
     async lowStockAlerts() {
-        const products = await this.prisma.product.findMany({ where: { status: 'active' } });
-        const alerts = [];
-        for (const p of products) {
-            const stocks = await this.prisma.stockLevel.findMany({ where: { sku: p.sku } });
-            const totalAvailable = stocks.reduce((s, x) => s + x.available, 0);
-            if (totalAvailable < p.reorderLevel) {
-                alerts.push({ sku: p.sku, name: p.name, available: totalAvailable, reorderLevel: p.reorderLevel });
-            }
-        }
+        const [products, stockSums] = await Promise.all([
+            this.prisma.product.findMany({
+                where: { status: 'active' },
+                select: { sku: true, name: true, reorderLevel: true },
+            }),
+            this.prisma.stockLevel.groupBy({
+                by: ['sku'],
+                _sum: { available: true },
+            }),
+        ]);
+        const availableBySku = new Map(stockSums.map((entry) => [entry.sku, entry._sum.available ?? 0]));
+        const alerts = products
+            .filter((product) => (availableBySku.get(product.sku) ?? 0) < product.reorderLevel)
+            .map((product) => ({
+            sku: product.sku,
+            name: product.name,
+            available: availableBySku.get(product.sku) ?? 0,
+            reorderLevel: product.reorderLevel,
+        }));
         return { alerts, count: alerts.length };
     }
     async stats() {

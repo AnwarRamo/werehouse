@@ -1,24 +1,26 @@
 import { Response } from 'express';
 import { ImportsService } from './imports.service';
+import { AuthenticatedUser } from '../common/types/authenticated-user.types';
+import { ImportsHistoryQuery } from './imports.service';
 export declare class ImportsController {
     private readonly importsService;
     constructor(importsService: ImportsService);
     private static readonly uploadOptions;
-    history(query: any): Promise<{
+    history(query: ImportsHistoryQuery): Promise<{
         imports: {
+            status: string;
             id: string;
+            createdAt: Date;
+            updatedAt: Date;
             jobId: string;
             entity: string;
             fileName: string;
             uploadedBy: string;
             uploadedAt: Date;
-            status: string;
             totalRows: number;
             successRows: number;
             errorRows: number;
             errors: import("@prisma/client/runtime/client").JsonValue;
-            createdAt: Date;
-            updatedAt: Date;
         }[];
         pagination: {
             page: number;
@@ -37,23 +39,23 @@ export declare class ImportsController {
     }>;
     details(jobId: string): Promise<{
         errorSummary: Record<string, number>;
+        status: string;
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         jobId: string;
         entity: string;
         fileName: string;
         uploadedBy: string;
         uploadedAt: Date;
-        status: string;
         totalRows: number;
         successRows: number;
         errorRows: number;
         errors: import("@prisma/client/runtime/client").JsonValue;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     employeesTemplate(res: Response): void;
     productsTemplate(res: Response): void;
-    importEmployees(file: any, user: any): Promise<{
+    importEmployees(file: Express.Multer.File, user: AuthenticatedUser): Promise<{
         message: string;
         jobId: string;
         status: string;
@@ -61,37 +63,13 @@ export declare class ImportsController {
         successRows: number;
         errorRows: number;
     }>;
-    importEmployeesAsync(file: any, user: any): Promise<{
+    importEmployeesAsync(file: Express.Multer.File, user: AuthenticatedUser): Promise<{
         message: string;
         jobId: string;
         status: string;
         totalRows: number;
     }>;
-    validateEmployees(file: any): Promise<{
-        totalRows: number;
-        successRows: number;
-        errorRows: number;
-        errors: {
-            row: number;
-            error: string;
-        }[];
-        message: string;
-    }>;
-    importProducts(file: any, user: any): Promise<{
-        message: string;
-        jobId: string;
-        status: string;
-        totalRows: number;
-        successRows: number;
-        errorRows: number;
-    }>;
-    importProductsAsync(file: any, user: any): Promise<{
-        message: string;
-        jobId: string;
-        status: string;
-        totalRows: number;
-    }>;
-    validateProducts(file: any): Promise<{
+    validateEmployees(file: Express.Multer.File): Promise<{
         totalRows: number;
         successRows: number;
         errorRows: number;
@@ -101,7 +79,31 @@ export declare class ImportsController {
         }[];
         message: string;
     }>;
-    retry(jobId: string, user: any): Promise<{
+    importProducts(file: Express.Multer.File, user: AuthenticatedUser): Promise<{
+        message: string;
+        jobId: string;
+        status: string;
+        totalRows: number;
+        successRows: number;
+        errorRows: number;
+    }>;
+    importProductsAsync(file: Express.Multer.File, user: AuthenticatedUser): Promise<{
+        message: string;
+        jobId: string;
+        status: string;
+        totalRows: number;
+    }>;
+    validateProducts(file: Express.Multer.File): Promise<{
+        totalRows: number;
+        successRows: number;
+        errorRows: number;
+        errors: {
+            row: number;
+            error: string;
+        }[];
+        message: string;
+    }>;
+    retry(jobId: string, user: AuthenticatedUser): Promise<{
         message: string;
         originalJobId: string;
         retryJobId: string;

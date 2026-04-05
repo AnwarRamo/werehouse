@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectQueue } from '@nestjs/bullmq';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaginationQueryParams } from '../common/types/query.types';
+import { resolvePagination } from '../common/utils/pagination.util';
 import { CalculatePayrollDto } from './dto/calculate-payroll.dto';
 import { Queue } from 'bullmq';
 import { QUEUE_JOBS, QUEUE_NAMES } from '../queues/queue.constants';
@@ -13,6 +15,11 @@ type PayrollQueuePayload = {
   payrollRunId: string;
   dto: CalculatePayrollDto;
   userId?: string;
+};
+
+export type PayrollListQuery = PaginationQueryParams & {
+  status?: string;
+  approvalStatus?: string;
 };
 
 @Injectable()
@@ -41,10 +48,8 @@ export class PayrollService {
     };
   }
 
-  async list(query: any) {
-    const page = Number(query.page || 1);
-    const limit = Math.min(Number(query.limit || 50), 200);
-    const skip = (page - 1) * limit;
+  async list(query: PayrollListQuery) {
+    const { page, limit, skip } = resolvePagination(query);
 
     const where: Prisma.PayrollRunWhereInput = {};
     if (query.status) where.status = query.status;

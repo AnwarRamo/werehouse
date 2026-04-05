@@ -2,13 +2,19 @@ import { InventoryService } from './inventory.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { ReserveStockDto } from './dto/reserve-stock.dto';
+import { PaginationQueryParams } from '../common/types/query.types';
+type InventoryProductsQuery = PaginationQueryParams & {
+    category?: string;
+    status?: string;
+    search?: string;
+};
 export declare class InventoryController {
     private readonly inventoryService;
     constructor(inventoryService: InventoryService);
-    listProducts(query: any): Promise<{
+    listProducts(query: InventoryProductsQuery): Promise<{
         products: {
-            id: string;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
@@ -28,8 +34,8 @@ export declare class InventoryController {
     createProduct(dto: CreateProductDto): Promise<{
         message: string;
         product: {
-            id: string;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
@@ -42,8 +48,8 @@ export declare class InventoryController {
     }>;
     getProduct(productId: string): Promise<{
         product: {
-            id: string;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
@@ -67,8 +73,8 @@ export declare class InventoryController {
     updateProduct(productId: string, dto: Partial<CreateProductDto>): Promise<{
         message: string;
         product: {
-            id: string;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
@@ -133,7 +139,12 @@ export declare class InventoryController {
         };
     }>;
     lowStock(): Promise<{
-        alerts: any[];
+        alerts: {
+            sku: string;
+            name: string;
+            available: number;
+            reorderLevel: number;
+        }[];
         count: number;
     }>;
     stats(): Promise<{
@@ -143,3 +154,4 @@ export declare class InventoryController {
         totalReserved: number;
     }>;
 }
+export {};

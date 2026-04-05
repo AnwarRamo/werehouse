@@ -2,7 +2,11 @@
 
 ## Quick Start
 1. npm install
-2. npm run start:dev
+2. copy `.env.example` to `.env`
+3. npm run dev
+
+Alternative (if PostgreSQL/Redis already run on your machine):
+- npm run start:dev
 
 Server default:
 - http://localhost:5001
@@ -27,7 +31,13 @@ Create a .env file in backend-nest and set:
 - JWT_SECRET=change_me
 - JWT_EXPIRE=24h
 - DATABASE_URL=postgres://postgres:postgres@localhost:5432/warehouse_system
-- DB_SYNCHRONIZE=true
+- REDIS_URL=redis://127.0.0.1:6379
+
+## Useful Commands
+- `npm run dev` starts PostgreSQL + Redis (Docker) then runs API in watch mode.
+- `npm run infra:up` starts PostgreSQL + Redis only.
+- `npm run infra:down` stops local infrastructure containers.
+- `npm run start:dev` runs the API only.
 
 ## Implemented Modules
 - auth

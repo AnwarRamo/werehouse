@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Request } from 'express';
+import { RequestWithCorrelationId } from '../types/request-context.types';
 
 export type AuditEvent = {
   action: string;
@@ -15,7 +16,10 @@ export class AuditService {
   private readonly logger = new Logger('AUDIT');
 
   log(event: AuditEvent, req?: Request) {
-    const correlationId = req ? (req as any).correlationId || req.headers['x-correlation-id'] : null;
+    const request = req as RequestWithCorrelationId | undefined;
+    const correlationId = request
+      ? request.correlationId || request.headers['x-correlation-id']
+      : null;
 
     this.logger.log(
       JSON.stringify({
@@ -27,8 +31,8 @@ export class AuditService {
         targetType: event.targetType || null,
         targetId: event.targetId || null,
         metadata: event.metadata || {},
-        path: req?.originalUrl || null,
-        method: req?.method || null,
+        path: request?.originalUrl || null,
+        method: request?.method || null,
       }),
     );
   }

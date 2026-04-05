@@ -1,20 +1,32 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaginationQueryParams } from '../common/types/query.types';
+import { resolvePagination } from '../common/utils/pagination.util';
 import { CreateProductDto } from './dto/create-product.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { ReserveStockDto } from './dto/reserve-stock.dto';
 
 type UpdateProductDto = Partial<CreateProductDto> & { status?: string };
+type InventoryListProductsQuery = PaginationQueryParams & {
+  category?: string;
+  status?: string;
+  search?: string;
+};
+
+type LowStockAlert = {
+  sku: string;
+  name: string;
+  available: number;
+  reorderLevel: number;
+};
 
 @Injectable()
 export class InventoryService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listProducts(query: any) {
-    const page = Number(query.page || 1);
-    const limit = Math.min(Number(query.limit || 50), 200);
-    const skip = (page - 1) * limit;
+  async listProducts(query: InventoryListProductsQuery) {
+    const { page, limit, skip } = resolvePagination(query);
 
     const where: Prisma.ProductWhereInput = {};
     if (query.category) where.category = query.category;
@@ -64,18 +76,21 @@ export class InventoryService {
   }
 
   async updateProduct(productId: string, dto: UpdateProductDto) {
-    delete (dto as any).sku;
+    const { sku: _ignoredSku, ...safeDto } = dto;
+
     const existing = await this.prisma.product.findUnique({ where: { id: productId } });
     if (!existing) throw new NotFoundException('Product not found');
 
     const product = await this.prisma.product.update({
       where: { id: productId },
       data: {
-        ...dto,
-        unitPrice: dto.unitPrice !== undefined ? new Prisma.Decimal(dto.unitPrice) : undefined,
-        costPrice: dto.costPrice !== undefined ? new Prisma.Decimal(dto.costPrice) : undefined,
-        reorderLevel: dto.reorderLevel,
-        status: dto.status,
+        ...safeDto,
+        unitPrice:
+          safeDto.unitPrice !== undefined ? new Prisma.Decimal(safeDto.unitPrice) : undefined,
+        costPrice:
+          safeDto.costPrice !== undefined ? new Prisma.Decimal(safeDto.costPrice) : undefined,
+        reorderLevel: safeDto.reorderLevel,
+        status: safeDto.status,
       },
     });
     return { message: 'Product updated successfully', product };
@@ -155,16 +170,29 @@ export class InventoryService {
   }
 
   async lowStockAlerts() {
-    const products = await this.prisma.product.findMany({ where: { status: 'active' } });
-    const alerts: any[] = [];
+    const [products, stockSums] = await Promise.all([
+      this.prisma.product.findMany({
+        where: { status: 'active' },
+        select: { sku: true, name: true, reorderLevel: true },
+      }),
+      this.prisma.stockLevel.groupBy({
+        by: ['sku'],
+        _sum: { available: true },
+      }),
+    ]);
 
-    for (const p of products) {
-      const stocks = await this.prisma.stockLevel.findMany({ where: { sku: p.sku } });
-      const totalAvailable = stocks.reduce((s: number, x: (typeof stocks)[number]) => s + x.available, 0);
-      if (totalAvailable < p.reorderLevel) {
-        alerts.push({ sku: p.sku, name: p.name, available: totalAvailable, reorderLevel: p.reorderLevel });
-      }
-    }
+    const availableBySku = new Map<string, number>(
+      stockSums.map((entry) => [entry.sku, entry._sum.available ?? 0]),
+    );
+
+    const alerts: LowStockAlert[] = products
+      .filter((product) => (availableBySku.get(product.sku) ?? 0) < product.reorderLevel)
+      .map((product) => ({
+        sku: product.sku,
+        name: product.name,
+        available: availableBySku.get(product.sku) ?? 0,
+        reorderLevel: product.reorderLevel,
+      }));
 
     return { alerts, count: alerts.length };
   }

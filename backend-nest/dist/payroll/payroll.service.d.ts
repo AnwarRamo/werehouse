@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaginationQueryParams } from '../common/types/query.types';
 import { CalculatePayrollDto } from './dto/calculate-payroll.dto';
 import { Queue } from 'bullmq';
 type PayrollQueuePayload = {
@@ -7,18 +8,24 @@ type PayrollQueuePayload = {
     dto: CalculatePayrollDto;
     userId?: string;
 };
+export type PayrollListQuery = PaginationQueryParams & {
+    status?: string;
+    approvalStatus?: string;
+};
 export declare class PayrollService {
     private readonly prisma;
     private readonly payrollQueue;
     constructor(prisma: PrismaService, payrollQueue: Queue);
     private resolvePeriod;
-    list(query: any): Promise<{
+    list(query: PayrollListQuery): Promise<{
         payrollRuns: {
             status: string;
             id: string;
-            runId: string;
+            currency: string;
+            notes: string | null;
             periodStart: Date;
             periodEnd: Date;
+            runId: string;
             periodType: string;
             runDate: Date;
             runBy: string | null;
@@ -29,8 +36,6 @@ export declare class PayrollService {
             totalGrossPay: Prisma.Decimal;
             totalDeductions: Prisma.Decimal;
             totalNetPay: Prisma.Decimal;
-            currency: string;
-            notes: string | null;
         }[];
         pagination: {
             page: number;
@@ -44,9 +49,11 @@ export declare class PayrollService {
         payrollRun: {
             status: string;
             id: string;
-            runId: string;
+            currency: string;
+            notes: string | null;
             periodStart: Date;
             periodEnd: Date;
+            runId: string;
             periodType: string;
             runDate: Date;
             runBy: string | null;
@@ -57,8 +64,6 @@ export declare class PayrollService {
             totalGrossPay: Prisma.Decimal;
             totalDeductions: Prisma.Decimal;
             totalNetPay: Prisma.Decimal;
-            currency: string;
-            notes: string | null;
         };
     }>;
     calculateAsync(dto: CalculatePayrollDto, userId?: string): Promise<{
@@ -66,9 +71,11 @@ export declare class PayrollService {
         payrollRun: {
             status: string;
             id: string;
-            runId: string;
+            currency: string;
+            notes: string | null;
             periodStart: Date;
             periodEnd: Date;
+            runId: string;
             periodType: string;
             runDate: Date;
             runBy: string | null;
@@ -79,17 +86,17 @@ export declare class PayrollService {
             totalGrossPay: Prisma.Decimal;
             totalDeductions: Prisma.Decimal;
             totalNetPay: Prisma.Decimal;
-            currency: string;
-            notes: string | null;
         };
     }>;
     getRun(runId: string): Promise<{
         payrollRun: {
             status: string;
             id: string;
-            runId: string;
+            currency: string;
+            notes: string | null;
             periodStart: Date;
             periodEnd: Date;
+            runId: string;
             periodType: string;
             runDate: Date;
             runBy: string | null;
@@ -100,23 +107,21 @@ export declare class PayrollService {
             totalGrossPay: Prisma.Decimal;
             totalDeductions: Prisma.Decimal;
             totalNetPay: Prisma.Decimal;
-            currency: string;
-            notes: string | null;
         };
         items: {
             id: string;
-            totalDeductions: Prisma.Decimal;
-            payrollRunId: string;
-            employeeId: string;
-            employeeName: string;
-            department: string | null;
-            hoursWorked: Prisma.Decimal;
-            hourlyRate: Prisma.Decimal;
-            grossPay: Prisma.Decimal;
-            netPay: Prisma.Decimal;
-            anomalies: string[];
             createdAt: Date;
             updatedAt: Date;
+            employeeId: string;
+            hourlyRate: Prisma.Decimal;
+            department: string | null;
+            anomalies: string[];
+            totalDeductions: Prisma.Decimal;
+            payrollRunId: string;
+            employeeName: string;
+            hoursWorked: Prisma.Decimal;
+            grossPay: Prisma.Decimal;
+            netPay: Prisma.Decimal;
         }[];
         itemCount: number;
     }>;
@@ -124,18 +129,18 @@ export declare class PayrollService {
         employeeId: string;
         payrollItems: {
             id: string;
-            totalDeductions: Prisma.Decimal;
-            payrollRunId: string;
-            employeeId: string;
-            employeeName: string;
-            department: string | null;
-            hoursWorked: Prisma.Decimal;
-            hourlyRate: Prisma.Decimal;
-            grossPay: Prisma.Decimal;
-            netPay: Prisma.Decimal;
-            anomalies: string[];
             createdAt: Date;
             updatedAt: Date;
+            employeeId: string;
+            hourlyRate: Prisma.Decimal;
+            department: string | null;
+            anomalies: string[];
+            totalDeductions: Prisma.Decimal;
+            payrollRunId: string;
+            employeeName: string;
+            hoursWorked: Prisma.Decimal;
+            grossPay: Prisma.Decimal;
+            netPay: Prisma.Decimal;
         }[];
     }>;
     approve(runId: string, userId?: string): Promise<{
@@ -143,9 +148,11 @@ export declare class PayrollService {
         payrollRun: {
             status: string;
             id: string;
-            runId: string;
+            currency: string;
+            notes: string | null;
             periodStart: Date;
             periodEnd: Date;
+            runId: string;
             periodType: string;
             runDate: Date;
             runBy: string | null;
@@ -156,8 +163,6 @@ export declare class PayrollService {
             totalGrossPay: Prisma.Decimal;
             totalDeductions: Prisma.Decimal;
             totalNetPay: Prisma.Decimal;
-            currency: string;
-            notes: string | null;
         };
     }>;
     reject(runId: string, reason: string, userId?: string): Promise<{
@@ -165,9 +170,11 @@ export declare class PayrollService {
         payrollRun: {
             status: string;
             id: string;
-            runId: string;
+            currency: string;
+            notes: string | null;
             periodStart: Date;
             periodEnd: Date;
+            runId: string;
             periodType: string;
             runDate: Date;
             runBy: string | null;
@@ -178,8 +185,6 @@ export declare class PayrollService {
             totalGrossPay: Prisma.Decimal;
             totalDeductions: Prisma.Decimal;
             totalNetPay: Prisma.Decimal;
-            currency: string;
-            notes: string | null;
         };
     }>;
     summary(periodStart: string, periodEnd: string): Promise<{
@@ -217,9 +222,11 @@ export declare class PayrollService {
     processPayrollRunJob(payload: PayrollQueuePayload): Promise<{
         status: string;
         id: string;
-        runId: string;
+        currency: string;
+        notes: string | null;
         periodStart: Date;
         periodEnd: Date;
+        runId: string;
         periodType: string;
         runDate: Date;
         runBy: string | null;
@@ -230,8 +237,6 @@ export declare class PayrollService {
         totalGrossPay: Prisma.Decimal;
         totalDeductions: Prisma.Decimal;
         totalNetPay: Prisma.Decimal;
-        currency: string;
-        notes: string | null;
     }>;
     markPayrollRunFailed(payrollRunId: string, message: string): Promise<void>;
     private enqueuePayrollJob;

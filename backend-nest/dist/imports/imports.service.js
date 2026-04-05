@@ -55,6 +55,7 @@ const path_1 = require("path");
 const bullmq_2 = require("bullmq");
 const XLSX = __importStar(require("xlsx"));
 const queue_constants_1 = require("../queues/queue.constants");
+const pagination_util_1 = require("../common/utils/pagination.util");
 const IMPORT_BATCH_SIZE = 50;
 const IMPORT_MAX_ROWS = 50_000;
 let ImportsService = class ImportsService {
@@ -63,9 +64,7 @@ let ImportsService = class ImportsService {
         this.importsQueue = importsQueue;
     }
     async history(query) {
-        const page = Number(query.page || 1);
-        const limit = Math.min(Number(query.limit || 50), 200);
-        const skip = (page - 1) * limit;
+        const { page, limit, skip } = (0, pagination_util_1.resolvePagination)(query);
         const where = {};
         if (query.entity)
             where.entity = query.entity;
@@ -321,7 +320,10 @@ let ImportsService = class ImportsService {
             if (!sheetName)
                 throw new common_1.BadRequestException('Excel file must contain at least one worksheet');
             const worksheet = workbook.Sheets[sheetName];
-            const parsed = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: false });
+            const parsed = XLSX.utils.sheet_to_json(worksheet, {
+                defval: '',
+                raw: false,
+            });
             const first = parsed[0] || {};
             const headers = Object.keys(first).map((key) => this.normalizeHeader(key));
             const rows = parsed.map((row) => {
@@ -337,7 +339,12 @@ let ImportsService = class ImportsService {
             return { rows, headers };
         }
         const text = buffer.toString('utf8');
-        const parsed = (0, sync_1.parse)(text, { columns: true, skip_empty_lines: true, trim: true, bom: true });
+        const parsed = (0, sync_1.parse)(text, {
+            columns: true,
+            skip_empty_lines: true,
+            trim: true,
+            bom: true,
+        });
         const first = parsed[0] || {};
         const headers = Object.keys(first).map((key) => this.normalizeHeader(key));
         const rows = parsed.map((row) => {
@@ -440,7 +447,7 @@ let ImportsService = class ImportsService {
                                 department,
                                 scheduledStart,
                                 scheduledEnd,
-                                status: status,
+                                status,
                                 roleId,
                             },
                             create: {
@@ -452,7 +459,7 @@ let ImportsService = class ImportsService {
                                 department,
                                 scheduledStart,
                                 scheduledEnd,
-                                status: status,
+                                status,
                                 roleId,
                             },
                         });
@@ -460,7 +467,11 @@ let ImportsService = class ImportsService {
                     return null;
                 }
                 catch (error) {
-                    return { row: offset + index + 1, error: error?.message || 'Unknown validation error' };
+                    const typedError = error;
+                    return {
+                        row: offset + index + 1,
+                        error: typedError.message || 'Unknown validation error',
+                    };
                 }
             }));
             for (const result of batchResults) {
@@ -522,7 +533,11 @@ let ImportsService = class ImportsService {
                     return null;
                 }
                 catch (error) {
-                    return { row: offset + index + 1, error: error?.message || 'Unknown validation error' };
+                    const typedError = error;
+                    return {
+                        row: offset + index + 1,
+                        error: typedError.message || 'Unknown validation error',
+                    };
                 }
             }));
             for (const result of batchResults) {

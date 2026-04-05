@@ -7,6 +7,11 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { RequestWithCorrelationId } from '../types/request-context.types';
+
+type ExceptionResponseShape = {
+  message?: string | string[];
+};
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -14,11 +19,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
-    const request = ctx.getRequest<Request>();
+    const request = ctx.getRequest<RequestWithCorrelationId>();
     const response = ctx.getResponse<Response>();
 
-    const correlationId =
-      (request as any).correlationId || request.headers['x-correlation-id'] || null;
+    const correlationId = request.correlationId || request.headers['x-correlation-id'] || null;
 
     const isHttpException = exception instanceof HttpException;
     const statusCode = isHttpException
@@ -62,7 +66,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     }
 
     if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
-      const maybeMessage = (exceptionResponse as any).message;
+      const maybeMessage = (exceptionResponse as ExceptionResponseShape).message;
       if (Array.isArray(maybeMessage)) {
         return maybeMessage.join(', ');
       }

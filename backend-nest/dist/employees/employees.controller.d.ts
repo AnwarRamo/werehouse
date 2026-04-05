@@ -1,24 +1,25 @@
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { EmployeesListQuery } from './employees.service';
 export declare class EmployeesController {
     private readonly employeesService;
     constructor(employeesService: EmployeesService);
-    list(query: any): Promise<{
+    list(query: EmployeesListQuery): Promise<{
         employees: {
-            id: string;
             email: string;
             roleId: string | null;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
             employeeId: string;
             hourlyRate: import("@prisma/client-runtime-utils").Decimal;
-            currency: string;
+            department: string;
             scheduledStart: string | null;
             scheduledEnd: string | null;
-            department: string;
+            currency: string;
         }[];
         pagination: {
             page: number;
@@ -38,70 +39,70 @@ export declare class EmployeesController {
         department: string;
         count: number;
         employees: {
-            id: string;
             email: string;
             roleId: string | null;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
             employeeId: string;
             hourlyRate: import("@prisma/client-runtime-utils").Decimal;
-            currency: string;
+            department: string;
             scheduledStart: string | null;
             scheduledEnd: string | null;
-            department: string;
+            currency: string;
         }[];
     }>;
     create(dto: CreateEmployeeDto): Promise<{
         message: string;
         employee: {
-            id: string;
             email: string;
             roleId: string | null;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
             employeeId: string;
             hourlyRate: import("@prisma/client-runtime-utils").Decimal;
-            currency: string;
+            department: string;
             scheduledStart: string | null;
             scheduledEnd: string | null;
-            department: string;
+            currency: string;
         };
     }>;
     getOne(employeeId: string): Promise<{
-        id: string;
         email: string;
         roleId: string | null;
         status: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
         employeeId: string;
         hourlyRate: import("@prisma/client-runtime-utils").Decimal;
-        currency: string;
+        department: string;
         scheduledStart: string | null;
         scheduledEnd: string | null;
-        department: string;
+        currency: string;
     }>;
     update(employeeId: string, dto: UpdateEmployeeDto): Promise<{
         message: string;
         employee: {
-            id: string;
             email: string;
             roleId: string | null;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
             employeeId: string;
             hourlyRate: import("@prisma/client-runtime-utils").Decimal;
-            currency: string;
+            department: string;
             scheduledStart: string | null;
             scheduledEnd: string | null;
-            department: string;
+            currency: string;
         };
     }>;
     remove(employeeId: string): Promise<{

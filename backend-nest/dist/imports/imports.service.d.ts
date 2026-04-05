@@ -1,30 +1,35 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { Queue } from 'bullmq';
+import { PaginationQueryParams } from '../common/types/query.types';
 type ParsedRow = Record<string, string>;
 type RowError = {
     row: number;
     error: string;
 };
+export type ImportsHistoryQuery = PaginationQueryParams & {
+    entity?: string;
+    status?: string;
+};
 export declare class ImportsService {
     private readonly prisma;
     private readonly importsQueue;
     constructor(prisma: PrismaService, importsQueue: Queue);
-    history(query: any): Promise<{
+    history(query: ImportsHistoryQuery): Promise<{
         imports: {
+            status: string;
             id: string;
+            createdAt: Date;
+            updatedAt: Date;
             jobId: string;
             entity: string;
             fileName: string;
             uploadedBy: string;
             uploadedAt: Date;
-            status: string;
             totalRows: number;
             successRows: number;
             errorRows: number;
             errors: Prisma.JsonValue;
-            createdAt: Date;
-            updatedAt: Date;
         }[];
         pagination: {
             page: number;
@@ -43,37 +48,37 @@ export declare class ImportsService {
     }>;
     details(jobId: string): Promise<{
         errorSummary: Record<string, number>;
+        status: string;
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         jobId: string;
         entity: string;
         fileName: string;
         uploadedBy: string;
         uploadedAt: Date;
-        status: string;
         totalRows: number;
         successRows: number;
         errorRows: number;
         errors: Prisma.JsonValue;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     getEmployeesTemplateCsv(): string;
     getProductsTemplateCsv(): string;
-    validateEmployeesImport(file: any): Promise<{
+    validateEmployeesImport(file: Express.Multer.File): Promise<{
         totalRows: number;
         successRows: number;
         errorRows: number;
         errors: RowError[];
         message: string;
     }>;
-    validateProductsImport(file: any): Promise<{
+    validateProductsImport(file: Express.Multer.File): Promise<{
         totalRows: number;
         successRows: number;
         errorRows: number;
         errors: RowError[];
         message: string;
     }>;
-    importEmployees(file: any, userId: string): Promise<{
+    importEmployees(file: Express.Multer.File, userId: string): Promise<{
         message: string;
         jobId: string;
         status: string;
@@ -81,13 +86,13 @@ export declare class ImportsService {
         successRows: number;
         errorRows: number;
     }>;
-    importEmployeesAsync(file: any, userId: string): Promise<{
+    importEmployeesAsync(file: Express.Multer.File, userId: string): Promise<{
         message: string;
         jobId: string;
         status: string;
         totalRows: number;
     }>;
-    importProducts(file: any, userId: string): Promise<{
+    importProducts(file: Express.Multer.File, userId: string): Promise<{
         message: string;
         jobId: string;
         status: string;
@@ -95,7 +100,7 @@ export declare class ImportsService {
         successRows: number;
         errorRows: number;
     }>;
-    importProductsAsync(file: any, userId: string): Promise<{
+    importProductsAsync(file: Express.Multer.File, userId: string): Promise<{
         message: string;
         jobId: string;
         status: string;

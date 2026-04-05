@@ -1,8 +1,15 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaginationQueryParams } from '../common/types/query.types';
+import { resolvePagination } from '../common/utils/pagination.util';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
+
+export type AttendanceListQuery = PaginationQueryParams & {
+  employeeId?: string;
+  date?: string;
+};
 
 type ShiftPair = {
   inRecordId?: string;
@@ -35,10 +42,8 @@ export class AttendanceService {
     };
   }
 
-  async list(query: any) {
-    const page = Number(query.page || 1);
-    const limit = Math.min(Number(query.limit || 100), 200);
-    const skip = (page - 1) * limit;
+  async list(query: AttendanceListQuery) {
+    const { page, limit, skip } = resolvePagination(query, { defaultLimit: 100 });
 
     const where: Prisma.AttendanceRecordWhereInput = {};
     if (query.employeeId) where.employeeId = query.employeeId;

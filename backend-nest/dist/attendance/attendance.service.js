@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AttendanceService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const pagination_util_1 = require("../common/utils/pagination.util");
 let AttendanceService = class AttendanceService {
     constructor(prisma) {
         this.prisma = prisma;
@@ -32,9 +33,7 @@ let AttendanceService = class AttendanceService {
         };
     }
     async list(query) {
-        const page = Number(query.page || 1);
-        const limit = Math.min(Number(query.limit || 100), 200);
-        const skip = (page - 1) * limit;
+        const { page, limit, skip } = (0, pagination_util_1.resolvePagination)(query, { defaultLimit: 100 });
         const where = {};
         if (query.employeeId)
             where.employeeId = query.employeeId;

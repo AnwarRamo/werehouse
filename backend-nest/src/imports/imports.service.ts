@@ -7,6 +7,8 @@ import { extname } from 'path';
 import { Queue } from 'bullmq';
 import * as XLSX from 'xlsx';
 import { QUEUE_JOBS, QUEUE_NAMES } from '../queues/queue.constants';
+import { PaginationQueryParams } from '../common/types/query.types';
+import { resolvePagination } from '../common/utils/pagination.util';
 
 type ParsedRow = Record<string, string>;
 type RowError = { row: number; error: string };
@@ -20,6 +22,17 @@ type ImportQueuePayload = {
   rows: ParsedRow[];
 };
 
+type RowParseValue = string | number | boolean | Date | null | undefined;
+
+type RowParseError = {
+  message?: string;
+};
+
+export type ImportsHistoryQuery = PaginationQueryParams & {
+  entity?: string;
+  status?: string;
+};
+
 @Injectable()
 export class ImportsService {
   constructor(
@@ -27,10 +40,8 @@ export class ImportsService {
     @InjectQueue(QUEUE_NAMES.IMPORTS) private readonly importsQueue: Queue,
   ) {}
 
-  async history(query: any) {
-    const page = Number(query.page || 1);
-    const limit = Math.min(Number(query.limit || 50), 200);
-    const skip = (page - 1) * limit;
+  async history(query: ImportsHistoryQuery) {
+    const { page, limit, skip } = resolvePagination(query);
     const where: Prisma.ImportJobWhereInput = {};
     if (query.entity) where.entity = query.entity;
     if (query.status) where.status = query.status;
@@ -100,7 +111,7 @@ export class ImportsService {
     ].join('\n');
   }
 
-  async validateEmployeesImport(file: any) {
+  async validateEmployeesImport(file: Express.Multer.File) {
     if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
     const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
     this.assertEmployeesHeaders(headers);
@@ -108,7 +119,7 @@ export class ImportsService {
     return { message: 'Employees import validation completed (dry-run)', ...result };
   }
 
-  async validateProductsImport(file: any) {
+  async validateProductsImport(file: Express.Multer.File) {
     if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
     const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
     this.assertProductsHeaders(headers);
@@ -116,7 +127,7 @@ export class ImportsService {
     return { message: 'Products import validation completed (dry-run)', ...result };
   }
 
-  async importEmployees(file: any, userId: string) {
+  async importEmployees(file: Express.Multer.File, userId: string) {
     if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
 
     const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
@@ -152,7 +163,7 @@ export class ImportsService {
     return { message: 'Employee import processed', jobId: job.jobId, status, totalRows, successRows, errorRows };
   }
 
-  async importEmployeesAsync(file: any, userId: string) {
+  async importEmployeesAsync(file: Express.Multer.File, userId: string) {
     if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
 
     const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
@@ -175,7 +186,7 @@ export class ImportsService {
     return { message: 'Employee import queued', jobId: job.jobId, status: 'queued', totalRows: rows.length };
   }
 
-  async importProducts(file: any, userId: string) {
+  async importProducts(file: Express.Multer.File, userId: string) {
     if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
 
     const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
@@ -211,7 +222,7 @@ export class ImportsService {
     return { message: 'Product import processed', jobId: job.jobId, status, totalRows, successRows, errorRows };
   }
 
-  async importProductsAsync(file: any, userId: string) {
+  async importProductsAsync(file: Express.Multer.File, userId: string) {
     if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
 
     const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
@@ -322,7 +333,10 @@ export class ImportsService {
       if (!sheetName) throw new BadRequestException('Excel file must contain at least one worksheet');
 
       const worksheet = workbook.Sheets[sheetName];
-      const parsed = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { defval: '', raw: false });
+      const parsed = XLSX.utils.sheet_to_json<Record<string, RowParseValue>>(worksheet, {
+        defval: '',
+        raw: false,
+      });
       const first = parsed[0] || {};
       const headers = Object.keys(first).map((key) => this.normalizeHeader(key));
       const rows = parsed.map((row) => {
@@ -343,7 +357,12 @@ export class ImportsService {
     }
 
     const text = buffer.toString('utf8');
-    const parsed = parseCsv(text, { columns: true, skip_empty_lines: true, trim: true, bom: true }) as Record<string, any>[];
+    const parsed = parseCsv(text, {
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
+      bom: true,
+    }) as Record<string, RowParseValue>[];
     const first = parsed[0] || {};
     const headers = Object.keys(first).map((key) => this.normalizeHeader(key));
     const rows = parsed.map((row) => {
@@ -450,7 +469,7 @@ export class ImportsService {
               department,
               scheduledStart,
               scheduledEnd,
-              status: status as any,
+              status,
               roleId,
             },
             create: {
@@ -462,14 +481,18 @@ export class ImportsService {
               department,
               scheduledStart,
               scheduledEnd,
-              status: status as any,
+              status,
               roleId,
             },
           });
         }
             return null;
-          } catch (error: any) {
-            return { row: offset + index + 1, error: error?.message || 'Unknown validation error' };
+          } catch (error: unknown) {
+            const typedError = error as RowParseError;
+            return {
+              row: offset + index + 1,
+              error: typedError.message || 'Unknown validation error',
+            };
           }
         }),
       );
@@ -533,8 +556,12 @@ export class ImportsService {
           });
         }
             return null;
-          } catch (error: any) {
-            return { row: offset + index + 1, error: error?.message || 'Unknown validation error' };
+          } catch (error: unknown) {
+            const typedError = error as RowParseError;
+            return {
+              row: offset + index + 1,
+              error: typedError.message || 'Unknown validation error',
+            };
           }
         }),
       );

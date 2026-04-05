@@ -1,6 +1,7 @@
 import { Injectable, Logger, NestMiddleware } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { NextFunction, Request, Response } from 'express';
+import { RequestWithCorrelationId } from '../types/request-context.types';
 
 @Injectable()
 export class RequestLoggingMiddleware implements NestMiddleware {
@@ -14,7 +15,7 @@ export class RequestLoggingMiddleware implements NestMiddleware {
         : randomUUID();
 
     req.headers['x-correlation-id'] = correlationId;
-    (req as any).correlationId = correlationId;
+    (req as RequestWithCorrelationId).correlationId = correlationId;
     res.setHeader('x-correlation-id', correlationId);
 
     const startedAt = process.hrtime.bigint();

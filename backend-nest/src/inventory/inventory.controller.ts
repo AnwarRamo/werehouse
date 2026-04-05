@@ -6,6 +6,13 @@ import { Permissions } from '../common/decorators/permissions.decorator';
 import { CreateProductDto } from './dto/create-product.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { ReserveStockDto } from './dto/reserve-stock.dto';
+import { PaginationQueryParams } from '../common/types/query.types';
+
+type InventoryProductsQuery = PaginationQueryParams & {
+  category?: string;
+  status?: string;
+  search?: string;
+};
 
 @Controller('inventory')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -14,7 +21,7 @@ export class InventoryController {
 
   @Get('products')
   @Permissions('view_inventory')
-  listProducts(@Query() query: any) {
+  listProducts(@Query() query: InventoryProductsQuery) {
     return this.inventoryService.listProducts(query);
   }
 

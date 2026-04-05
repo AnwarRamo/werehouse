@@ -19,6 +19,7 @@ import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Permissions } from '../common/decorators/permissions.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditService } from '../common/services/audit.service';
+import { AuthenticatedUser } from '../common/types/authenticated-user.types';
 
 @Controller('auth')
 export class AuthController implements OnModuleInit {
@@ -55,7 +56,7 @@ export class AuthController implements OnModuleInit {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  me(@CurrentUser() user: any) {
+  me(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.me(user.userId);
   }
 
@@ -64,7 +65,7 @@ export class AuthController implements OnModuleInit {
   @Post('users')
   async createUser(
     @Body() dto: CreateUserDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Req() req: Request,
   ) {
     const result = await this.authService.createUser(dto);
@@ -92,7 +93,7 @@ export class AuthController implements OnModuleInit {
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions('manage_roles')
   @Get('roles')
-  async getRoles(@CurrentUser() user: any, @Req() req: Request) {
+  async getRoles(@CurrentUser() user: AuthenticatedUser, @Req() req: Request) {
     const roles = await this.authService.getRoles();
     this.audit.log(
       {

@@ -1,18 +1,18 @@
 import { PrismaService } from '../prisma/prisma.service';
+import { PaginationQueryParams } from '../common/types/query.types';
 import { CreateDeviceDto } from './dto/create-device.dto';
 import { UpdateDeviceDto } from './dto/update-device.dto';
+export type DevicesListQuery = PaginationQueryParams & {
+    location?: string;
+    status?: string;
+};
 export declare class DevicesService {
     private readonly prisma;
     constructor(prisma: PrismaService);
-    list(query: {
-        page?: number;
-        limit?: number;
-        location?: string;
-        status?: string;
-    }): Promise<{
+    list(query: DevicesListQuery): Promise<{
         devices: {
-            id: string;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
@@ -33,8 +33,8 @@ export declare class DevicesService {
     create(dto: CreateDeviceDto): Promise<{
         message: string;
         device: {
-            id: string;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
@@ -47,8 +47,8 @@ export declare class DevicesService {
         };
     }>;
     getByDeviceId(deviceId: string): Promise<{
-        id: string;
         status: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
@@ -62,8 +62,8 @@ export declare class DevicesService {
     update(deviceId: string, dto: UpdateDeviceDto): Promise<{
         message: string;
         device: {
-            id: string;
             status: string;
+            id: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
