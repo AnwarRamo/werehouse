@@ -7,6 +7,8 @@ RUN npm ci
 
 FROM deps AS build
 COPY backend-nest/ ./
+ARG DATABASE_URL=postgresql://postgres:postgres@localhost:5432/warehouse_system?schema=public
+ENV DATABASE_URL=${DATABASE_URL}
 RUN npm run prisma:generate
 RUN npm run build
 
