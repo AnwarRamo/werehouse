@@ -11,16 +11,16 @@ export declare class DevicesService {
     constructor(prisma: PrismaService);
     list(query: DevicesListQuery): Promise<{
         devices: {
-            status: string;
             id: string;
+            status: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
+            port: number | null;
             deviceId: string;
             location: string;
             model: string;
             ip: string | null;
-            port: number | null;
             lastSync: Date | null;
         }[];
         pagination: {
@@ -33,45 +33,45 @@ export declare class DevicesService {
     create(dto: CreateDeviceDto): Promise<{
         message: string;
         device: {
-            status: string;
             id: string;
+            status: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
+            port: number | null;
             deviceId: string;
             location: string;
             model: string;
             ip: string | null;
-            port: number | null;
             lastSync: Date | null;
         };
     }>;
     getByDeviceId(deviceId: string): Promise<{
-        status: string;
         id: string;
+        status: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
+        port: number | null;
         deviceId: string;
         location: string;
         model: string;
         ip: string | null;
-        port: number | null;
         lastSync: Date | null;
     }>;
     update(deviceId: string, dto: UpdateDeviceDto): Promise<{
         message: string;
         device: {
-            status: string;
             id: string;
+            status: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
+            port: number | null;
             deviceId: string;
             location: string;
             model: string;
             ip: string | null;
-            port: number | null;
             lastSync: Date | null;
         };
     }>;

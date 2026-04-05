@@ -22,6 +22,10 @@ const ADMIN_PERMISSIONS = [
   'edit_inventory',
   'view_imports',
   'run_imports',
+  'manage_salary',
+  'manage_advances',
+  'manage_insurance',
+  'manage_bonuses',
 ];
 
 async function upsertProtectedUser(prisma, input) {
@@ -74,6 +78,10 @@ async function main() {
     const devEmail = (process.env.DEV_ADMIN_EMAIL || 'developer@warehouse.local').toLowerCase();
     const devPassword = process.env.DEV_ADMIN_PASSWORD || 'DevAdmin@2026!';
 
+    const superUsername = (process.env.SUPERADMIN_USERNAME || 'superadmin').toLowerCase();
+    const superEmail = (process.env.SUPERADMIN_EMAIL || 'superadmin@warehouse.local').toLowerCase();
+    const superPassword = process.env.SUPERADMIN_PASSWORD || 'SuperAdmin@2026!';
+
     let adminRole = await prisma.role.findUnique({ where: { name: 'admin' } });
 
     if (!adminRole) {
@@ -111,9 +119,17 @@ async function main() {
       roleId: adminRole.id,
     });
 
+    const superUser = await upsertProtectedUser(prisma, {
+      username: superUsername,
+      email: superEmail,
+      password: superPassword,
+      roleId: adminRole.id,
+    });
+
     console.log('Protected admins ensured.');
     console.log('admin:', { id: adminUser.id, username: adminUser.username, email: adminUser.email });
     console.log('developer:', { id: devUser.id, username: devUser.username, email: devUser.email });
+    console.log('superadmin:', { id: superUser.id, username: superUser.username, email: superUser.email });
   } finally {
     await prisma.$disconnect();
     await pool.end();

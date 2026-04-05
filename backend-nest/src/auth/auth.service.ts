@@ -20,6 +20,9 @@ export class AuthService {
   private readonly devAdminUsername: string;
   private readonly devAdminEmail: string;
   private readonly devAdminPassword: string;
+  private readonly superAdminUsername: string;
+  private readonly superAdminEmail: string;
+  private readonly superAdminPassword: string;
 
   private static readonly ADMIN_PERMISSIONS = [
     'view_employees',
@@ -38,6 +41,10 @@ export class AuthService {
     'edit_inventory',
     'view_imports',
     'run_imports',
+    'manage_salary',
+    'manage_advances',
+    'manage_insurance',
+    'manage_bonuses',
   ];
 
   constructor(
@@ -64,6 +71,16 @@ export class AuthService {
       'DEV_ADMIN_PASSWORD',
       'DevAdmin@2026!',
     );
+    this.superAdminUsername = this.config
+      .get<string>('SUPERADMIN_USERNAME', 'superadmin')
+      .toLowerCase();
+    this.superAdminEmail = this.config
+      .get<string>('SUPERADMIN_EMAIL', 'superadmin@warehouse.local')
+      .toLowerCase();
+    this.superAdminPassword = this.config.get<string>(
+      'SUPERADMIN_PASSWORD',
+      'SuperAdmin@2026!',
+    );
   }
 
   private isProtectedAdminIdentity(username: string, email?: string) {
@@ -73,8 +90,10 @@ export class AuthService {
     return (
       normalizedUsername === this.adminUsername ||
       normalizedUsername === this.devAdminUsername ||
+      normalizedUsername === this.superAdminUsername ||
       normalizedEmail === this.adminEmail ||
-      normalizedEmail === this.devAdminEmail
+      normalizedEmail === this.devAdminEmail ||
+      normalizedEmail === this.superAdminEmail
     );
   }
 
@@ -153,6 +172,13 @@ export class AuthService {
       username: this.devAdminUsername,
       email: this.devAdminEmail,
       password: this.devAdminPassword,
+      roleId: adminRole.id,
+    });
+
+    await this.upsertProtectedAdminUser({
+      username: this.superAdminUsername,
+      email: this.superAdminEmail,
+      password: this.superAdminPassword,
       roleId: adminRole.id,
     });
   }

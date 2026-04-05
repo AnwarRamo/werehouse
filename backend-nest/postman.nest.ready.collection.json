@@ -1,127 +1,89 @@
 {
   "info": {
-    "name": "Warehouse Backend Nest - Ready Tests",
-    "_postman_id": "d42a8a96-9b30-4a5f-b43f-7da8b728d001",
-    "description": "Validated collection for auth, employees, devices, attendance, inventory, payroll, and imports.",
+    "name": "Warehouse Backend Nest - Full Collection",
+    "_postman_id": "d42a8a96-9b30-4a5f-b43f-7da8b728d002",
+    "description": "مجموعة كاملة تشمل: Auth, Employees, Devices, Attendance, Payroll, Salary, Advances, Insurance, Bonuses, Inventory, Imports",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
     "type": "bearer",
-    "bearer": [
-      {
-        "key": "token",
-        "value": "{{token}}",
-        "type": "string"
-      }
-    ]
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:5001/api" },
-    { "key": "username", "value": "admin" },
-    { "key": "password", "value": "password123" },
-    { "key": "token", "value": "" },
-    { "key": "roleId", "value": "" },
-    { "key": "employeeId", "value": "EMP900001" },
-    { "key": "deviceId", "value": "DEV900001" },
-    { "key": "attendanceId", "value": "" },
-    { "key": "sku", "value": "SKU-TEST-001" },
-    { "key": "productId", "value": "" },
-    { "key": "payrollRunId", "value": "" },
-    { "key": "importJobId", "value": "" }
+    { "key": "baseUrl",       "value": "http://localhost:5001/api" },
+    { "key": "username",      "value": "superadmin" },
+    { "key": "password",      "value": "SuperAdmin@2026!" },
+    { "key": "token",         "value": "" },
+    { "key": "roleId",        "value": "" },
+    { "key": "employeeId",    "value": "EMP003" },
+    { "key": "deviceId",      "value": "DEV900001" },
+    { "key": "attendanceId",  "value": "" },
+    { "key": "sku",           "value": "SKU-TEST-001" },
+    { "key": "productId",     "value": "" },
+    { "key": "payrollRunId",  "value": "" },
+    { "key": "importJobId",   "value": "" },
+    { "key": "advanceId",     "value": "" },
+    { "key": "bonusId",       "value": "" }
   ],
   "item": [
     {
       "name": "01 Health",
       "item": [
-        {
-          "name": "GET Health",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "url": "{{baseUrl}}/health"
-          }
-        },
-        {
-          "name": "GET Health Live",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "url": "{{baseUrl}}/health/live"
-          }
-        },
-        {
-          "name": "GET Health Ready",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "url": "{{baseUrl}}/health/ready"
-          }
-        }
+        { "name": "GET Health",       "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{baseUrl}}/health" } },
+        { "name": "GET Health Live",  "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{baseUrl}}/health/live" } },
+        { "name": "GET Health Ready", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{baseUrl}}/health/ready" } }
       ]
     },
     {
       "name": "02 Auth",
       "item": [
         {
-          "name": "POST Login",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('login 200', function () { pm.response.to.have.status(200); });",
-                  "const data = pm.response.json();",
-                  "if (data.token) { pm.collectionVariables.set('token', data.token); }"
-                ]
-              }
-            }
-          ],
+          "name": "POST Login (superadmin)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('login 200', () => pm.response.to.have.status(200));",
+            "const d = pm.response.json();",
+            "if (d.token) pm.collectionVariables.set('token', d.token);"
+          ]}}],
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
-            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}" },
             "url": "{{baseUrl}}/auth/login"
           }
         },
         {
-          "name": "POST Logout",
+          "name": "POST Login (admin)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json();",
+            "if (d.token) pm.collectionVariables.set('token', d.token);"
+          ]}}],
           "request": {
+            "auth": { "type": "noauth" },
             "method": "POST",
-            "url": "{{baseUrl}}/auth/logout"
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"password123\"\n}" },
+            "url": "{{baseUrl}}/auth/login"
           }
         },
-        {
-          "name": "GET Me",
-          "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/auth/me"
-          }
-        },
+        { "name": "POST Logout",  "request": { "method": "POST", "url": "{{baseUrl}}/auth/logout" } },
+        { "name": "GET Me",       "request": { "method": "GET",  "url": "{{baseUrl}}/auth/me" } },
         {
           "name": "GET Roles (save roleId)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('roles 200', function () { pm.response.to.have.status(200); });",
-                  "const roles = pm.response.json();",
-                  "if (Array.isArray(roles) && roles.length > 0) { pm.collectionVariables.set('roleId', roles[0].id); }"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const roles = pm.response.json();",
+            "if (Array.isArray(roles) && roles.length > 0) pm.collectionVariables.set('roleId', roles[0].id);"
+          ]}}],
+          "request": { "method": "GET", "url": "{{baseUrl}}/auth/roles" }
+        },
+        { "name": "GET Users",    "request": { "method": "GET",  "url": "{{baseUrl}}/auth/users" } },
+        {
+          "name": "POST Create User",
           "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/auth/roles"
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"testuser@warehouse.local\",\n  \"password\": \"Test@1234!\",\n  \"roleId\": \"{{roleId}}\"\n}" },
+            "url": "{{baseUrl}}/auth/users"
           }
         }
       ]
@@ -133,13 +95,8 @@
           "name": "POST Create Employee",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"name\": \"Postman Employee\",\n  \"email\": \"postman.employee@warehouse.local\",\n  \"hourlyRate\": 15.5,\n  \"roleId\": \"{{roleId}}\",\n  \"department\": \"Warehouse\",\n  \"scheduledStart\": \"08:00\",\n  \"scheduledEnd\": \"16:00\"\n}"
-            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"employeeId\": \"EMP999\",\n  \"name\": \"موظف تجريبي\",\n  \"email\": \"test.emp@warehouse.local\",\n  \"hourlyRate\": 15.5,\n  \"roleId\": \"{{roleId}}\",\n  \"department\": \"Administration\",\n  \"scheduledStart\": \"08:00\",\n  \"scheduledEnd\": \"16:00\"\n}" },
             "url": "{{baseUrl}}/employees"
           }
         },
@@ -147,28 +104,17 @@
           "name": "PUT Update Employee",
           "request": {
             "method": "PUT",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"department\": \"Operations\",\n  \"hourlyRate\": 16.25\n}"
-            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"department\": \"Quality\",\n  \"hourlyRate\": 18.0\n}" },
             "url": "{{baseUrl}}/employees/{{employeeId}}"
           }
         },
-        {
-          "name": "GET Employees",
-          "request": { "method": "GET", "url": "{{baseUrl}}/employees" }
-        },
-        {
-          "name": "GET Employee by employeeId",
-          "request": { "method": "GET", "url": "{{baseUrl}}/employees/{{employeeId}}" }
-        },
-        {
-          "name": "GET Employees Stats",
-          "request": { "method": "GET", "url": "{{baseUrl}}/employees/stats" }
-        }
+        { "name": "GET Employees",                  "request": { "method": "GET", "url": "{{baseUrl}}/employees?page=1&limit=20" } },
+        { "name": "GET Employees (filter dept)",    "request": { "method": "GET", "url": "{{baseUrl}}/employees?department=Administration" } },
+        { "name": "GET Employee by ID",             "request": { "method": "GET", "url": "{{baseUrl}}/employees/{{employeeId}}" } },
+        { "name": "GET Employees Stats",            "request": { "method": "GET", "url": "{{baseUrl}}/employees/stats" } },
+        { "name": "GET Employees by Department",    "request": { "method": "GET", "url": "{{baseUrl}}/employees/department/Administration" } },
+        { "name": "DELETE Employee",                "request": { "method": "DELETE", "url": "{{baseUrl}}/employees/EMP999" } }
       ]
     },
     {
@@ -178,13 +124,8 @@
           "name": "POST Create Device",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"name\": \"Postman Device\",\n  \"location\": \"Gate A\",\n  \"model\": \"ZK Teco\",\n  \"ip\": \"192.168.1.10\",\n  \"port\": 4370\n}"
-            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"name\": \"جهاز البوابة الرئيسية\",\n  \"location\": \"Main Gate\",\n  \"model\": \"ZK Teco\",\n  \"ip\": \"192.168.1.10\",\n  \"port\": 4370\n}" },
             "url": "{{baseUrl}}/devices"
           }
         },
@@ -192,56 +133,38 @@
           "name": "PUT Update Device",
           "request": {
             "method": "PUT",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"location\": \"Gate B\"\n}"
-            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"location\": \"Gate B\"\n}" },
             "url": "{{baseUrl}}/devices/{{deviceId}}"
           }
         },
-        {
-          "name": "GET Devices",
-          "request": { "method": "GET", "url": "{{baseUrl}}/devices" }
-        },
-        {
-          "name": "GET Device by deviceId",
-          "request": { "method": "GET", "url": "{{baseUrl}}/devices/{{deviceId}}" }
-        },
-        {
-          "name": "GET Device Stats",
-          "request": { "method": "GET", "url": "{{baseUrl}}/devices/{{deviceId}}/stats" }
-        }
+        { "name": "GET Devices",          "request": { "method": "GET", "url": "{{baseUrl}}/devices" } },
+        { "name": "GET Device by ID",     "request": { "method": "GET", "url": "{{baseUrl}}/devices/{{deviceId}}" } },
+        { "name": "GET Device Stats",     "request": { "method": "GET", "url": "{{baseUrl}}/devices/{{deviceId}}/stats" } }
       ]
     },
     {
       "name": "05 Attendance",
       "item": [
         {
-          "name": "POST Create Attendance (save attendanceId)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (data.record && data.record.id) { pm.collectionVariables.set('attendanceId', data.record.id); }"
-                ]
-              }
-            }
-          ],
+          "name": "POST Create Attendance IN (save attendanceId)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json();",
+            "if (d.record && d.record.id) pm.collectionVariables.set('attendanceId', d.record.id);"
+          ]}}],
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"timestamp\": \"2026-04-02T08:00:00.000Z\",\n  \"type\": \"IN\",\n  \"deviceId\": \"{{deviceId}}\",\n  \"location\": \"Gate B\",\n  \"source\": \"manual\",\n  \"verified\": true,\n  \"notes\": \"postman checkin\"\n}"
-            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"timestamp\": \"2026-04-05T08:00:00.000Z\",\n  \"type\": \"IN\",\n  \"deviceId\": \"{{deviceId}}\",\n  \"location\": \"Main Gate\",\n  \"source\": \"manual\",\n  \"verified\": true,\n  \"notes\": \"دخول صباحي\"\n}" },
+            "url": "{{baseUrl}}/attendance"
+          }
+        },
+        {
+          "name": "POST Create Attendance OUT",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"timestamp\": \"2026-04-05T16:00:00.000Z\",\n  \"type\": \"OUT\",\n  \"deviceId\": \"{{deviceId}}\",\n  \"location\": \"Main Gate\",\n  \"source\": \"manual\",\n  \"verified\": true\n}" },
             "url": "{{baseUrl}}/attendance"
           }
         },
@@ -249,56 +172,251 @@
           "name": "PUT Update Attendance",
           "request": {
             "method": "PUT",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"notes\": \"postman note updated\"\n}"
-            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"notes\": \"تم التعديل يدوياً\"\n}" },
             "url": "{{baseUrl}}/attendance/{{attendanceId}}"
           }
         },
-        {
-          "name": "GET Attendance",
-          "request": { "method": "GET", "url": "{{baseUrl}}/attendance" }
-        },
-        {
-          "name": "GET Attendance Stats",
-          "request": { "method": "GET", "url": "{{baseUrl}}/attendance/stats" }
-        },
-        {
-          "name": "GET Attendance Anomalies",
-          "request": { "method": "GET", "url": "{{baseUrl}}/attendance/anomalies" }
-        }
+        { "name": "GET Attendance",                     "request": { "method": "GET", "url": "{{baseUrl}}/attendance?page=1&limit=50" } },
+        { "name": "GET Attendance (filter employee)",   "request": { "method": "GET", "url": "{{baseUrl}}/attendance?employeeId={{employeeId}}" } },
+        { "name": "GET Attendance Stats",               "request": { "method": "GET", "url": "{{baseUrl}}/attendance/stats" } },
+        { "name": "GET Attendance Anomalies",           "request": { "method": "GET", "url": "{{baseUrl}}/attendance/anomalies" } },
+        { "name": "GET Employee Attendance Period",     "request": { "method": "GET", "url": "{{baseUrl}}/attendance/employee/{{employeeId}}/period?startDate=2026-04-01&endDate=2026-04-30" } },
+        { "name": "DELETE Attendance Record",           "request": { "method": "DELETE", "url": "{{baseUrl}}/attendance/{{attendanceId}}" } }
       ]
     },
     {
-      "name": "06 Inventory",
+      "name": "06 Payroll",
+      "item": [
+        {
+          "name": "POST Calculate Payroll (save payrollRunId)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json();",
+            "if (d.payrollRun && d.payrollRun.id) pm.collectionVariables.set('payrollRunId', d.payrollRun.id);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"periodStart\": \"2026-04-01\",\n  \"periodEnd\": \"2026-04-30\",\n  \"gracePeriodMinutes\": 5\n}" },
+            "url": "{{baseUrl}}/payroll/calculate"
+          }
+        },
+        {
+          "name": "POST Calculate Payroll Async",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json();",
+            "if (d.payrollRun && d.payrollRun.id) pm.collectionVariables.set('payrollRunId', d.payrollRun.id);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"periodStart\": \"2026-04-01\",\n  \"periodEnd\": \"2026-04-30\",\n  \"gracePeriodMinutes\": 5\n}" },
+            "url": "{{baseUrl}}/payroll/calculate/async"
+          }
+        },
+        { "name": "PUT Approve Payroll",  "request": { "method": "PUT", "url": "{{baseUrl}}/payroll/{{payrollRunId}}/approve" } },
+        {
+          "name": "PUT Reject Payroll",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"يحتاج مراجعة\"\n}" },
+            "url": "{{baseUrl}}/payroll/{{payrollRunId}}/reject"
+          }
+        },
+        { "name": "GET Payroll List",             "request": { "method": "GET", "url": "{{baseUrl}}/payroll?page=1&limit=10" } },
+        { "name": "GET Payroll Summary",          "request": { "method": "GET", "url": "{{baseUrl}}/payroll/summary?periodStart=2026-04-01&periodEnd=2026-04-30" } },
+        { "name": "GET Payroll by ID",            "request": { "method": "GET", "url": "{{baseUrl}}/payroll/{{payrollRunId}}" } },
+        { "name": "GET Payroll Anomalies",        "request": { "method": "GET", "url": "{{baseUrl}}/payroll/{{payrollRunId}}/anomalies" } },
+        { "name": "GET Payroll Export CSV",       "request": { "method": "GET", "url": "{{baseUrl}}/payroll/{{payrollRunId}}/export" } },
+        { "name": "GET Payroll Export PDF",       "request": { "method": "GET", "url": "{{baseUrl}}/payroll/{{payrollRunId}}/export/pdf" } },
+        { "name": "GET Employee Payroll History", "request": { "method": "GET", "url": "{{baseUrl}}/payroll/employee/{{employeeId}}/history" } }
+      ]
+    },
+    {
+      "name": "07 Salary (الراتب الأساسي والبدلات)",
+      "item": [
+        { "name": "GET All Salaries", "request": { "method": "GET", "url": "{{baseUrl}}/salary" } },
+        { "name": "GET Salary by Employee", "request": { "method": "GET", "url": "{{baseUrl}}/salary/{{employeeId}}" } },
+        {
+          "name": "PUT Upsert Salary — EMP003",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"profession\": \"مدير مالي\",\n  \"baseSalary\": 750000,\n  \"responsibilityAllowance\": 4619000,\n  \"productionIncentive\": 0,\n  \"transportAllowance\": 0\n}" },
+            "url": "{{baseUrl}}/salary/EMP003"
+          }
+        },
+        {
+          "name": "PUT Upsert Salary — EMP064",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"profession\": \"إداري\",\n  \"baseSalary\": 750000,\n  \"responsibilityAllowance\": 1119000,\n  \"productionIncentive\": 0,\n  \"transportAllowance\": 0\n}" },
+            "url": "{{baseUrl}}/salary/EMP064"
+          }
+        },
+        {
+          "name": "PUT Upsert Salary — EMP070",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"profession\": \"مصمم\",\n  \"baseSalary\": 750000,\n  \"responsibilityAllowance\": 3619000,\n  \"productionIncentive\": 0,\n  \"transportAllowance\": 0\n}" },
+            "url": "{{baseUrl}}/salary/EMP070"
+          }
+        },
+        {
+          "name": "PUT Upsert Salary — EMP083",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"profession\": \"مكوّاجي\",\n  \"baseSalary\": 750000,\n  \"responsibilityAllowance\": 1119000,\n  \"productionIncentive\": 0,\n  \"transportAllowance\": 0\n}" },
+            "url": "{{baseUrl}}/salary/EMP083"
+          }
+        },
+        { "name": "DELETE Salary", "request": { "method": "DELETE", "url": "{{baseUrl}}/salary/{{employeeId}}" } }
+      ]
+    },
+    {
+      "name": "08 Advances (السلف)",
+      "item": [
+        { "name": "GET All Advances",             "request": { "method": "GET", "url": "{{baseUrl}}/advances" } },
+        { "name": "GET Advances by Employee",     "request": { "method": "GET", "url": "{{baseUrl}}/advances?employeeId={{employeeId}}" } },
+        { "name": "GET Advance Summary",          "request": { "method": "GET", "url": "{{baseUrl}}/advances/summary/{{employeeId}}" } },
+        { "name": "GET Advance by ID",            "request": { "method": "GET", "url": "{{baseUrl}}/advances/{{advanceId}}" } },
+        {
+          "name": "POST Create Advance — سلفة راتب (save advanceId)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json();",
+            "if (d.id) pm.collectionVariables.set('advanceId', d.id);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"employeeId\": \"EMP003\",\n  \"advanceType\": \"salary\",\n  \"totalAmount\": 1000000,\n  \"installmentAmount\": 100000,\n  \"notes\": \"سلفة أبريل 2026\"\n}" },
+            "url": "{{baseUrl}}/advances"
+          }
+        },
+        {
+          "name": "POST Create Advance — خصم ملابس",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"employeeId\": \"EMP064\",\n  \"advanceType\": \"clothing\",\n  \"totalAmount\": 108500,\n  \"installmentAmount\": 0,\n  \"notes\": \"خصم ملابس\"\n}" },
+            "url": "{{baseUrl}}/advances"
+          }
+        },
+        {
+          "name": "PUT Update Advance (تحديث المبلغ المتبقي)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"remainingAmount\": 900000,\n  \"installmentAmount\": 100000\n}" },
+            "url": "{{baseUrl}}/advances/{{advanceId}}"
+          }
+        },
+        { "name": "DELETE Advance", "request": { "method": "DELETE", "url": "{{baseUrl}}/advances/{{advanceId}}" } }
+      ]
+    },
+    {
+      "name": "09 Insurance (التأمينات)",
+      "item": [
+        { "name": "GET All Insurance Records", "request": { "method": "GET", "url": "{{baseUrl}}/insurance" } },
+        { "name": "GET Insurance by Employee", "request": { "method": "GET", "url": "{{baseUrl}}/insurance/{{employeeId}}" } },
+        {
+          "name": "PUT Upsert Insurance — EMP003",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"insuranceSalary\": 750000,\n  \"socialSecurityNumber\": \"123456789\",\n  \"registrationDate\": \"2024-01-01\"\n}" },
+            "url": "{{baseUrl}}/insurance/EMP003"
+          }
+        },
+        {
+          "name": "PUT Upsert Insurance — EMP064",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"insuranceSalary\": 750000,\n  \"socialSecurityNumber\": \"987654321\",\n  \"registrationDate\": \"2024-03-15\"\n}" },
+            "url": "{{baseUrl}}/insurance/EMP064"
+          }
+        },
+        {
+          "name": "PUT Upsert Insurance — EMP070",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"insuranceSalary\": 750000,\n  \"socialSecurityNumber\": \"112233445\",\n  \"registrationDate\": \"2023-06-01\"\n}" },
+            "url": "{{baseUrl}}/insurance/EMP070"
+          }
+        },
+        {
+          "name": "PUT Upsert Insurance — EMP083",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"insuranceSalary\": 750000,\n  \"socialSecurityNumber\": \"556677889\",\n  \"registrationDate\": \"2023-09-01\"\n}" },
+            "url": "{{baseUrl}}/insurance/EMP083"
+          }
+        },
+        { "name": "DELETE Insurance", "request": { "method": "DELETE", "url": "{{baseUrl}}/insurance/{{employeeId}}" } }
+      ]
+    },
+    {
+      "name": "10 Bonuses (المكافآت والمساعدات)",
+      "item": [
+        { "name": "GET All Bonuses",              "request": { "method": "GET", "url": "{{baseUrl}}/bonuses" } },
+        { "name": "GET Bonuses by Employee",      "request": { "method": "GET", "url": "{{baseUrl}}/bonuses?employeeId={{employeeId}}" } },
+        { "name": "GET Bonuses by Period",        "request": { "method": "GET", "url": "{{baseUrl}}/bonuses?period=2026-04" } },
+        { "name": "GET Bonus Period Summary",     "request": { "method": "GET", "url": "{{baseUrl}}/bonuses/summary/2026-04" } },
+        { "name": "GET Bonus by ID",              "request": { "method": "GET", "url": "{{baseUrl}}/bonuses/{{bonusId}}" } },
+        {
+          "name": "POST Create Bonus (save bonusId)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json();",
+            "if (d.id) pm.collectionVariables.set('bonusId', d.id);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"employeeId\": \"EMP003\",\n  \"bonusAmount\": 500000,\n  \"bonusReason\": \"أداء متميز\",\n  \"assistanceAmount\": 200000,\n  \"period\": \"2026-04\"\n}" },
+            "url": "{{baseUrl}}/bonuses"
+          }
+        },
+        {
+          "name": "POST Create Bonus — EMP064",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"employeeId\": \"EMP064\",\n  \"bonusAmount\": 300000,\n  \"bonusReason\": \"مكافأة شهرية\",\n  \"assistanceAmount\": 0,\n  \"period\": \"2026-04\"\n}" },
+            "url": "{{baseUrl}}/bonuses"
+          }
+        },
+        {
+          "name": "PUT Update Bonus",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"bonusAmount\": 600000,\n  \"bonusReason\": \"مكافأة معدّلة\"\n}" },
+            "url": "{{baseUrl}}/bonuses/{{bonusId}}"
+          }
+        },
+        { "name": "DELETE Bonus", "request": { "method": "DELETE", "url": "{{baseUrl}}/bonuses/{{bonusId}}" } }
+      ]
+    },
+    {
+      "name": "11 Inventory",
       "item": [
         {
           "name": "POST Create Product (save productId)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (data.product && data.product.id) { pm.collectionVariables.set('productId', data.product.id); }"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json();",
+            "if (d.product && d.product.id) pm.collectionVariables.set('productId', d.product.id);"
+          ]}}],
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"sku\": \"{{sku}}\",\n  \"name\": \"Postman Product\",\n  \"category\": \"General\",\n  \"unitPrice\": 100,\n  \"costPrice\": 70,\n  \"reorderLevel\": 5\n}"
-            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"{{sku}}\",\n  \"name\": \"منتج تجريبي\",\n  \"category\": \"General\",\n  \"unitPrice\": 100,\n  \"costPrice\": 70,\n  \"reorderLevel\": 5\n}" },
             "url": "{{baseUrl}}/inventory/products"
           }
         },
@@ -306,27 +424,21 @@
           "name": "PUT Update Product",
           "request": {
             "method": "PUT",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Postman Product Updated\",\n  \"unitPrice\": 110\n}"
-            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"منتج محدّث\",\n  \"unitPrice\": 110\n}" },
             "url": "{{baseUrl}}/inventory/products/{{productId}}"
           }
         },
+        { "name": "GET Products",         "request": { "method": "GET", "url": "{{baseUrl}}/inventory/products" } },
+        { "name": "GET Product by ID",    "request": { "method": "GET", "url": "{{baseUrl}}/inventory/products/{{productId}}" } },
+        { "name": "GET Inventory Stats",  "request": { "method": "GET", "url": "{{baseUrl}}/inventory/stats" } },
+        { "name": "GET Stock Level",      "request": { "method": "GET", "url": "{{baseUrl}}/inventory/stock/{{sku}}" } },
         {
           "name": "POST Adjust Stock",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"sku\": \"{{sku}}\",\n  \"location\": \"A1\",\n  \"change\": 50,\n  \"reason\": \"initial load\"\n}"
-            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"{{sku}}\",\n  \"location\": \"A1\",\n  \"change\": 50,\n  \"reason\": \"تحميل أولي\"\n}" },
             "url": "{{baseUrl}}/inventory/stock/adjust"
           }
         },
@@ -334,13 +446,8 @@
           "name": "POST Reserve Stock",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"sku\": \"{{sku}}\",\n  \"location\": \"A1\",\n  \"quantity\": 10,\n  \"reason\": \"order\"\n}"
-            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"{{sku}}\",\n  \"location\": \"A1\",\n  \"quantity\": 10,\n  \"reason\": \"طلبية\"\n}" },
             "url": "{{baseUrl}}/inventory/stock/reserve"
           }
         },
@@ -348,207 +455,50 @@
           "name": "POST Release Reservation",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"sku\": \"{{sku}}\",\n  \"location\": \"A1\",\n  \"quantity\": 5,\n  \"reason\": \"order changed\"\n}"
-            },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"{{sku}}\",\n  \"location\": \"A1\",\n  \"quantity\": 5,\n  \"reason\": \"إلغاء طلبية\"\n}" },
             "url": "{{baseUrl}}/inventory/stock/release"
           }
-        },
-        {
-          "name": "GET Inventory Stats",
-          "request": { "method": "GET", "url": "{{baseUrl}}/inventory/stats" }
         }
       ]
     },
     {
-      "name": "07 Payroll",
+      "name": "12 Imports",
       "item": [
-        {
-          "name": "POST Calculate Payroll (save payrollRunId)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (data.payrollRun && data.payrollRun.id) { pm.collectionVariables.set('payrollRunId', data.payrollRun.id); }"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"periodStart\": \"2026-03-25\",\n  \"periodEnd\": \"2026-04-02\",\n  \"gracePeriodMinutes\": 5\n}"
-            },
-            "url": "{{baseUrl}}/payroll/calculate"
-          }
-        },
-        {
-          "name": "POST Calculate Payroll Async (save payrollRunId)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (data.payrollRun && data.payrollRun.id) { pm.collectionVariables.set('payrollRunId', data.payrollRun.id); }"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"periodStart\": \"2026-03-25\",\n  \"periodEnd\": \"2026-04-02\",\n  \"gracePeriodMinutes\": 5\n}"
-            },
-            "url": "{{baseUrl}}/payroll/calculate/async"
-          }
-        },
-        {
-          "name": "PUT Approve Payroll",
-          "request": {
-            "method": "PUT",
-            "url": "{{baseUrl}}/payroll/{{payrollRunId}}/approve"
-          }
-        },
-        {
-          "name": "PUT Reject Payroll",
-          "request": {
-            "method": "PUT",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"reason\": \"postman rejection test\"\n}"
-            },
-            "url": "{{baseUrl}}/payroll/{{payrollRunId}}/reject"
-          }
-        },
-        {
-          "name": "GET Payroll Summary",
-          "request": { "method": "GET", "url": "{{baseUrl}}/payroll/summary" }
-        },
-        {
-          "name": "GET Payroll by Id",
-          "request": { "method": "GET", "url": "{{baseUrl}}/payroll/{{payrollRunId}}" }
-        },
-        {
-          "name": "GET Payroll Export CSV",
-          "request": { "method": "GET", "url": "{{baseUrl}}/payroll/{{payrollRunId}}/export" }
-        },
-        {
-          "name": "GET Payroll Export PDF",
-          "request": { "method": "GET", "url": "{{baseUrl}}/payroll/{{payrollRunId}}/export/pdf" }
-        }
-      ]
-    },
-    {
-      "name": "08 Imports",
-      "item": [
-        {
-          "name": "GET Import History",
-          "request": { "method": "GET", "url": "{{baseUrl}}/imports/history?page=1&limit=20" }
-        },
-        {
-          "name": "GET Import Stats",
-          "request": { "method": "GET", "url": "{{baseUrl}}/imports/stats" }
-        },
-        {
-          "name": "GET Employees Template",
-          "request": { "method": "GET", "url": "{{baseUrl}}/imports/templates/employees" }
-        },
-        {
-          "name": "GET Products Template",
-          "request": { "method": "GET", "url": "{{baseUrl}}/imports/templates/products" }
-        },
+        { "name": "GET Import History",         "request": { "method": "GET", "url": "{{baseUrl}}/imports/history?page=1&limit=20" } },
+        { "name": "GET Import Stats",           "request": { "method": "GET", "url": "{{baseUrl}}/imports/stats" } },
+        { "name": "GET Employees Template",     "request": { "method": "GET", "url": "{{baseUrl}}/imports/templates/employees" } },
+        { "name": "GET Products Template",      "request": { "method": "GET", "url": "{{baseUrl}}/imports/templates/products" } },
+        { "name": "GET Import Job Status",      "request": { "method": "GET", "url": "{{baseUrl}}/imports/jobs/{{importJobId}}" } },
         {
           "name": "POST Validate Employees CSV",
           "request": {
             "method": "POST",
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": "employees.csv"
-                }
-              ]
-            },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "employees.csv" }] },
             "url": "{{baseUrl}}/imports/employees/validate"
           }
         },
         {
           "name": "POST Import Employees CSV (save importJobId)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (data.jobId) { pm.collectionVariables.set('importJobId', data.jobId); }"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json();",
+            "if (d.jobId) pm.collectionVariables.set('importJobId', d.jobId);"
+          ]}}],
           "request": {
             "method": "POST",
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": "employees.csv"
-                }
-              ]
-            },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "employees.csv" }] },
             "url": "{{baseUrl}}/imports/employees"
           }
         },
         {
-          "name": "POST Import Employees CSV Async (save importJobId)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (data.jobId) { pm.collectionVariables.set('importJobId', data.jobId); }"
-                ]
-              }
-            }
-          ],
+          "name": "POST Import Employees Async",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json();",
+            "if (d.jobId) pm.collectionVariables.set('importJobId', d.jobId);"
+          ]}}],
           "request": {
             "method": "POST",
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": "employees.csv"
-                }
-              ]
-            },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "employees.csv" }] },
             "url": "{{baseUrl}}/imports/employees/async"
           }
         },
@@ -556,91 +506,35 @@
           "name": "POST Validate Products CSV",
           "request": {
             "method": "POST",
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": "products.csv"
-                }
-              ]
-            },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "products.csv" }] },
             "url": "{{baseUrl}}/imports/products/validate"
           }
         },
         {
           "name": "POST Import Products CSV (save importJobId)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (data.jobId) { pm.collectionVariables.set('importJobId', data.jobId); }"
-                ]
-              }
-            }
-          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json();",
+            "if (d.jobId) pm.collectionVariables.set('importJobId', d.jobId);"
+          ]}}],
           "request": {
             "method": "POST",
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": "products.csv"
-                }
-              ]
-            },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "products.csv" }] },
             "url": "{{baseUrl}}/imports/products"
           }
         },
         {
-          "name": "POST Import Products CSV Async (save importJobId)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (data.jobId) { pm.collectionVariables.set('importJobId', data.jobId); }"
-                ]
-              }
-            }
-          ],
+          "name": "POST Import Products Async",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "const d = pm.response.json();",
+            "if (d.jobId) pm.collectionVariables.set('importJobId', d.jobId);"
+          ]}}],
           "request": {
             "method": "POST",
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": "products.csv"
-                }
-              ]
-            },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "products.csv" }] },
             "url": "{{baseUrl}}/imports/products/async"
           }
         },
-        {
-          "name": "GET Import Job",
-          "request": {
-            "method": "GET",
-            "url": "{{baseUrl}}/imports/jobs/{{importJobId}}"
-          }
-        },
-        {
-          "name": "POST Retry Import Job",
-          "request": {
-            "method": "POST",
-            "url": "{{baseUrl}}/imports/jobs/{{importJobId}}/retry"
-          }
-        }
+        { "name": "POST Retry Import Job", "request": { "method": "POST", "url": "{{baseUrl}}/imports/jobs/{{importJobId}}/retry" } }
       ]
     }
   ]

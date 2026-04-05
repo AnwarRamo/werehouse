@@ -184,3 +184,71 @@ model PayrollItem {
   @@unique([payrollRunId, employeeId])
   @@map("payroll_items")
 }
+
+// ---------------------------------------------------------------------------
+// Salary & Occupation — base salary, allowances, incentives per employee
+// ---------------------------------------------------------------------------
+model EmployeeSalary {
+  id                    String   @id @default(uuid()) @db.Uuid
+  employeeId            String   @unique
+  profession            String?
+  baseSalary            Decimal  @db.Decimal(14, 2)
+  responsibilityAllowance Decimal @default(0) @db.Decimal(14, 2)
+  productionIncentive   Decimal  @default(0) @db.Decimal(14, 2)
+  transportAllowance    Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("employee_salaries")
+}
+
+// ---------------------------------------------------------------------------
+// Advances (سلف) — employee advance/loan records
+// ---------------------------------------------------------------------------
+model EmployeeAdvance {
+  id              String   @id @default(uuid()) @db.Uuid
+  employeeId      String
+  advanceType     String   @default("salary")   // salary | clothing | other
+  totalAmount     Decimal  @db.Decimal(14, 2)
+  installmentAmount Decimal @default(0) @db.Decimal(14, 2)
+  remainingAmount Decimal  @db.Decimal(14, 2)
+  notes           String?
+  issueDate       DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([employeeId])
+  @@map("employee_advances")
+}
+
+// ---------------------------------------------------------------------------
+// Insurance (تامينات) — social insurance details per employee
+// ---------------------------------------------------------------------------
+model EmployeeInsurance {
+  id                  String   @id @default(uuid()) @db.Uuid
+  employeeId          String   @unique
+  insuranceSalary     Decimal  @db.Decimal(14, 2)
+  socialSecurityNumber String?
+  registrationDate    DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("employee_insurance")
+}
+
+// ---------------------------------------------------------------------------
+// Bonuses & Assistance — per-period bonus and assistance amounts
+// ---------------------------------------------------------------------------
+model EmployeeBonus {
+  id               String   @id @default(uuid()) @db.Uuid
+  employeeId       String
+  bonusAmount      Decimal  @default(0) @db.Decimal(14, 2)
+  bonusReason      String?
+  assistanceAmount Decimal  @default(0) @db.Decimal(14, 2)
+  period           String?  // e.g. "2026-04"
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([employeeId])
+  @@map("employee_bonuses")
+}

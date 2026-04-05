@@ -17,8 +17,8 @@ export declare class ImportsService {
     constructor(prisma: PrismaService, importsQueue: Queue);
     history(query: ImportsHistoryQuery): Promise<{
         imports: {
-            status: string;
             id: string;
+            status: string;
             createdAt: Date;
             updatedAt: Date;
             jobId: string;
@@ -48,8 +48,8 @@ export declare class ImportsService {
     }>;
     details(jobId: string): Promise<{
         errorSummary: Record<string, number>;
-        status: string;
         id: string;
+        status: string;
         createdAt: Date;
         updatedAt: Date;
         jobId: string;

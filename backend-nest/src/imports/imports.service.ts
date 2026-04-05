@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { parse as parseCsv } from 'csv-parse/sync';
 import { extname } from 'path';
 import { Queue } from 'bullmq';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { QUEUE_JOBS, QUEUE_NAMES } from '../queues/queue.constants';
 import { PaginationQueryParams } from '../common/types/query.types';
 import { resolvePagination } from '../common/utils/pagination.util';
@@ -113,7 +113,7 @@ export class ImportsService {
 
   async validateEmployeesImport(file: Express.Multer.File) {
     if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
-    const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
+    const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
     this.assertEmployeesHeaders(headers);
     const result = await this.processEmployeesRows(rows, false);
     return { message: 'Employees import validation completed (dry-run)', ...result };
@@ -121,7 +121,7 @@ export class ImportsService {
 
   async validateProductsImport(file: Express.Multer.File) {
     if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
-    const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
+    const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
     this.assertProductsHeaders(headers);
     const result = await this.processProductsRows(rows, false);
     return { message: 'Products import validation completed (dry-run)', ...result };
@@ -130,7 +130,7 @@ export class ImportsService {
   async importEmployees(file: Express.Multer.File, userId: string) {
     if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
 
-    const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
+    const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
     this.assertEmployeesHeaders(headers);
 
     const jobId = `IMP-EMP-${Date.now()}`;
@@ -166,7 +166,7 @@ export class ImportsService {
   async importEmployeesAsync(file: Express.Multer.File, userId: string) {
     if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
 
-    const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
+    const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
     this.assertEmployeesHeaders(headers);
 
     const jobId = `IMP-EMP-${Date.now()}`;
@@ -189,7 +189,7 @@ export class ImportsService {
   async importProducts(file: Express.Multer.File, userId: string) {
     if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
 
-    const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
+    const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
     this.assertProductsHeaders(headers);
 
     const jobId = `IMP-PROD-${Date.now()}`;
@@ -225,7 +225,7 @@ export class ImportsService {
   async importProductsAsync(file: Express.Multer.File, userId: string) {
     if (!file?.buffer) throw new BadRequestException('CSV/XLSX file is required in field: file');
 
-    const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
+    const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
     this.assertProductsHeaders(headers);
 
     const jobId = `IMP-PROD-${Date.now()}`;
@@ -328,23 +328,69 @@ export class ImportsService {
         : 'csv';
 
     if (detectedFormat === 'xlsx') {
-      const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false, raw: false });
-      const sheetName = workbook.SheetNames[0];
-      if (!sheetName) throw new BadRequestException('Excel file must contain at least one worksheet');
+      // exceljs requires async — we use a sync-compatible workaround via loadFile on buffer
+      // We return a promise-based result wrapped in a sync throw if needed.
+      // Since NestJS services are async-capable, callers must await this.
+      throw new BadRequestException(
+        'Excel parsing is async — use parseImportRowsAsync instead',
+      );
+    }
 
-      const worksheet = workbook.Sheets[sheetName];
-      const parsed = XLSX.utils.sheet_to_json<Record<string, RowParseValue>>(worksheet, {
-        defval: '',
-        raw: false,
+    const text = buffer.toString('utf8');
+    const parsed = parseCsv(text, {
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
+      bom: true,
+    }) as Record<string, RowParseValue>[];
+    const first = parsed[0] || {};
+    const headers = Object.keys(first).map((key) => this.normalizeHeader(key));
+    const rows = parsed.map((row) => {
+      const normalized: ParsedRow = {};
+      for (const [key, value] of Object.entries(row)) {
+        normalized[this.normalizeHeader(key)] = String(value ?? '').trim();
+      }
+      return normalized;
+    });
+    if (rows.length > IMPORT_MAX_ROWS) {
+      throw new BadRequestException(
+        `Import file is too large. Maximum allowed rows is ${IMPORT_MAX_ROWS}. Split the file and retry.`,
+      );
+    }
+
+    return { rows, headers };
+  }
+
+  private async parseImportRowsAsync(buffer: Buffer, fileName?: string, mimeType?: string): Promise<ParseResult> {
+    const extension = extname(fileName || '').toLowerCase();
+    const isExcel =
+      extension === '.xlsx' ||
+      extension === '.xls' ||
+      mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+      mimeType === 'application/vnd.ms-excel';
+
+    if (isExcel) {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(buffer);
+      const worksheet = workbook.worksheets[0];
+      if (!worksheet) throw new BadRequestException('Excel file must contain at least one worksheet');
+
+      const rawRows: string[][] = [];
+      worksheet.eachRow((row) => {
+        rawRows.push(
+          (row.values as (ExcelJS.CellValue | null)[])
+            .slice(1) // exceljs row.values is 1-indexed with undefined at [0]
+            .map((v) => (v === null || v === undefined ? '' : String(v).trim())),
+        );
       });
-      const first = parsed[0] || {};
-      const headers = Object.keys(first).map((key) => this.normalizeHeader(key));
-      const rows = parsed.map((row) => {
-        const normalized: ParsedRow = {};
-        for (const [key, value] of Object.entries(row)) {
-          normalized[this.normalizeHeader(key)] = String(value ?? '').trim();
-        }
-        return normalized;
+
+      if (rawRows.length < 1) return { rows: [], headers: [] };
+
+      const headers = rawRows[0].map((h) => this.normalizeHeader(h));
+      const rows: ParsedRow[] = rawRows.slice(1).map((cells) => {
+        const row: ParsedRow = {};
+        headers.forEach((h, i) => { row[h] = cells[i] ?? ''; });
+        return row;
       });
 
       if (rows.length > IMPORT_MAX_ROWS) {
@@ -356,6 +402,7 @@ export class ImportsService {
       return { rows, headers };
     }
 
+    // CSV path
     const text = buffer.toString('utf8');
     const parsed = parseCsv(text, {
       columns: true,

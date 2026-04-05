@@ -14,6 +14,10 @@ import { InventoryModule } from './inventory/inventory.module';
 import { ImportsModule } from './imports/imports.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
+import { SalaryModule } from './salary/salary.module';
+import { AdvancesModule } from './advances/advances.module';
+import { InsuranceModule } from './insurance/insurance.module';
+import { BonusesModule } from './bonuses/bonuses.module';
 
 @Module({
   imports: [
@@ -39,6 +43,9 @@ import { RequestLoggingMiddleware } from './common/middleware/request-logging.mi
           .email({ tlds: { allow: false } })
           .default('developer@warehouse.local'),
         DEV_ADMIN_PASSWORD: Joi.string().min(8).optional(),
+        SUPERADMIN_USERNAME: Joi.string().default('superadmin'),
+        SUPERADMIN_EMAIL: Joi.string().email({ tlds: { allow: false } }).default('superadmin@warehouse.local'),
+        SUPERADMIN_PASSWORD: Joi.string().min(8).optional(),
         CORS_ORIGIN: Joi.string().allow('').optional(),
         BCRYPT_ROUNDS: Joi.number().min(8).max(14).default(10),
         THROTTLE_TTL_MS: Joi.number().min(1_000).default(60_000),
@@ -85,6 +92,10 @@ import { RequestLoggingMiddleware } from './common/middleware/request-logging.mi
     PayrollModule,
     InventoryModule,
     ImportsModule,
+    SalaryModule,
+    AdvancesModule,
+    InsuranceModule,
+    BonusesModule,
   ],
   providers: [
     {

@@ -11,13 +11,13 @@ export declare class PayrollController {
     constructor(payrollService: PayrollService, audit: AuditService);
     list(query: PayrollListQuery): Promise<{
         payrollRuns: {
-            status: string;
             id: string;
-            currency: string;
+            status: string;
             notes: string | null;
+            currency: string;
+            runId: string;
             periodStart: Date;
             periodEnd: Date;
-            runId: string;
             periodType: string;
             runDate: Date;
             runBy: string | null;
@@ -50,13 +50,13 @@ export declare class PayrollController {
     calculate(dto: CalculatePayrollDto, user: AuthenticatedUser): Promise<{
         message: string;
         payrollRun: {
-            status: string;
             id: string;
-            currency: string;
+            status: string;
             notes: string | null;
+            currency: string;
+            runId: string;
             periodStart: Date;
             periodEnd: Date;
-            runId: string;
             periodType: string;
             runDate: Date;
             runBy: string | null;
@@ -72,13 +72,13 @@ export declare class PayrollController {
     calculateAsync(dto: CalculatePayrollDto, user: AuthenticatedUser): Promise<{
         message: string;
         payrollRun: {
-            status: string;
             id: string;
-            currency: string;
+            status: string;
             notes: string | null;
+            currency: string;
+            runId: string;
             periodStart: Date;
             periodEnd: Date;
-            runId: string;
             periodType: string;
             runDate: Date;
             runBy: string | null;
@@ -93,13 +93,13 @@ export declare class PayrollController {
     }>;
     getById(runId: string): Promise<{
         payrollRun: {
-            status: string;
             id: string;
-            currency: string;
+            status: string;
             notes: string | null;
+            currency: string;
+            runId: string;
             periodStart: Date;
             periodEnd: Date;
-            runId: string;
             periodType: string;
             runDate: Date;
             runBy: string | null;
@@ -140,13 +140,13 @@ export declare class PayrollController {
     approve(runId: string, user: AuthenticatedUser, req: Request): Promise<{
         message: string;
         payrollRun: {
-            status: string;
             id: string;
-            currency: string;
+            status: string;
             notes: string | null;
+            currency: string;
+            runId: string;
             periodStart: Date;
             periodEnd: Date;
-            runId: string;
             periodType: string;
             runDate: Date;
             runBy: string | null;
@@ -162,13 +162,13 @@ export declare class PayrollController {
     reject(runId: string, reason: string, user: AuthenticatedUser, req: Request): Promise<{
         message: string;
         payrollRun: {
-            status: string;
             id: string;
-            currency: string;
+            status: string;
             notes: string | null;
+            currency: string;
+            runId: string;
             periodStart: Date;
             periodEnd: Date;
-            runId: string;
             periodType: string;
             runDate: Date;
             runBy: string | null;

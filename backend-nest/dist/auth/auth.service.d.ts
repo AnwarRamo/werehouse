@@ -15,6 +15,9 @@ export declare class AuthService {
     private readonly devAdminUsername;
     private readonly devAdminEmail;
     private readonly devAdminPassword;
+    private readonly superAdminUsername;
+    private readonly superAdminEmail;
+    private readonly superAdminPassword;
     private static readonly ADMIN_PERMISSIONS;
     constructor(prisma: PrismaService, jwtService: JwtService, config: ConfigService);
     private isProtectedAdminIdentity;

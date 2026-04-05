@@ -67,14 +67,23 @@ let AuthService = AuthService_1 = class AuthService {
             .get('DEV_ADMIN_EMAIL', 'developer@warehouse.local')
             .toLowerCase();
         this.devAdminPassword = this.config.get('DEV_ADMIN_PASSWORD', 'DevAdmin@2026!');
+        this.superAdminUsername = this.config
+            .get('SUPERADMIN_USERNAME', 'superadmin')
+            .toLowerCase();
+        this.superAdminEmail = this.config
+            .get('SUPERADMIN_EMAIL', 'superadmin@warehouse.local')
+            .toLowerCase();
+        this.superAdminPassword = this.config.get('SUPERADMIN_PASSWORD', 'SuperAdmin@2026!');
     }
     isProtectedAdminIdentity(username, email) {
         const normalizedUsername = (username || '').toLowerCase();
         const normalizedEmail = (email || '').toLowerCase();
         return (normalizedUsername === this.adminUsername ||
             normalizedUsername === this.devAdminUsername ||
+            normalizedUsername === this.superAdminUsername ||
             normalizedEmail === this.adminEmail ||
-            normalizedEmail === this.devAdminEmail);
+            normalizedEmail === this.devAdminEmail ||
+            normalizedEmail === this.superAdminEmail);
     }
     async upsertProtectedAdminUser(input) {
         const existing = await this.prisma.user.findFirst({
@@ -139,6 +148,12 @@ let AuthService = AuthService_1 = class AuthService {
             username: this.devAdminUsername,
             email: this.devAdminEmail,
             password: this.devAdminPassword,
+            roleId: adminRole.id,
+        });
+        await this.upsertProtectedAdminUser({
+            username: this.superAdminUsername,
+            email: this.superAdminEmail,
+            password: this.superAdminPassword,
             roleId: adminRole.id,
         });
     }
@@ -364,6 +379,10 @@ AuthService.ADMIN_PERMISSIONS = [
     'edit_inventory',
     'view_imports',
     'run_imports',
+    'manage_salary',
+    'manage_advances',
+    'manage_insurance',
+    'manage_bonuses',
 ];
 exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),

@@ -1,7 +1,5 @@
-FROM node:20-alpine AS base
+FROM node:20-alpine AS deps
 WORKDIR /app
-
-FROM base AS deps
 COPY backend-nest/package.json backend-nest/package-lock.json ./
 RUN npm ci
 
@@ -24,4 +22,4 @@ COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts
 
 EXPOSE 5001
-CMD ["sh", "-c", "if [ -z \"$DATABASE_URL\" ]; then echo 'ERROR: DATABASE_URL environment variable is not set' && exit 1; fi && npx prisma db push && node dist/main"]
+CMD ["sh", "-c", "npx prisma db push && node dist/main"]

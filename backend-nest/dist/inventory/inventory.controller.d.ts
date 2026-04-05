@@ -13,8 +13,8 @@ export declare class InventoryController {
     constructor(inventoryService: InventoryService);
     listProducts(query: InventoryProductsQuery): Promise<{
         products: {
-            status: string;
             id: string;
+            status: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
@@ -34,8 +34,8 @@ export declare class InventoryController {
     createProduct(dto: CreateProductDto): Promise<{
         message: string;
         product: {
-            status: string;
             id: string;
+            status: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
@@ -48,8 +48,8 @@ export declare class InventoryController {
     }>;
     getProduct(productId: string): Promise<{
         product: {
-            status: string;
             id: string;
+            status: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
@@ -73,8 +73,8 @@ export declare class InventoryController {
     updateProduct(productId: string, dto: Partial<CreateProductDto>): Promise<{
         message: string;
         product: {
-            status: string;
             id: string;
+            status: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;

@@ -12,7 +12,19 @@ const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const app_module_1 = require("./app.module");
 const prisma_service_1 = require("./prisma/prisma.service");
 const global_exception_filter_1 = require("./common/filters/global-exception.filter");
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+    process.exit(1);
+});
+process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled Rejection:', reason);
+    process.exit(1);
+});
 async function bootstrap() {
+    console.log('Bootstrap starting...');
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+    console.log('PORT:', process.env.PORT);
+    console.log('REDIS_URL set:', !!process.env.REDIS_URL);
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const config = app.get(config_1.ConfigService);
     const prisma = app.get(prisma_service_1.PrismaService);
@@ -37,5 +49,8 @@ async function bootstrap() {
     const port = config.get('PORT', 5001);
     await app.listen(port);
 }
-bootstrap();
+bootstrap().catch((err) => {
+    console.error('Fatal error during bootstrap:', err);
+    process.exit(1);
+});
 //# sourceMappingURL=main.js.map

@@ -56,6 +56,10 @@ const inventory_module_1 = require("./inventory/inventory.module");
 const imports_module_1 = require("./imports/imports.module");
 const prisma_module_1 = require("./prisma/prisma.module");
 const request_logging_middleware_1 = require("./common/middleware/request-logging.middleware");
+const salary_module_1 = require("./salary/salary.module");
+const advances_module_1 = require("./advances/advances.module");
+const insurance_module_1 = require("./insurance/insurance.module");
+const bonuses_module_1 = require("./bonuses/bonuses.module");
 let AppModule = class AppModule {
     configure(consumer) {
         consumer.apply(request_logging_middleware_1.RequestLoggingMiddleware).forRoutes('*');
@@ -87,6 +91,9 @@ exports.AppModule = AppModule = __decorate([
                         .email({ tlds: { allow: false } })
                         .default('developer@warehouse.local'),
                     DEV_ADMIN_PASSWORD: Joi.string().min(8).optional(),
+                    SUPERADMIN_USERNAME: Joi.string().default('superadmin'),
+                    SUPERADMIN_EMAIL: Joi.string().email({ tlds: { allow: false } }).default('superadmin@warehouse.local'),
+                    SUPERADMIN_PASSWORD: Joi.string().min(8).optional(),
                     CORS_ORIGIN: Joi.string().allow('').optional(),
                     BCRYPT_ROUNDS: Joi.number().min(8).max(14).default(10),
                     THROTTLE_TTL_MS: Joi.number().min(1_000).default(60_000),
@@ -108,6 +115,10 @@ exports.AppModule = AppModule = __decorate([
                 useFactory: (config) => ({
                     connection: {
                         url: config.get('REDIS_URL', 'redis://127.0.0.1:6379'),
+                        maxRetriesPerRequest: null,
+                        enableReadyCheck: false,
+                        lazyConnect: true,
+                        retryStrategy: (times) => Math.min(times * 1000, 30000),
                     },
                     defaultJobOptions: {
                         attempts: 3,
@@ -129,6 +140,10 @@ exports.AppModule = AppModule = __decorate([
             payroll_module_1.PayrollModule,
             inventory_module_1.InventoryModule,
             imports_module_1.ImportsModule,
+            salary_module_1.SalaryModule,
+            advances_module_1.AdvancesModule,
+            insurance_module_1.InsuranceModule,
+            bonuses_module_1.BonusesModule,
         ],
         providers: [
             {
