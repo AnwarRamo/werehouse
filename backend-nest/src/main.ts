@@ -1,4 +1,4 @@
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
@@ -8,22 +8,55 @@ import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 
+const startupLogger = new Logger('Bootstrap');
+
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
+  console.error('[Bootstrap] Uncaught Exception:', err?.stack || err);
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled Rejection:', reason);
+  console.error('[Bootstrap] Unhandled Rejection:', reason instanceof Error ? reason.stack : reason);
   process.exit(1);
 });
 
 async function bootstrap() {
-  console.log('Bootstrap starting...');
-  console.log('NODE_ENV:', process.env.NODE_ENV);
-  console.log('PORT:', process.env.PORT);
-  console.log('REDIS_URL set:', !!process.env.REDIS_URL);
-  const app = await NestFactory.create(AppModule);
+  // ── Phase 1: environment sanity check ──────────────────────────────────────
+  console.log('[Bootstrap] Starting NestJS application...');
+  console.log('[Bootstrap] Node.js version :', process.version);
+  console.log('[Bootstrap] NODE_ENV         :', process.env.NODE_ENV ?? '(not set)');
+  console.log('[Bootstrap] PORT             :', process.env.PORT ?? '(not set, will default to 5001)');
+  console.log('[Bootstrap] DATABASE_URL set :', !!process.env.DATABASE_URL);
+  console.log('[Bootstrap] REDIS_URL set    :', !!process.env.REDIS_URL);
+  console.log('[Bootstrap] JWT_SECRET set   :', !!process.env.JWT_SECRET);
+
+  if (!process.env.DATABASE_URL) {
+    console.error('[Bootstrap] FATAL: DATABASE_URL is not set. Cannot start.');
+    process.exit(1);
+  }
+
+  if (!process.env.JWT_SECRET) {
+    console.error('[Bootstrap] FATAL: JWT_SECRET is not set. Cannot start.');
+    process.exit(1);
+  }
+
+  // ── Phase 2: NestJS module initialisation ──────────────────────────────────
+  console.log('[Bootstrap] Calling NestFactory.create() — module graph loading...');
+  let app: Awaited<ReturnType<typeof NestFactory.create>>;
+  try {
+    app = await NestFactory.create(AppModule, {
+      bufferLogs: false,
+    });
+  } catch (err) {
+    console.error('[Bootstrap] FATAL: NestFactory.create() threw an error.');
+    console.error('[Bootstrap] This usually means a module failed to initialise');
+    console.error('[Bootstrap] (bad env var, missing dependency, Redis/DB unreachable at startup).');
+    console.error('[Bootstrap] Error details:', err instanceof Error ? err.stack : err);
+    process.exit(1);
+  }
+  console.log('[Bootstrap] NestFactory.create() succeeded — all modules initialised.');
+
+  // ── Phase 3: app configuration ─────────────────────────────────────────────
   const config = app.get(ConfigService);
   const prisma = app.get(PrismaService);
 
@@ -51,11 +84,23 @@ async function bootstrap() {
     }),
   );
 
+  // ── Phase 4: bind to port ──────────────────────────────────────────────────
   const port = config.get<number>('PORT', 5001);
-  await app.listen(port);
+  console.log(`[Bootstrap] Calling app.listen(${port})...`);
+  try {
+    await app.listen(port);
+  } catch (err) {
+    console.error(`[Bootstrap] FATAL: app.listen(${port}) failed.`);
+    console.error('[Bootstrap] Error details:', err instanceof Error ? err.stack : err);
+    process.exit(1);
+  }
+
+  startupLogger.log(`Application is running on port ${port}`);
+  startupLogger.log(`Global prefix: /api`);
+  startupLogger.log(`Environment: ${config.get<string>('NODE_ENV', 'development')}`);
 }
 
 bootstrap().catch((err) => {
-  console.error('Fatal error during bootstrap:', err);
+  console.error('[Bootstrap] FATAL: Unhandled error escaped bootstrap():', err instanceof Error ? err.stack : err);
   process.exit(1);
 });
