@@ -1,0 +1,7 @@
+backend-nest/node_modules
+backend-nest/dist
+backend-nest/.env
+backend-nest/coverage
+backend-nest/*.log
+.git
+.vscode
