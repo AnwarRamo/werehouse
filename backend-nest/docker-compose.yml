@@ -12,15 +12,15 @@ services:
     container_name: warehouse_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: warehouse_system
+      POSTGRES_DB: warehouse_systemfinly
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: Anwar@23
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d warehouse_system"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d warehouse_systemfinly"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -51,7 +51,7 @@ services:
       DEV_ADMIN_USERNAME: developer
       DEV_ADMIN_EMAIL: developer@warehouse.local
       DEV_ADMIN_PASSWORD: DevAdmin@2026!
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/warehouse_system?schema=public
+      DATABASE_URL: postgresql://postgres:Anwar%4023@postgres:5432/warehouse_systemfinly?schema=public
       CORS_ORIGIN: ""
       BCRYPT_ROUNDS: 10
       THROTTLE_TTL_MS: 60000
