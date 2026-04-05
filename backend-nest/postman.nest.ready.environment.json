@@ -2,7 +2,7 @@
   "id": "9a8f239a-7caf-4b95-a2ce-6cc9ec8f2010",
   "name": "Warehouse Backend Nest Local Ready",
   "values": [
-    { "key": "baseUrl",       "value": "http://localhost:5001/api", "enabled": true },
+    { "key": "baseUrl",       "value": "https://werehouse-production-dabe.up.railway.app/api", "enabled": true },
     { "key": "username",      "value": "superadmin",                "enabled": true },
     { "key": "password",      "value": "SuperAdmin@2026!",          "enabled": true },
     { "key": "token",         "value": "",                          "enabled": true },

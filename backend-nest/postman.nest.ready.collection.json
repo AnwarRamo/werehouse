@@ -10,7 +10,7 @@
     "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
   },
   "variable": [
-    { "key": "baseUrl",       "value": "http://localhost:5001/api" },
+    { "key": "baseUrl",       "value": "https://werehouse-production-dabe.up.railway.app/api" },
     { "key": "username",      "value": "superadmin" },
     { "key": "password",      "value": "SuperAdmin@2026!" },
     { "key": "token",         "value": "" },
