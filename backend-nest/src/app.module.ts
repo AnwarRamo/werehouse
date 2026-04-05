@@ -60,6 +60,10 @@ import { RequestLoggingMiddleware } from './common/middleware/request-logging.mi
       useFactory: (config: ConfigService) => ({
         connection: {
           url: config.get<string>('REDIS_URL', 'redis://127.0.0.1:6379'),
+          maxRetriesPerRequest: null,
+          enableReadyCheck: false,
+          lazyConnect: true,
+          retryStrategy: (times: number) => Math.min(times * 1000, 30000),
         },
         defaultJobOptions: {
           attempts: 3,
