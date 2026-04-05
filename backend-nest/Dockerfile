@@ -31,4 +31,4 @@ COPY --from=build /out/prisma ./prisma
 COPY --from=build /out/prisma.config.ts ./prisma.config.ts
 
 EXPOSE 5001
-CMD ["sh", "-c", "npx prisma db push && node dist/main"]
+CMD ["sh", "-c", "if [ -z \"$DATABASE_URL\" ]; then echo 'ERROR: DATABASE_URL environment variable is not set' && exit 1; fi && npx prisma db push && node dist/main"]
