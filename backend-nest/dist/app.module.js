@@ -60,6 +60,32 @@ const salary_module_1 = require("./salary/salary.module");
 const advances_module_1 = require("./advances/advances.module");
 const insurance_module_1 = require("./insurance/insurance.module");
 const bonuses_module_1 = require("./bonuses/bonuses.module");
+const queuesEnabled = process.env.NODE_ENV !== 'test' && process.env.QUEUES_ENABLED !== 'false';
+const queueInfraModules = queuesEnabled
+    ? [
+        bullmq_1.BullModule.forRootAsync({
+            inject: [config_1.ConfigService],
+            useFactory: (config) => ({
+                connection: {
+                    url: config.get('REDIS_URL', 'redis://127.0.0.1:6379'),
+                    maxRetriesPerRequest: null,
+                    enableReadyCheck: false,
+                    lazyConnect: true,
+                    retryStrategy: (times) => Math.min(times * 1000, 30000),
+                },
+                defaultJobOptions: {
+                    attempts: 3,
+                    backoff: {
+                        type: 'exponential',
+                        delay: 2_000,
+                    },
+                    removeOnComplete: 500,
+                    removeOnFail: 500,
+                },
+            }),
+        }),
+    ]
+    : [];
 let AppModule = class AppModule {
     configure(consumer) {
         consumer.apply(request_logging_middleware_1.RequestLoggingMiddleware).forRoutes({ path: '*path', method: common_1.RequestMethod.ALL });
@@ -137,6 +163,7 @@ exports.AppModule = AppModule = __decorate([
                     BCRYPT_ROUNDS: Joi.number().min(8).max(14).default(10),
                     THROTTLE_TTL_MS: Joi.number().min(1_000).default(60_000),
                     THROTTLE_LIMIT: Joi.number().min(10).default(120),
+                    QUEUES_ENABLED: Joi.boolean().default(true),
                     REDIS_URL: Joi.string().uri().default('redis://127.0.0.1:6379'),
                 }),
             }),
@@ -149,27 +176,7 @@ exports.AppModule = AppModule = __decorate([
                     },
                 ],
             }),
-            bullmq_1.BullModule.forRootAsync({
-                inject: [config_1.ConfigService],
-                useFactory: (config) => ({
-                    connection: {
-                        url: config.get('REDIS_URL', 'redis://127.0.0.1:6379'),
-                        maxRetriesPerRequest: null,
-                        enableReadyCheck: false,
-                        lazyConnect: true,
-                        retryStrategy: (times) => Math.min(times * 1000, 30000),
-                    },
-                    defaultJobOptions: {
-                        attempts: 3,
-                        backoff: {
-                            type: 'exponential',
-                            delay: 2_000,
-                        },
-                        removeOnComplete: 500,
-                        removeOnFail: 500,
-                    },
-                }),
-            }),
+            ...queueInfraModules,
             prisma_module_1.PrismaModule,
             health_module_1.HealthModule,
             auth_1.AuthModule,

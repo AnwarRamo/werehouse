@@ -19,6 +19,34 @@ import { AdvancesModule } from './advances/advances.module';
 import { InsuranceModule } from './insurance/insurance.module';
 import { BonusesModule } from './bonuses/bonuses.module';
 
+const queuesEnabled = process.env.NODE_ENV !== 'test' && process.env.QUEUES_ENABLED !== 'false';
+
+const queueInfraModules = queuesEnabled
+  ? [
+      BullModule.forRootAsync({
+        inject: [ConfigService],
+        useFactory: (config: ConfigService) => ({
+          connection: {
+            url: config.get<string>('REDIS_URL', 'redis://127.0.0.1:6379'),
+            maxRetriesPerRequest: null,
+            enableReadyCheck: false,
+            lazyConnect: true,
+            retryStrategy: (times: number) => Math.min(times * 1000, 30000),
+          },
+          defaultJobOptions: {
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 2_000,
+            },
+            removeOnComplete: 500,
+            removeOnFail: 500,
+          },
+        }),
+      }),
+    ]
+  : [];
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -89,6 +117,7 @@ import { BonusesModule } from './bonuses/bonuses.module';
         BCRYPT_ROUNDS: Joi.number().min(8).max(14).default(10),
         THROTTLE_TTL_MS: Joi.number().min(1_000).default(60_000),
         THROTTLE_LIMIT: Joi.number().min(10).default(120),
+        QUEUES_ENABLED: Joi.boolean().default(true),
         REDIS_URL: Joi.string().uri().default('redis://127.0.0.1:6379'),
       }),
     }),
@@ -101,27 +130,7 @@ import { BonusesModule } from './bonuses/bonuses.module';
         },
       ],
     }),
-    BullModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        connection: {
-          url: config.get<string>('REDIS_URL', 'redis://127.0.0.1:6379'),
-          maxRetriesPerRequest: null,
-          enableReadyCheck: false,
-          lazyConnect: true,
-          retryStrategy: (times: number) => Math.min(times * 1000, 30000),
-        },
-        defaultJobOptions: {
-          attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 2_000,
-          },
-          removeOnComplete: 500,
-          removeOnFail: 500,
-        },
-      }),
-    }),
+    ...queueInfraModules,
     PrismaModule,
     HealthModule,
     AuthModule,

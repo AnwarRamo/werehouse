@@ -28,6 +28,117 @@ const queue_constants_1 = require("../queues/queue.constants");
 const pagination_util_1 = require("../common/utils/pagination.util");
 const IMPORT_BATCH_SIZE = 50;
 const IMPORT_MAX_ROWS = 50_000;
+const EMPLOYEE_HEADER_ALIASES = {
+    employeeid: [
+        'employeeid',
+        'employee_id',
+        'id',
+        'empid',
+        'employeecode',
+        'employeenumber',
+        'staffid',
+        'userid',
+        'رقمالموظف',
+        'كودالموظف',
+        'معرفالموظف',
+    ],
+    name: [
+        'name',
+        'fullname',
+        'full_name',
+        'employeename',
+        'employee_name',
+        'الاسم',
+        'اسم',
+        'اسمالموظف',
+    ],
+    email: [
+        'email',
+        'mail',
+        'e-mail',
+        'workemail',
+        'companyemail',
+        'الايميل',
+        'ايميل',
+        'البريدالالكتروني',
+    ],
+    hourlyrate: [
+        'hourlyrate',
+        'hourly_rate',
+        'rate',
+        'rateperhour',
+        'hourlywage',
+        'wage',
+        'سعرالساعة',
+        'اجرالساعة',
+        'الاجرالساعة',
+    ],
+};
+const PRODUCT_HEADER_ALIASES = {
+    sku: [
+        'sku',
+        'productcode',
+        'product_id',
+        'productid',
+        'itemcode',
+        'code',
+        'رمزالصنف',
+        'كودالصنف',
+        'كودالمنتج',
+    ],
+    name: [
+        'name',
+        'productname',
+        'product_name',
+        'itemname',
+        'اسم',
+        'اسمالمنتج',
+        'اسم_المنتج',
+    ],
+    category: [
+        'category',
+        'type',
+        'group',
+        'classification',
+        'التصنيف',
+        'الفئة',
+        'فئة',
+    ],
+    unitprice: [
+        'unitprice',
+        'unit_price',
+        'price',
+        'sellprice',
+        'sellingprice',
+        'retailprice',
+        'سعرالبيع',
+        'سعرالوحدة',
+        'السعر',
+    ],
+    costprice: [
+        'costprice',
+        'cost_price',
+        'cost',
+        'buyprice',
+        'purchaseprice',
+        'سعرالشراء',
+        'التكلفة',
+        'تكلفة',
+    ],
+};
+const EMPLOYEE_POSITIONAL_HEADERS = [
+    'employeeid',
+    'name',
+    'email',
+    'hourlyrate',
+];
+const PRODUCT_POSITIONAL_HEADERS = [
+    'sku',
+    'name',
+    'category',
+    'unitprice',
+    'costprice',
+];
 let ImportsService = class ImportsService {
     constructor(prisma, importsQueue) {
         this.prisma = prisma;
@@ -98,7 +209,8 @@ let ImportsService = class ImportsService {
     async validateEmployeesImport(file) {
         if (!file?.buffer)
             throw new common_1.BadRequestException('CSV/XLSX file is required in field: file');
-        const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
+        const parsed = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
+        const { rows, headers } = this.mapRowsToCanonicalHeaders(parsed.rows, parsed.headers, EMPLOYEE_HEADER_ALIASES, EMPLOYEE_POSITIONAL_HEADERS);
         this.assertEmployeesHeaders(headers);
         const result = await this.processEmployeesRows(rows, false);
         return { message: 'Employees import validation completed (dry-run)', ...result };
@@ -106,7 +218,8 @@ let ImportsService = class ImportsService {
     async validateProductsImport(file) {
         if (!file?.buffer)
             throw new common_1.BadRequestException('CSV/XLSX file is required in field: file');
-        const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
+        const parsed = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
+        const { rows, headers } = this.mapRowsToCanonicalHeaders(parsed.rows, parsed.headers, PRODUCT_HEADER_ALIASES, PRODUCT_POSITIONAL_HEADERS);
         this.assertProductsHeaders(headers);
         const result = await this.processProductsRows(rows, false);
         return { message: 'Products import validation completed (dry-run)', ...result };
@@ -114,7 +227,8 @@ let ImportsService = class ImportsService {
     async importEmployees(file, userId) {
         if (!file?.buffer)
             throw new common_1.BadRequestException('CSV/XLSX file is required in field: file');
-        const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
+        const parsed = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
+        const { rows, headers } = this.mapRowsToCanonicalHeaders(parsed.rows, parsed.headers, EMPLOYEE_HEADER_ALIASES, EMPLOYEE_POSITIONAL_HEADERS);
         this.assertEmployeesHeaders(headers);
         const jobId = `IMP-EMP-${Date.now()}`;
         const job = await this.prisma.importJob.create({
@@ -145,8 +259,11 @@ let ImportsService = class ImportsService {
     async importEmployeesAsync(file, userId) {
         if (!file?.buffer)
             throw new common_1.BadRequestException('CSV/XLSX file is required in field: file');
-        const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
+        const parsed = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
+        const { rows, headers } = this.mapRowsToCanonicalHeaders(parsed.rows, parsed.headers, EMPLOYEE_HEADER_ALIASES, EMPLOYEE_POSITIONAL_HEADERS);
         this.assertEmployeesHeaders(headers);
+        const validationResult = await this.processEmployeesRows(rows, false);
+        this.ensureNoValidationErrors(validationResult, 'employees');
         const jobId = `IMP-EMP-${Date.now()}`;
         const job = await this.prisma.importJob.create({
             data: {
@@ -164,7 +281,8 @@ let ImportsService = class ImportsService {
     async importProducts(file, userId) {
         if (!file?.buffer)
             throw new common_1.BadRequestException('CSV/XLSX file is required in field: file');
-        const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
+        const parsed = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
+        const { rows, headers } = this.mapRowsToCanonicalHeaders(parsed.rows, parsed.headers, PRODUCT_HEADER_ALIASES, PRODUCT_POSITIONAL_HEADERS);
         this.assertProductsHeaders(headers);
         const jobId = `IMP-PROD-${Date.now()}`;
         const job = await this.prisma.importJob.create({
@@ -195,8 +313,11 @@ let ImportsService = class ImportsService {
     async importProductsAsync(file, userId) {
         if (!file?.buffer)
             throw new common_1.BadRequestException('CSV/XLSX file is required in field: file');
-        const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
+        const parsed = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
+        const { rows, headers } = this.mapRowsToCanonicalHeaders(parsed.rows, parsed.headers, PRODUCT_HEADER_ALIASES, PRODUCT_POSITIONAL_HEADERS);
         this.assertProductsHeaders(headers);
+        const validationResult = await this.processProductsRows(rows, false);
+        this.ensureNoValidationErrors(validationResult, 'products');
         const jobId = `IMP-PROD-${Date.now()}`;
         const job = await this.prisma.importJob.create({
             data: {
@@ -278,6 +399,17 @@ let ImportsService = class ImportsService {
             }
             throw new Error('Unable to enqueue import job');
         }
+    }
+    ensureNoValidationErrors(result, entity) {
+        if (result.errorRows === 0) {
+            return;
+        }
+        const sampleErrors = result.errors.slice(0, 10);
+        throw new common_1.BadRequestException({
+            message: `Import blocked: ${entity} file has invalid rows. Please fix the file and try again.`,
+            errorRows: result.errorRows,
+            errors: sampleErrors,
+        });
     }
     parseImportRows(buffer, fileName, mimeType) {
         const extension = (0, path_1.extname)(fileName || '').toLowerCase();
@@ -392,21 +524,16 @@ let ImportsService = class ImportsService {
         return role.id;
     }
     assertEmployeesHeaders(headers) {
-        const missing = [
-            ['employeeid', 'employee_id', 'id'],
-            ['name', 'fullname', 'full_name'],
-            ['email', 'mail'],
-            ['hourlyrate', 'hourly_rate', 'rate'],
-        ]
-            .filter((aliases) => !this.headerExists(headers, aliases))
-            .map((aliases) => aliases[0]);
+        const missing = Object.entries(EMPLOYEE_HEADER_ALIASES)
+            .filter(([, aliases]) => !this.headerExists(headers, aliases))
+            .map(([key]) => key);
         if (missing.length > 0)
             throw new common_1.BadRequestException(`Missing required CSV headers: ${missing.join(', ')}`);
     }
     assertProductsHeaders(headers) {
-        const missing = [['sku'], ['name'], ['category'], ['unitprice', 'unit_price', 'price'], ['costprice', 'cost_price']]
-            .filter((aliases) => !this.headerExists(headers, aliases))
-            .map((aliases) => aliases[0]);
+        const missing = Object.entries(PRODUCT_HEADER_ALIASES)
+            .filter(([, aliases]) => !this.headerExists(headers, aliases))
+            .map(([key]) => key);
         if (missing.length > 0)
             throw new common_1.BadRequestException(`Missing required CSV headers: ${missing.join(', ')}`);
     }
@@ -422,10 +549,10 @@ let ImportsService = class ImportsService {
             const batch = rows.slice(offset, offset + IMPORT_BATCH_SIZE);
             const batchResults = await Promise.all(batch.map(async (input, index) => {
                 try {
-                    const employeeId = this.value(input, ['employeeid', 'employee_id', 'id']);
-                    const name = this.value(input, ['name', 'fullname', 'full_name']);
-                    const email = this.value(input, ['email', 'mail']);
-                    const hourlyRateRaw = this.value(input, ['hourlyrate', 'hourly_rate', 'rate']);
+                    const employeeId = this.value(input, EMPLOYEE_HEADER_ALIASES.employeeid);
+                    const name = this.value(input, EMPLOYEE_HEADER_ALIASES.name);
+                    const email = this.value(input, EMPLOYEE_HEADER_ALIASES.email);
+                    const hourlyRateRaw = this.value(input, EMPLOYEE_HEADER_ALIASES.hourlyrate);
                     const currency = this.value(input, ['currency']) || 'SYP';
                     const department = this.value(input, ['department']) || 'Warehouse';
                     const scheduledStart = this.value(input, ['scheduledstart', 'scheduled_start', 'start']) || undefined;
@@ -496,11 +623,11 @@ let ImportsService = class ImportsService {
             const batch = rows.slice(offset, offset + IMPORT_BATCH_SIZE);
             const batchResults = await Promise.all(batch.map(async (input, index) => {
                 try {
-                    const sku = this.value(input, ['sku']);
-                    const name = this.value(input, ['name']);
-                    const category = this.value(input, ['category']);
-                    const unitPriceRaw = this.value(input, ['unitprice', 'unit_price', 'price']);
-                    const costPriceRaw = this.value(input, ['costprice', 'cost_price']);
+                    const sku = this.value(input, PRODUCT_HEADER_ALIASES.sku);
+                    const name = this.value(input, PRODUCT_HEADER_ALIASES.name);
+                    const category = this.value(input, PRODUCT_HEADER_ALIASES.category);
+                    const unitPriceRaw = this.value(input, PRODUCT_HEADER_ALIASES.unitprice);
+                    const costPriceRaw = this.value(input, PRODUCT_HEADER_ALIASES.costprice);
                     const reorderLevelRaw = this.value(input, ['reorderlevel', 'reorder_level', 'reorder']);
                     const status = this.value(input, ['status']) || 'active';
                     if (!sku || !name || !category || !unitPriceRaw || !costPriceRaw)
@@ -555,10 +682,50 @@ let ImportsService = class ImportsService {
         }
         return { totalRows: rows.length, successRows, errorRows: errors.length, errors };
     }
+    mapRowsToCanonicalHeaders(rows, headers, aliasesMap, positionalFallbackOrder) {
+        if (rows.length === 0 && headers.length === 0) {
+            return { rows, headers };
+        }
+        const normalizedHeaders = headers.map((header) => this.normalizeHeader(header));
+        const canonicalToSource = {};
+        const usedSources = new Set();
+        for (const [canonical, aliases] of Object.entries(aliasesMap)) {
+            const normalizedAliases = aliases.map((alias) => this.normalizeHeader(alias));
+            const matchedHeader = normalizedAliases.find((alias) => normalizedHeaders.includes(alias));
+            if (matchedHeader) {
+                canonicalToSource[canonical] = matchedHeader;
+                usedSources.add(matchedHeader);
+            }
+        }
+        positionalFallbackOrder.forEach((canonical, index) => {
+            if (canonicalToSource[canonical]) {
+                return;
+            }
+            const positionalHeader = normalizedHeaders[index];
+            if (positionalHeader && !usedSources.has(positionalHeader)) {
+                canonicalToSource[canonical] = positionalHeader;
+                usedSources.add(positionalHeader);
+            }
+        });
+        const mappedRows = rows.map((row) => {
+            const mapped = { ...row };
+            for (const [canonical, source] of Object.entries(canonicalToSource)) {
+                if (!mapped[canonical] && mapped[source] !== undefined) {
+                    mapped[canonical] = mapped[source];
+                }
+            }
+            return mapped;
+        });
+        const mergedHeaders = Array.from(new Set([...normalizedHeaders, ...Object.keys(canonicalToSource)]));
+        return { rows: mappedRows, headers: mergedHeaders };
+    }
     normalizeHeader(value) {
         return String(value || '')
+            .trim()
             .toLowerCase()
-            .replace(/[^a-z0-9]/g, '');
+            .normalize('NFKC')
+            .replace(/[\s_\-./\\()]+/g, '')
+            .replace(/[^\p{L}\p{N}]/gu, '');
     }
     jobStatus(totalRows, successRows, errorRows) {
         if (totalRows === 0 || errorRows === 0)

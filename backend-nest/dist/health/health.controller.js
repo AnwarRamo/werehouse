@@ -21,11 +21,14 @@ let HealthController = class HealthController {
     constructor(prisma, config) {
         this.prisma = prisma;
         this.config = config;
-        this.redis = new ioredis_1.default(this.config.get('REDIS_URL', 'redis://127.0.0.1:6379'), {
-            lazyConnect: true,
-            maxRetriesPerRequest: 1,
-            enableReadyCheck: false,
-        });
+        this.redisEnabled = this.config.get('QUEUES_ENABLED', true);
+        this.redis = this.redisEnabled
+            ? new ioredis_1.default(this.config.get('REDIS_URL', 'redis://127.0.0.1:6379'), {
+                lazyConnect: true,
+                maxRetriesPerRequest: 1,
+                enableReadyCheck: false,
+            })
+            : null;
     }
     getLive() {
         return {
@@ -37,8 +40,9 @@ let HealthController = class HealthController {
     async getReady() {
         const db = await this.checkDatabase();
         const redis = await this.checkRedis();
+        const redisHealthy = redis === 'up' || redis === 'disabled';
         return {
-            status: db === 'up' && redis === 'up' ? 'ok' : 'degraded',
+            status: db === 'up' && redisHealthy ? 'ok' : 'degraded',
             check: 'readiness',
             timestamp: new Date().toISOString(),
             services: {
@@ -50,7 +54,8 @@ let HealthController = class HealthController {
     async getHealth() {
         const db = await this.checkDatabase();
         const redis = await this.checkRedis();
-        const status = db === 'up' && redis === 'up' ? 'ok' : 'degraded';
+        const redisHealthy = redis === 'up' || redis === 'disabled';
+        const status = db === 'up' && redisHealthy ? 'ok' : 'degraded';
         return {
             status,
             timestamp: new Date().toISOString(),
@@ -71,6 +76,9 @@ let HealthController = class HealthController {
         }
     }
     async checkRedis() {
+        if (!this.redisEnabled || !this.redis) {
+            return 'disabled';
+        }
         try {
             if (this.redis.status === 'wait') {
                 await this.redis.connect();
@@ -83,6 +91,9 @@ let HealthController = class HealthController {
         }
     }
     async onModuleDestroy() {
+        if (!this.redis) {
+            return;
+        }
         await this.redis.quit();
     }
 };

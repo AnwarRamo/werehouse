@@ -9,18 +9,18 @@ export declare class ImportsController {
     history(query: ImportsHistoryQuery): Promise<{
         imports: {
             id: string;
-            status: string;
-            createdAt: Date;
-            updatedAt: Date;
             jobId: string;
             entity: string;
             fileName: string;
             uploadedBy: string;
             uploadedAt: Date;
+            status: string;
             totalRows: number;
             successRows: number;
             errorRows: number;
             errors: import("@prisma/client/runtime/client").JsonValue;
+            createdAt: Date;
+            updatedAt: Date;
         }[];
         pagination: {
             page: number;
@@ -40,18 +40,18 @@ export declare class ImportsController {
     details(jobId: string): Promise<{
         errorSummary: Record<string, number>;
         id: string;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
         jobId: string;
         entity: string;
         fileName: string;
         uploadedBy: string;
         uploadedAt: Date;
+        status: string;
         totalRows: number;
         successRows: number;
         errorRows: number;
         errors: import("@prisma/client/runtime/client").JsonValue;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     employeesTemplate(res: Response): void;
     productsTemplate(res: Response): void;

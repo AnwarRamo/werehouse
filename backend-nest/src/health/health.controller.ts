@@ -5,17 +5,21 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('health')
 export class HealthController implements OnModuleDestroy {
-  private readonly redis: Redis;
+  private readonly redisEnabled: boolean;
+  private readonly redis: Redis | null;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    this.redis = new Redis(this.config.get<string>('REDIS_URL', 'redis://127.0.0.1:6379'), {
-      lazyConnect: true,
-      maxRetriesPerRequest: 1,
-      enableReadyCheck: false,
-    });
+    this.redisEnabled = this.config.get<boolean>('QUEUES_ENABLED', true);
+    this.redis = this.redisEnabled
+      ? new Redis(this.config.get<string>('REDIS_URL', 'redis://127.0.0.1:6379'), {
+          lazyConnect: true,
+          maxRetriesPerRequest: 1,
+          enableReadyCheck: false,
+        })
+      : null;
   }
 
   @Get('live')
@@ -31,9 +35,10 @@ export class HealthController implements OnModuleDestroy {
   async getReady() {
     const db = await this.checkDatabase();
     const redis = await this.checkRedis();
+    const redisHealthy = redis === 'up' || redis === 'disabled';
 
     return {
-      status: db === 'up' && redis === 'up' ? 'ok' : 'degraded',
+      status: db === 'up' && redisHealthy ? 'ok' : 'degraded',
       check: 'readiness',
       timestamp: new Date().toISOString(),
       services: {
@@ -47,7 +52,8 @@ export class HealthController implements OnModuleDestroy {
   async getHealth() {
     const db = await this.checkDatabase();
     const redis = await this.checkRedis();
-    const status = db === 'up' && redis === 'up' ? 'ok' : 'degraded';
+    const redisHealthy = redis === 'up' || redis === 'disabled';
+    const status = db === 'up' && redisHealthy ? 'ok' : 'degraded';
 
     return {
       status,
@@ -69,7 +75,11 @@ export class HealthController implements OnModuleDestroy {
     }
   }
 
-  private async checkRedis(): Promise<'up' | 'down'> {
+  private async checkRedis(): Promise<'up' | 'down' | 'disabled'> {
+    if (!this.redisEnabled || !this.redis) {
+      return 'disabled';
+    }
+
     try {
       if (this.redis.status === 'wait') {
         await this.redis.connect();
@@ -82,6 +92,10 @@ export class HealthController implements OnModuleDestroy {
   }
 
   async onModuleDestroy() {
+    if (!this.redis) {
+      return;
+    }
+
     await this.redis.quit();
   }
 }

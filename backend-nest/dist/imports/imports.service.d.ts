@@ -18,18 +18,18 @@ export declare class ImportsService {
     history(query: ImportsHistoryQuery): Promise<{
         imports: {
             id: string;
-            status: string;
-            createdAt: Date;
-            updatedAt: Date;
             jobId: string;
             entity: string;
             fileName: string;
             uploadedBy: string;
             uploadedAt: Date;
+            status: string;
             totalRows: number;
             successRows: number;
             errorRows: number;
             errors: Prisma.JsonValue;
+            createdAt: Date;
+            updatedAt: Date;
         }[];
         pagination: {
             page: number;
@@ -49,18 +49,18 @@ export declare class ImportsService {
     details(jobId: string): Promise<{
         errorSummary: Record<string, number>;
         id: string;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
         jobId: string;
         entity: string;
         fileName: string;
         uploadedBy: string;
         uploadedAt: Date;
+        status: string;
         totalRows: number;
         successRows: number;
         errorRows: number;
         errors: Prisma.JsonValue;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     getEmployeesTemplateCsv(): string;
     getProductsTemplateCsv(): string;
@@ -126,6 +126,7 @@ export declare class ImportsService {
     }>;
     markImportJobFailed(importJobRecordId: string, message: string): Promise<void>;
     private enqueueImportJob;
+    private ensureNoValidationErrors;
     private parseImportRows;
     private parseImportRowsAsync;
     private value;
@@ -136,6 +137,7 @@ export declare class ImportsService {
     private headerExists;
     private processEmployeesRows;
     private processProductsRows;
+    private mapRowsToCanonicalHeaders;
     private normalizeHeader;
     private jobStatus;
 }
