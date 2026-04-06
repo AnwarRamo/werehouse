@@ -13,6 +13,12 @@ import { resolvePagination } from '../common/utils/pagination.util';
 type ParsedRow = Record<string, string>;
 type RowError = { row: number; error: string };
 type ParseResult = { rows: ParsedRow[]; headers: string[] };
+type RowsProcessingResult = {
+  totalRows: number;
+  successRows: number;
+  errorRows: number;
+  errors: RowError[];
+};
 
 const IMPORT_BATCH_SIZE = 50;
 const IMPORT_MAX_ROWS = 50_000;
@@ -169,6 +175,9 @@ export class ImportsService {
     const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
     this.assertEmployeesHeaders(headers);
 
+    const validationResult = await this.processEmployeesRows(rows, false);
+    this.ensureNoValidationErrors(validationResult, 'employees');
+
     const jobId = `IMP-EMP-${Date.now()}`;
     const job = await this.prisma.importJob.create({
       data: {
@@ -227,6 +236,9 @@ export class ImportsService {
 
     const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
     this.assertProductsHeaders(headers);
+
+    const validationResult = await this.processProductsRows(rows, false);
+    this.ensureNoValidationErrors(validationResult, 'products');
 
     const jobId = `IMP-PROD-${Date.now()}`;
     const job = await this.prisma.importJob.create({
@@ -319,6 +331,19 @@ export class ImportsService {
 
       throw new Error('Unable to enqueue import job');
     }
+  }
+
+  private ensureNoValidationErrors(result: RowsProcessingResult, entity: string) {
+    if (result.errorRows === 0) {
+      return;
+    }
+
+    const sampleErrors = result.errors.slice(0, 10);
+    throw new BadRequestException({
+      message: `Import blocked: ${entity} file has invalid rows. Please fix the file and try again.`,
+      errorRows: result.errorRows,
+      errors: sampleErrors,
+    });
   }
 
   private parseImportRows(buffer: Buffer, fileName?: string, mimeType?: string): ParseResult {
