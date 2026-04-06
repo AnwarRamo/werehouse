@@ -655,7 +655,7 @@
                 {
                   "key": "file",
                   "type": "file",
-                  "src": ""
+                  "src": "../samples/employees.csv"
                 }
               ]
             },
@@ -672,7 +672,7 @@
                 {
                   "key": "file",
                   "type": "file",
-                  "src": ""
+                  "src": "../samples/employees.csv"
                 }
               ]
             },
@@ -689,7 +689,7 @@
                 {
                   "key": "file",
                   "type": "file",
-                  "src": ""
+                  "src": "../samples/employees.csv"
                 }
               ]
             },
@@ -706,7 +706,7 @@
                 {
                   "key": "file",
                   "type": "file",
-                  "src": ""
+                  "src": "../samples/products.csv"
                 }
               ]
             },
@@ -723,7 +723,7 @@
                 {
                   "key": "file",
                   "type": "file",
-                  "src": ""
+                  "src": "../samples/products.csv"
                 }
               ]
             },
@@ -740,7 +740,7 @@
                 {
                   "key": "file",
                   "type": "file",
-                  "src": ""
+                  "src": "../samples/products.csv"
                 }
               ]
             },

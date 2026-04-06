@@ -28,6 +28,15 @@ async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const config = app.get(config_1.ConfigService);
     const prisma = app.get(prisma_service_1.PrismaService);
+    const isProduction = config.get('NODE_ENV', 'development') === 'production';
+    const trustProxy = config.get('TRUST_PROXY', isProduction);
+    const appInstance = app.getHttpAdapter().getInstance();
+    if (trustProxy && typeof appInstance?.set === 'function') {
+        appInstance.set('trust proxy', 1);
+    }
+    if (typeof appInstance?.disable === 'function') {
+        appInstance.disable('x-powered-by');
+    }
     app.enableShutdownHooks();
     await prisma.enableShutdownHooks(app);
     app.setGlobalPrefix('api');
@@ -36,8 +45,16 @@ async function bootstrap() {
     app.use((0, cookie_parser_1.default)());
     app.useGlobalFilters(new global_exception_filter_1.GlobalExceptionFilter());
     const corsOrigin = config.get('CORS_ORIGIN', '');
+    const fallbackDevOrigins = [/^http:\/\/localhost:\d+$/i, /^http:\/\/127\.0\.0\.1:\d+$/i];
     app.enableCors({
-        origin: corsOrigin ? corsOrigin.split(',').map((v) => v.trim()) : true,
+        origin: corsOrigin
+            ? corsOrigin
+                .split(',')
+                .map((v) => v.trim())
+                .filter(Boolean)
+            : isProduction
+                ? false
+                : fallbackDevOrigins,
         credentials: true,
     });
     app.useGlobalPipes(new common_1.ValidationPipe({

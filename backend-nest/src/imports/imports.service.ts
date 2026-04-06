@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -37,7 +37,7 @@ export type ImportsHistoryQuery = PaginationQueryParams & {
 export class ImportsService {
   constructor(
     private readonly prisma: PrismaService,
-    @InjectQueue(QUEUE_NAMES.IMPORTS) private readonly importsQueue: Queue,
+    @Optional() @InjectQueue(QUEUE_NAMES.IMPORTS) private readonly importsQueue?: Queue,
   ) {}
 
   async history(query: ImportsHistoryQuery) {
@@ -297,6 +297,10 @@ export class ImportsService {
 
   private async enqueueImportJob(jobName: string, payload: ImportQueuePayload) {
     try {
+      if (!this.importsQueue) {
+        throw new Error('Imports queue is not available');
+      }
+
       await this.importsQueue.add(jobName, payload, {
         attempts: 3,
         backoff: { type: 'exponential', delay: 2_000 },

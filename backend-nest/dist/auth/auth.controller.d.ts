@@ -13,7 +13,7 @@ export declare class AuthController implements OnModuleInit {
     private readonly audit;
     constructor(authService: AuthService, config: ConfigService, audit: AuditService);
     onModuleInit(): Promise<void>;
-    login(dto: LoginDto, res: Response): Promise<{
+    login(dto: LoginDto, res: Response): Promise<Omit<{
         token: string;
         user: {
             id: string;
@@ -22,8 +22,8 @@ export declare class AuthController implements OnModuleInit {
             role: string;
             permissions: string[];
         };
-    }>;
-    register(dto: RegisterDto, res: Response): Promise<{
+    }, "token">>;
+    register(dto: RegisterDto, res: Response): Promise<Omit<{
         message: string;
         token: string;
         user: {
@@ -33,7 +33,7 @@ export declare class AuthController implements OnModuleInit {
             role: string;
             permissions: string[];
         };
-    }>;
+    }, "token">>;
     logout(res: Response): {
         message: string;
     };
@@ -72,12 +72,14 @@ export declare class AuthController implements OnModuleInit {
         }[];
     }>;
     getRoles(user: AuthenticatedUser, req: Request): Promise<{
+        name: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         description: string | null;
         permissions: string[];
     }[]>;
     private setAuthCookie;
+    private formatAuthResult;
+    private getAuthCookieOptions;
 }

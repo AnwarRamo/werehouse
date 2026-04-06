@@ -14,16 +14,20 @@ const payroll_service_1 = require("./payroll.service");
 const audit_service_1 = require("../common/services/audit.service");
 const payroll_queue_processor_1 = require("./payroll.queue.processor");
 const queue_constants_1 = require("../queues/queue.constants");
+const payrollQueueModules = process.env.NODE_ENV === 'test'
+    ? []
+    : [
+        bullmq_1.BullModule.registerQueue({ name: queue_constants_1.QUEUE_NAMES.PAYROLL }, { name: queue_constants_1.QUEUE_NAMES.DEAD_LETTER }),
+    ];
+const payrollProcessors = process.env.NODE_ENV === 'test' ? [] : [payroll_queue_processor_1.PayrollQueueProcessor];
 let PayrollModule = class PayrollModule {
 };
 exports.PayrollModule = PayrollModule;
 exports.PayrollModule = PayrollModule = __decorate([
     (0, common_1.Module)({
-        imports: [
-            bullmq_1.BullModule.registerQueue({ name: queue_constants_1.QUEUE_NAMES.PAYROLL }, { name: queue_constants_1.QUEUE_NAMES.DEAD_LETTER }),
-        ],
+        imports: [...payrollQueueModules],
         controllers: [payroll_controller_1.PayrollController],
-        providers: [payroll_service_1.PayrollService, payroll_queue_processor_1.PayrollQueueProcessor, audit_service_1.AuditService],
+        providers: [payroll_service_1.PayrollService, ...payrollProcessors, audit_service_1.AuditService],
     })
 ], PayrollModule);
 //# sourceMappingURL=payroll.module.js.map

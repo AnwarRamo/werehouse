@@ -7,13 +7,13 @@ export declare class EmployeesController {
     constructor(employeesService: EmployeesService);
     list(query: EmployeesListQuery): Promise<{
         employees: {
+            name: string;
             id: string;
             email: string;
             roleId: string | null;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             employeeId: string;
             hourlyRate: import("@prisma/client-runtime-utils").Decimal;
             currency: string;
@@ -39,13 +39,13 @@ export declare class EmployeesController {
         department: string;
         count: number;
         employees: {
+            name: string;
             id: string;
             email: string;
             roleId: string | null;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             employeeId: string;
             hourlyRate: import("@prisma/client-runtime-utils").Decimal;
             currency: string;
@@ -57,13 +57,13 @@ export declare class EmployeesController {
     create(dto: CreateEmployeeDto): Promise<{
         message: string;
         employee: {
+            name: string;
             id: string;
             email: string;
             roleId: string | null;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             employeeId: string;
             hourlyRate: import("@prisma/client-runtime-utils").Decimal;
             currency: string;
@@ -73,13 +73,13 @@ export declare class EmployeesController {
         };
     }>;
     getOne(employeeId: string): Promise<{
+        name: string;
         id: string;
         email: string;
         roleId: string | null;
         status: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         employeeId: string;
         hourlyRate: import("@prisma/client-runtime-utils").Decimal;
         currency: string;
@@ -90,13 +90,13 @@ export declare class EmployeesController {
     update(employeeId: string, dto: UpdateEmployeeDto): Promise<{
         message: string;
         employee: {
+            name: string;
             id: string;
             email: string;
             roleId: string | null;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             employeeId: string;
             hourlyRate: import("@prisma/client-runtime-utils").Decimal;
             currency: string;

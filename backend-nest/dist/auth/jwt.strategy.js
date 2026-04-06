@@ -23,11 +23,13 @@ const fromCookie = (cookieName) => {
 let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy) {
     constructor(config) {
         const cookieName = config.get('JWT_COOKIE_NAME', 'warehouse_access_token');
+        const nodeEnv = config.get('NODE_ENV', 'development');
+        const allowBearer = config.get('JWT_ALLOW_BEARER', nodeEnv !== 'production');
+        const extractors = allowBearer
+            ? [fromCookie(cookieName), passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken()]
+            : [fromCookie(cookieName)];
         super({
-            jwtFromRequest: passport_jwt_1.ExtractJwt.fromExtractors([
-                passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken(),
-                fromCookie(cookieName),
-            ]),
+            jwtFromRequest: passport_jwt_1.ExtractJwt.fromExtractors(extractors),
             ignoreExpiration: false,
             secretOrKey: config.getOrThrow('JWT_SECRET'),
         });

@@ -2,24 +2,25 @@ import { AttendanceService } from './attendance.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { AttendanceListQuery } from './attendance.service';
+import { AuthenticatedUser } from '../common/types/authenticated-user.types';
 export declare class AttendanceController {
     private readonly attendanceService;
     constructor(attendanceService: AttendanceService);
     list(query: AttendanceListQuery): Promise<{
         records: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
-            date: string;
+            timestamp: Date;
             type: string;
-            notes: string | null;
             deviceId: string | null;
             location: string | null;
-            timestamp: Date;
             source: string;
             verified: boolean;
+            notes: string | null;
+            date: string;
             shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
         }[];
         pagination: {
             page: number;
@@ -46,37 +47,65 @@ export declare class AttendanceController {
         };
         anomalies: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
-            date: string;
+            timestamp: Date;
             type: string;
-            notes: string | null;
             deviceId: string | null;
             location: string | null;
-            timestamp: Date;
             source: string;
             verified: boolean;
+            notes: string | null;
+            date: string;
             shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
         }[];
         anomalyCount: number;
     }>;
+    listDeletedHistory(): Promise<{
+        id: string;
+        entityType: string;
+        recordId: string;
+        payload: import("@prisma/client/runtime/client").JsonValue;
+        deletedBy: string | null;
+        deletedAt: Date;
+        restoredBy: string | null;
+        restoredAt: Date | null;
+    }[]>;
     create(dto: CreateAttendanceDto): Promise<{
         message: string;
         record: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
-            date: string;
+            timestamp: Date;
             type: string;
-            notes: string | null;
             deviceId: string | null;
             location: string | null;
-            timestamp: Date;
             source: string;
             verified: boolean;
+            notes: string | null;
+            date: string;
             shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+    }>;
+    restore(historyId: string, user: AuthenticatedUser): Promise<{
+        message: string;
+        record: {
+            id: string;
+            employeeId: string;
+            timestamp: Date;
+            type: string;
+            deviceId: string | null;
+            location: string | null;
+            source: string;
+            verified: boolean;
+            notes: string | null;
+            date: string;
+            shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
         };
     }>;
     employeeOnDate(employeeId: string, date: string): Promise<{
@@ -84,18 +113,18 @@ export declare class AttendanceController {
         date: string;
         records: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
-            date: string;
+            timestamp: Date;
             type: string;
-            notes: string | null;
             deviceId: string | null;
             location: string | null;
-            timestamp: Date;
             source: string;
             verified: boolean;
+            notes: string | null;
+            date: string;
             shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
         }[];
         recordCount: number;
     }>;
@@ -107,18 +136,18 @@ export declare class AttendanceController {
         };
         records: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
-            date: string;
+            timestamp: Date;
             type: string;
-            notes: string | null;
             deviceId: string | null;
             location: string | null;
-            timestamp: Date;
             source: string;
             verified: boolean;
+            notes: string | null;
+            date: string;
             shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
         }[];
         statistics: {
             totalDays: number;
@@ -127,35 +156,40 @@ export declare class AttendanceController {
     }>;
     getById(recordId: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         employeeId: string;
-        date: string;
+        timestamp: Date;
         type: string;
-        notes: string | null;
         deviceId: string | null;
         location: string | null;
-        timestamp: Date;
         source: string;
         verified: boolean;
+        notes: string | null;
+        date: string;
         shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     update(recordId: string, dto: UpdateAttendanceDto): Promise<{
         message: string;
         record: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
-            date: string;
+            timestamp: Date;
             type: string;
-            notes: string | null;
             deviceId: string | null;
             location: string | null;
-            timestamp: Date;
             source: string;
             verified: boolean;
+            notes: string | null;
+            date: string;
             shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
         };
+    }>;
+    remove(recordId: string, user: AuthenticatedUser): Promise<{
+        message: string;
+        recordId: string;
+        historyId: string;
     }>;
 }

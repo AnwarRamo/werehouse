@@ -13,16 +13,20 @@ const imports_controller_1 = require("./imports.controller");
 const imports_service_1 = require("./imports.service");
 const imports_queue_processor_1 = require("./imports.queue.processor");
 const queue_constants_1 = require("../queues/queue.constants");
+const importsQueueModules = process.env.NODE_ENV === 'test'
+    ? []
+    : [
+        bullmq_1.BullModule.registerQueue({ name: queue_constants_1.QUEUE_NAMES.IMPORTS }, { name: queue_constants_1.QUEUE_NAMES.DEAD_LETTER }),
+    ];
+const importsProcessors = process.env.NODE_ENV === 'test' ? [] : [imports_queue_processor_1.ImportsQueueProcessor];
 let ImportsModule = class ImportsModule {
 };
 exports.ImportsModule = ImportsModule;
 exports.ImportsModule = ImportsModule = __decorate([
     (0, common_1.Module)({
-        imports: [
-            bullmq_1.BullModule.registerQueue({ name: queue_constants_1.QUEUE_NAMES.IMPORTS }, { name: queue_constants_1.QUEUE_NAMES.DEAD_LETTER }),
-        ],
+        imports: [...importsQueueModules],
         controllers: [imports_controller_1.ImportsController],
-        providers: [imports_service_1.ImportsService, imports_queue_processor_1.ImportsQueueProcessor],
+        providers: [imports_service_1.ImportsService, ...importsProcessors],
     })
 ], ImportsModule);
 //# sourceMappingURL=imports.module.js.map

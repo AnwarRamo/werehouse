@@ -13,8 +13,8 @@ export declare class PayrollController {
         payrollRuns: {
             id: string;
             status: string;
-            notes: string | null;
             currency: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -52,8 +52,8 @@ export declare class PayrollController {
         payrollRun: {
             id: string;
             status: string;
-            notes: string | null;
             currency: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -74,8 +74,8 @@ export declare class PayrollController {
         payrollRun: {
             id: string;
             status: string;
-            notes: string | null;
             currency: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -95,8 +95,8 @@ export declare class PayrollController {
         payrollRun: {
             id: string;
             status: string;
-            notes: string | null;
             currency: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -142,8 +142,8 @@ export declare class PayrollController {
         payrollRun: {
             id: string;
             status: string;
-            notes: string | null;
             currency: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -164,8 +164,8 @@ export declare class PayrollController {
         payrollRun: {
             id: string;
             status: string;
-            notes: string | null;
             currency: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;

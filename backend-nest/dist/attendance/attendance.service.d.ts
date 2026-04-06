@@ -10,22 +10,25 @@ export type AttendanceListQuery = PaginationQueryParams & {
 export declare class AttendanceService {
     private readonly prisma;
     constructor(prisma: PrismaService);
+    private assertEmployeeExists;
+    private toHistoryPayload;
+    private parseRequiredString;
     private resolveRange;
     list(query: AttendanceListQuery): Promise<{
         records: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
-            date: string;
+            timestamp: Date;
             type: string;
-            notes: string | null;
             deviceId: string | null;
             location: string | null;
-            timestamp: Date;
             source: string;
             verified: boolean;
+            notes: string | null;
+            date: string;
             shiftPair: Prisma.JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
         }[];
         pagination: {
             page: number;
@@ -38,51 +41,84 @@ export declare class AttendanceService {
         message: string;
         record: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
-            date: string;
+            timestamp: Date;
             type: string;
-            notes: string | null;
             deviceId: string | null;
             location: string | null;
-            timestamp: Date;
             source: string;
             verified: boolean;
+            notes: string | null;
+            date: string;
             shiftPair: Prisma.JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
         };
     }>;
     getById(recordId: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         employeeId: string;
-        date: string;
+        timestamp: Date;
         type: string;
-        notes: string | null;
         deviceId: string | null;
         location: string | null;
-        timestamp: Date;
         source: string;
         verified: boolean;
+        notes: string | null;
+        date: string;
         shiftPair: Prisma.JsonValue | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     update(recordId: string, dto: UpdateAttendanceDto): Promise<{
         message: string;
         record: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
-            date: string;
+            timestamp: Date;
             type: string;
-            notes: string | null;
             deviceId: string | null;
             location: string | null;
-            timestamp: Date;
             source: string;
             verified: boolean;
+            notes: string | null;
+            date: string;
             shiftPair: Prisma.JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+    }>;
+    listDeletedHistory(): Promise<{
+        id: string;
+        entityType: string;
+        recordId: string;
+        payload: Prisma.JsonValue;
+        deletedBy: string | null;
+        deletedAt: Date;
+        restoredBy: string | null;
+        restoredAt: Date | null;
+    }[]>;
+    remove(recordId: string, deletedBy?: string): Promise<{
+        message: string;
+        recordId: string;
+        historyId: string;
+    }>;
+    restore(historyId: string, restoredBy?: string): Promise<{
+        message: string;
+        record: {
+            id: string;
+            employeeId: string;
+            timestamp: Date;
+            type: string;
+            deviceId: string | null;
+            location: string | null;
+            source: string;
+            verified: boolean;
+            notes: string | null;
+            date: string;
+            shiftPair: Prisma.JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
         };
     }>;
     stats(startDate: string, endDate: string): Promise<{
@@ -103,18 +139,18 @@ export declare class AttendanceService {
         };
         anomalies: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
-            date: string;
+            timestamp: Date;
             type: string;
-            notes: string | null;
             deviceId: string | null;
             location: string | null;
-            timestamp: Date;
             source: string;
             verified: boolean;
+            notes: string | null;
+            date: string;
             shiftPair: Prisma.JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
         }[];
         anomalyCount: number;
     }>;
@@ -123,18 +159,18 @@ export declare class AttendanceService {
         date: string;
         records: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
-            date: string;
+            timestamp: Date;
             type: string;
-            notes: string | null;
             deviceId: string | null;
             location: string | null;
-            timestamp: Date;
             source: string;
             verified: boolean;
+            notes: string | null;
+            date: string;
             shiftPair: Prisma.JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
         }[];
         recordCount: number;
     }>;
@@ -146,18 +182,18 @@ export declare class AttendanceService {
         };
         records: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
-            date: string;
+            timestamp: Date;
             type: string;
-            notes: string | null;
             deviceId: string | null;
             location: string | null;
-            timestamp: Date;
             source: string;
             verified: boolean;
+            notes: string | null;
+            date: string;
             shiftPair: Prisma.JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
         }[];
         statistics: {
             totalDays: number;

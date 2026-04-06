@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -33,24 +34,30 @@ export class AuthController implements OnModuleInit {
     await this.authService.ensureAdminBootstrap();
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('login')
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.login(dto);
     this.setAuthCookie(res, result.token);
-    return result;
+    res.setHeader('Cache-Control', 'no-store');
+    return this.formatAuthResult(result);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('register')
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.register(dto);
     this.setAuthCookie(res, result.token);
-    return result;
+    res.setHeader('Cache-Control', 'no-store');
+    return this.formatAuthResult(result);
   }
 
   @Post('logout')
   logout(@Res({ passthrough: true }) res: Response) {
     const cookieName = this.config.get<string>('JWT_COOKIE_NAME', 'warehouse_access_token');
-    res.clearCookie(cookieName);
+    const { maxAge, ...cookieOptions } = this.getAuthCookieOptions();
+    res.clearCookie(cookieName, cookieOptions);
+    res.setHeader('Cache-Control', 'no-store');
     return { message: 'Logged out successfully' };
   }
 
@@ -110,18 +117,32 @@ export class AuthController implements OnModuleInit {
 
   private setAuthCookie(res: Response, token: string) {
     const cookieName = this.config.get<string>('JWT_COOKIE_NAME', 'warehouse_access_token');
-    const secure = this.config.get<boolean>('JWT_COOKIE_SECURE', false);
+    res.cookie(cookieName, token, this.getAuthCookieOptions());
+  }
+
+  private formatAuthResult<T extends { token: string }>(result: T) {
+    const shouldReturnToken = this.config.get<boolean>('AUTH_RETURN_TOKEN_IN_BODY', true);
+    if (shouldReturnToken) {
+      return result;
+    }
+
+    const { token, ...sanitizedResult } = result;
+    return sanitizedResult;
+  }
+
+  private getAuthCookieOptions() {
+    const secureSetting = this.config.get<boolean>('JWT_COOKIE_SECURE', false);
     const sameSiteRaw = this.config.get<string>('JWT_COOKIE_SAME_SITE', 'lax').toLowerCase();
     const maxAge = this.config.get<number>('JWT_COOKIE_MAX_AGE_MS', 86_400_000);
     const sameSite =
       sameSiteRaw === 'strict' || sameSiteRaw === 'none' ? sameSiteRaw : 'lax';
 
-    res.cookie(cookieName, token, {
+    return {
       httpOnly: true,
-      secure,
+      secure: secureSetting || sameSite === 'none',
       sameSite,
       maxAge,
       path: '/',
-    });
+    } as const;
   }
 }

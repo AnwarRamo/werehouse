@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -26,7 +26,7 @@ export type PayrollListQuery = PaginationQueryParams & {
 export class PayrollService {
   constructor(
     private readonly prisma: PrismaService,
-    @InjectQueue(QUEUE_NAMES.PAYROLL) private readonly payrollQueue: Queue,
+    @Optional() @InjectQueue(QUEUE_NAMES.PAYROLL) private readonly payrollQueue?: Queue,
   ) {}
 
   private resolvePeriod(periodStart?: string, periodEnd?: string) {
@@ -340,6 +340,10 @@ export class PayrollService {
 
   private async enqueuePayrollJob(payload: PayrollQueuePayload) {
     try {
+      if (!this.payrollQueue) {
+        throw new Error('Payroll queue is not available');
+      }
+
       await this.payrollQueue.add(QUEUE_JOBS.PAYROLL_CALCULATE, payload, {
         attempts: 3,
         backoff: { type: 'exponential', delay: 2_000 },

@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
+const throttler_1 = require("@nestjs/throttler");
 const auth_service_1 = require("./auth.service");
 const login_dto_1 = require("./dto/login.dto");
 const register_dto_1 = require("./dto/register.dto");
@@ -36,16 +37,20 @@ let AuthController = class AuthController {
     async login(dto, res) {
         const result = await this.authService.login(dto);
         this.setAuthCookie(res, result.token);
-        return result;
+        res.setHeader('Cache-Control', 'no-store');
+        return this.formatAuthResult(result);
     }
     async register(dto, res) {
         const result = await this.authService.register(dto);
         this.setAuthCookie(res, result.token);
-        return result;
+        res.setHeader('Cache-Control', 'no-store');
+        return this.formatAuthResult(result);
     }
     logout(res) {
         const cookieName = this.config.get('JWT_COOKIE_NAME', 'warehouse_access_token');
-        res.clearCookie(cookieName);
+        const { maxAge, ...cookieOptions } = this.getAuthCookieOptions();
+        res.clearCookie(cookieName, cookieOptions);
+        res.setHeader('Cache-Control', 'no-store');
         return { message: 'Logged out successfully' };
     }
     me(user) {
@@ -79,21 +84,33 @@ let AuthController = class AuthController {
     }
     setAuthCookie(res, token) {
         const cookieName = this.config.get('JWT_COOKIE_NAME', 'warehouse_access_token');
-        const secure = this.config.get('JWT_COOKIE_SECURE', false);
+        res.cookie(cookieName, token, this.getAuthCookieOptions());
+    }
+    formatAuthResult(result) {
+        const shouldReturnToken = this.config.get('AUTH_RETURN_TOKEN_IN_BODY', true);
+        if (shouldReturnToken) {
+            return result;
+        }
+        const { token, ...sanitizedResult } = result;
+        return sanitizedResult;
+    }
+    getAuthCookieOptions() {
+        const secureSetting = this.config.get('JWT_COOKIE_SECURE', false);
         const sameSiteRaw = this.config.get('JWT_COOKIE_SAME_SITE', 'lax').toLowerCase();
         const maxAge = this.config.get('JWT_COOKIE_MAX_AGE_MS', 86_400_000);
         const sameSite = sameSiteRaw === 'strict' || sameSiteRaw === 'none' ? sameSiteRaw : 'lax';
-        res.cookie(cookieName, token, {
+        return {
             httpOnly: true,
-            secure,
+            secure: secureSetting || sameSite === 'none',
             sameSite,
             maxAge,
             path: '/',
-        });
+        };
     }
 };
 exports.AuthController = AuthController;
 __decorate([
+    (0, throttler_1.Throttle)({ default: { limit: 10, ttl: 60_000 } }),
     (0, common_1.Post)('login'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Res)({ passthrough: true })),
@@ -102,6 +119,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "login", null);
 __decorate([
+    (0, throttler_1.Throttle)({ default: { limit: 10, ttl: 60_000 } }),
     (0, common_1.Post)('register'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Res)({ passthrough: true })),

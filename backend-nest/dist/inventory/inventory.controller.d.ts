@@ -13,11 +13,11 @@ export declare class InventoryController {
     constructor(inventoryService: InventoryService);
     listProducts(query: InventoryProductsQuery): Promise<{
         products: {
+            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             sku: string;
             category: string;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
@@ -34,11 +34,11 @@ export declare class InventoryController {
     createProduct(dto: CreateProductDto): Promise<{
         message: string;
         product: {
+            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             sku: string;
             category: string;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
@@ -48,11 +48,11 @@ export declare class InventoryController {
     }>;
     getProduct(productId: string): Promise<{
         product: {
+            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             sku: string;
             category: string;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
@@ -73,11 +73,11 @@ export declare class InventoryController {
     updateProduct(productId: string, dto: Partial<CreateProductDto>): Promise<{
         message: string;
         product: {
+            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             sku: string;
             category: string;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;

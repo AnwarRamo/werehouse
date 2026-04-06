@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -12,9 +13,11 @@ import { AttendanceService } from './attendance.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Permissions } from '../common/decorators/permissions.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { AttendanceListQuery } from './attendance.service';
+import { AuthenticatedUser } from '../common/types/authenticated-user.types';
 
 @Controller('attendance')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -39,10 +42,25 @@ export class AttendanceController {
     return this.attendanceService.anomalies(startDate, endDate);
   }
 
+  @Get('deleted/history')
+  @Permissions('edit_attendance')
+  listDeletedHistory() {
+    return this.attendanceService.listDeletedHistory();
+  }
+
   @Post()
   @Permissions('edit_attendance')
   create(@Body() dto: CreateAttendanceDto) {
     return this.attendanceService.create(dto);
+  }
+
+  @Post('restore/:historyId')
+  @Permissions('edit_attendance')
+  restore(
+    @Param('historyId') historyId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.attendanceService.restore(historyId, user?.userId);
   }
 
   @Get('employee/:employeeId/date/:date')
@@ -71,5 +89,11 @@ export class AttendanceController {
   @Permissions('edit_attendance')
   update(@Param('recordId') recordId: string, @Body() dto: UpdateAttendanceDto) {
     return this.attendanceService.update(recordId, dto);
+  }
+
+  @Delete(':recordId')
+  @Permissions('edit_attendance')
+  remove(@Param('recordId') recordId: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.attendanceService.remove(recordId, user?.userId);
   }
 }

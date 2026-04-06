@@ -1,48 +1,18 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ImportsService = void 0;
@@ -53,7 +23,7 @@ const prisma_service_1 = require("../prisma/prisma.service");
 const sync_1 = require("csv-parse/sync");
 const path_1 = require("path");
 const bullmq_2 = require("bullmq");
-const XLSX = __importStar(require("xlsx"));
+const exceljs_1 = __importDefault(require("exceljs"));
 const queue_constants_1 = require("../queues/queue.constants");
 const pagination_util_1 = require("../common/utils/pagination.util");
 const IMPORT_BATCH_SIZE = 50;
@@ -128,7 +98,7 @@ let ImportsService = class ImportsService {
     async validateEmployeesImport(file) {
         if (!file?.buffer)
             throw new common_1.BadRequestException('CSV/XLSX file is required in field: file');
-        const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
+        const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
         this.assertEmployeesHeaders(headers);
         const result = await this.processEmployeesRows(rows, false);
         return { message: 'Employees import validation completed (dry-run)', ...result };
@@ -136,7 +106,7 @@ let ImportsService = class ImportsService {
     async validateProductsImport(file) {
         if (!file?.buffer)
             throw new common_1.BadRequestException('CSV/XLSX file is required in field: file');
-        const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
+        const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
         this.assertProductsHeaders(headers);
         const result = await this.processProductsRows(rows, false);
         return { message: 'Products import validation completed (dry-run)', ...result };
@@ -144,7 +114,7 @@ let ImportsService = class ImportsService {
     async importEmployees(file, userId) {
         if (!file?.buffer)
             throw new common_1.BadRequestException('CSV/XLSX file is required in field: file');
-        const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
+        const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
         this.assertEmployeesHeaders(headers);
         const jobId = `IMP-EMP-${Date.now()}`;
         const job = await this.prisma.importJob.create({
@@ -175,7 +145,7 @@ let ImportsService = class ImportsService {
     async importEmployeesAsync(file, userId) {
         if (!file?.buffer)
             throw new common_1.BadRequestException('CSV/XLSX file is required in field: file');
-        const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
+        const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
         this.assertEmployeesHeaders(headers);
         const jobId = `IMP-EMP-${Date.now()}`;
         const job = await this.prisma.importJob.create({
@@ -194,7 +164,7 @@ let ImportsService = class ImportsService {
     async importProducts(file, userId) {
         if (!file?.buffer)
             throw new common_1.BadRequestException('CSV/XLSX file is required in field: file');
-        const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
+        const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
         this.assertProductsHeaders(headers);
         const jobId = `IMP-PROD-${Date.now()}`;
         const job = await this.prisma.importJob.create({
@@ -225,7 +195,7 @@ let ImportsService = class ImportsService {
     async importProductsAsync(file, userId) {
         if (!file?.buffer)
             throw new common_1.BadRequestException('CSV/XLSX file is required in field: file');
-        const { rows, headers } = this.parseImportRows(file.buffer, file?.originalname, file?.mimetype);
+        const { rows, headers } = await this.parseImportRowsAsync(file.buffer, file?.originalname, file?.mimetype);
         this.assertProductsHeaders(headers);
         const jobId = `IMP-PROD-${Date.now()}`;
         const job = await this.prisma.importJob.create({
@@ -288,6 +258,9 @@ let ImportsService = class ImportsService {
     }
     async enqueueImportJob(jobName, payload) {
         try {
+            if (!this.importsQueue) {
+                throw new Error('Imports queue is not available');
+            }
             await this.importsQueue.add(jobName, payload, {
                 attempts: 3,
                 backoff: { type: 'exponential', delay: 2_000 },
@@ -315,23 +288,54 @@ let ImportsService = class ImportsService {
             ? 'xlsx'
             : 'csv';
         if (detectedFormat === 'xlsx') {
-            const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false, raw: false });
-            const sheetName = workbook.SheetNames[0];
-            if (!sheetName)
+            throw new common_1.BadRequestException('Excel parsing is async — use parseImportRowsAsync instead');
+        }
+        const text = buffer.toString('utf8');
+        const parsed = (0, sync_1.parse)(text, {
+            columns: true,
+            skip_empty_lines: true,
+            trim: true,
+            bom: true,
+        });
+        const first = parsed[0] || {};
+        const headers = Object.keys(first).map((key) => this.normalizeHeader(key));
+        const rows = parsed.map((row) => {
+            const normalized = {};
+            for (const [key, value] of Object.entries(row)) {
+                normalized[this.normalizeHeader(key)] = String(value ?? '').trim();
+            }
+            return normalized;
+        });
+        if (rows.length > IMPORT_MAX_ROWS) {
+            throw new common_1.BadRequestException(`Import file is too large. Maximum allowed rows is ${IMPORT_MAX_ROWS}. Split the file and retry.`);
+        }
+        return { rows, headers };
+    }
+    async parseImportRowsAsync(buffer, fileName, mimeType) {
+        const extension = (0, path_1.extname)(fileName || '').toLowerCase();
+        const isExcel = extension === '.xlsx' ||
+            extension === '.xls' ||
+            mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+            mimeType === 'application/vnd.ms-excel';
+        if (isExcel) {
+            const workbook = new exceljs_1.default.Workbook();
+            await workbook.xlsx.load(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength));
+            const worksheet = workbook.worksheets[0];
+            if (!worksheet)
                 throw new common_1.BadRequestException('Excel file must contain at least one worksheet');
-            const worksheet = workbook.Sheets[sheetName];
-            const parsed = XLSX.utils.sheet_to_json(worksheet, {
-                defval: '',
-                raw: false,
+            const rawRows = [];
+            worksheet.eachRow((row) => {
+                rawRows.push(row.values
+                    .slice(1)
+                    .map((v) => (v === null || v === undefined ? '' : String(v).trim())));
             });
-            const first = parsed[0] || {};
-            const headers = Object.keys(first).map((key) => this.normalizeHeader(key));
-            const rows = parsed.map((row) => {
-                const normalized = {};
-                for (const [key, value] of Object.entries(row)) {
-                    normalized[this.normalizeHeader(key)] = String(value ?? '').trim();
-                }
-                return normalized;
+            if (rawRows.length < 1)
+                return { rows: [], headers: [] };
+            const headers = rawRows[0].map((h) => this.normalizeHeader(h));
+            const rows = rawRows.slice(1).map((cells) => {
+                const row = {};
+                headers.forEach((h, i) => { row[h] = cells[i] ?? ''; });
+                return row;
             });
             if (rows.length > IMPORT_MAX_ROWS) {
                 throw new common_1.BadRequestException(`Import file is too large. Maximum allowed rows is ${IMPORT_MAX_ROWS}. Split the file and retry.`);
@@ -567,6 +571,7 @@ let ImportsService = class ImportsService {
 exports.ImportsService = ImportsService;
 exports.ImportsService = ImportsService = __decorate([
     (0, common_1.Injectable)(),
+    __param(1, (0, common_1.Optional)()),
     __param(1, (0, bullmq_1.InjectQueue)(queue_constants_1.QUEUE_NAMES.IMPORTS)),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         bullmq_2.Queue])

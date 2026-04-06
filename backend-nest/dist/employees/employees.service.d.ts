@@ -13,13 +13,13 @@ export declare class EmployeesService {
     constructor(prisma: PrismaService);
     list(query: EmployeesListQuery): Promise<{
         employees: {
+            name: string;
             id: string;
             email: string;
             roleId: string | null;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             employeeId: string;
             hourlyRate: Prisma.Decimal;
             currency: string;
@@ -45,13 +45,13 @@ export declare class EmployeesService {
         department: string;
         count: number;
         employees: {
+            name: string;
             id: string;
             email: string;
             roleId: string | null;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             employeeId: string;
             hourlyRate: Prisma.Decimal;
             currency: string;
@@ -63,13 +63,13 @@ export declare class EmployeesService {
     create(dto: CreateEmployeeDto): Promise<{
         message: string;
         employee: {
+            name: string;
             id: string;
             email: string;
             roleId: string | null;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             employeeId: string;
             hourlyRate: Prisma.Decimal;
             currency: string;
@@ -79,13 +79,13 @@ export declare class EmployeesService {
         };
     }>;
     getByEmployeeId(employeeId: string): Promise<{
+        name: string;
         id: string;
         email: string;
         roleId: string | null;
         status: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         employeeId: string;
         hourlyRate: Prisma.Decimal;
         currency: string;
@@ -96,13 +96,13 @@ export declare class EmployeesService {
     update(employeeId: string, dto: UpdateEmployeeDto): Promise<{
         message: string;
         employee: {
+            name: string;
             id: string;
             email: string;
             roleId: string | null;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             employeeId: string;
             hourlyRate: Prisma.Decimal;
             currency: string;

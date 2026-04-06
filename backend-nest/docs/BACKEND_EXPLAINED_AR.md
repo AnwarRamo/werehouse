@@ -151,8 +151,10 @@ POST /api/auth/login
 | GET | `/attendance/anomalies` | `view_attendance` | حالات الشذوذ |
 | GET | `/attendance/employee/:employeeId/period` | `view_attendance` | حضور موظف في فترة |
 | POST | `/attendance` | `edit_attendance` | إضافة سجل حضور |
-| PUT | `/attendance/:id` | `edit_attendance` | تعديل سجل |
-| DELETE | `/attendance/:id` | `edit_attendance` | حذف سجل |
+| POST | `/attendance/restore/:historyId` | `edit_attendance` | استرجاع سجل حضور محذوف |
+| GET | `/attendance/deleted/history` | `edit_attendance` | سجل الحذف الخاص بالحضور |
+| PUT | `/attendance/:recordId` | `edit_attendance` | تعديل سجل |
+| DELETE | `/attendance/:recordId` | `edit_attendance` | حذف سجل مع حفظ نسخة للاسترجاع |
 
 **نوع الحضور:** `IN` أو `OUT`
 
@@ -211,8 +213,10 @@ PUT /api/salary/EMP003
 | GET | `/advances/summary/:employeeId` | `manage_advances` | ملخص سلف موظف |
 | GET | `/advances/:id` | `manage_advances` | سلفة واحدة |
 | POST | `/advances` | `manage_advances` | إضافة سلفة |
+| POST | `/advances/restore/:historyId` | `manage_advances` | استرجاع سلفة محذوفة |
+| GET | `/advances/deleted/history` | `manage_advances` | سجل الحذف الخاص بالسلف |
 | PUT | `/advances/:id` | `manage_advances` | تحديث سلفة (المبلغ المتبقي، القسط) |
-| DELETE | `/advances/:id` | `manage_advances` | حذف سلفة |
+| DELETE | `/advances/:id` | `manage_advances` | حذف سلفة مع حفظ نسخة للاسترجاع |
 
 **أنواع السلفة:** `salary` | `clothing` | `other`
 
@@ -327,6 +331,7 @@ POST /api/bonuses
 | `employee_insurance` | بيانات التأمين الاجتماعي |
 | `employee_bonuses` | المكافآت والمساعدات |
 | `attendance_records` | سجلات الحضور والانصراف |
+| `deleted_record_history` | سجل النسخ المحفوظة قبل الحذف مع معلومات الاسترجاع |
 | `payroll_runs` | دورات حساب الرواتب |
 | `payroll_items` | تفاصيل راتب كل موظف في الدورة |
 | `devices` | أجهزة البصمة |
@@ -382,5 +387,7 @@ npm run start:dev
 - **الحسابات المحمية** لا يمكن حظرها — النظام يُعيد تفعيلها تلقائياً عند كل تسجيل دخول.
 - **BullMQ** يستخدم Redis لمعالجة الرواتب والاستيراد بشكل غير متزامن — إذا لم يكن Redis متاحاً يعمل النظام بشكل متزامن تلقائياً.
 - **Prisma** يستخدم `@prisma/adapter-pg` مع connection pool لأداء أفضل.
+- تم ربط `attendance_records` و`employee_advances` مع `employees` بعلاقة مرجعية على `employeeId` مع `onDelete: Cascade` لضمان عدم بقاء بيانات يتيمة عند الحذف.
+- قبل حذف السجل من الحضور أو السلف، يتم حفظ نسخة كاملة في جدول `deleted_record_history` مع `deletedAt/deletedBy`، ويمكن استرجاعها لاحقاً عبر endpoints الاسترجاع.
 - جميع الأسعار والرواتب مخزنة كـ `Decimal` بدقة عالية لتجنب أخطاء الأرقام العشرية.
 - الـ `employeeId` في جداول الرواتب والسلف والتأمين هو المعرف المنطقي (مثل `EMP003`) وليس الـ UUID.

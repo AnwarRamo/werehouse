@@ -13,8 +13,8 @@ export type ImportsHistoryQuery = PaginationQueryParams & {
 };
 export declare class ImportsService {
     private readonly prisma;
-    private readonly importsQueue;
-    constructor(prisma: PrismaService, importsQueue: Queue);
+    private readonly importsQueue?;
+    constructor(prisma: PrismaService, importsQueue?: Queue | undefined);
     history(query: ImportsHistoryQuery): Promise<{
         imports: {
             id: string;
@@ -127,6 +127,7 @@ export declare class ImportsService {
     markImportJobFailed(importJobRecordId: string, message: string): Promise<void>;
     private enqueueImportJob;
     private parseImportRows;
+    private parseImportRowsAsync;
     private value;
     private resolveDefaultRoleId;
     private resolveRoleId;

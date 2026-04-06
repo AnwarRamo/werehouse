@@ -298,6 +298,9 @@ let PayrollService = class PayrollService {
     }
     async enqueuePayrollJob(payload) {
         try {
+            if (!this.payrollQueue) {
+                throw new Error('Payroll queue is not available');
+            }
             await this.payrollQueue.add(queue_constants_1.QUEUE_JOBS.PAYROLL_CALCULATE, payload, {
                 attempts: 3,
                 backoff: { type: 'exponential', delay: 2_000 },
@@ -375,6 +378,7 @@ let PayrollService = class PayrollService {
 exports.PayrollService = PayrollService;
 exports.PayrollService = PayrollService = __decorate([
     (0, common_1.Injectable)(),
+    __param(1, (0, common_1.Optional)()),
     __param(1, (0, bullmq_1.InjectQueue)(queue_constants_1.QUEUE_NAMES.PAYROLL)),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         bullmq_2.Queue])

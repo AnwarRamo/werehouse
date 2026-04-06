@@ -17,12 +17,14 @@ const fromCookie = (cookieName: string) => {
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(config: ConfigService) {
     const cookieName = config.get<string>('JWT_COOKIE_NAME', 'warehouse_access_token');
+    const nodeEnv = config.get<string>('NODE_ENV', 'development');
+    const allowBearer = config.get<boolean>('JWT_ALLOW_BEARER', nodeEnv !== 'production');
+    const extractors = allowBearer
+      ? [fromCookie(cookieName), ExtractJwt.fromAuthHeaderAsBearerToken()]
+      : [fromCookie(cookieName)];
 
     super({
-      jwtFromRequest: ExtractJwt.fromExtractors([
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
-        fromCookie(cookieName),
-      ]),
+      jwtFromRequest: ExtractJwt.fromExtractors(extractors),
       ignoreExpiration: false,
       secretOrKey: config.getOrThrow<string>('JWT_SECRET'),
     });

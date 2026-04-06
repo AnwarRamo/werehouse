@@ -18,6 +18,7 @@ const attendance_service_1 = require("./attendance.service");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const permissions_guard_1 = require("../common/guards/permissions.guard");
 const permissions_decorator_1 = require("../common/decorators/permissions.decorator");
+const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
 const create_attendance_dto_1 = require("./dto/create-attendance.dto");
 const update_attendance_dto_1 = require("./dto/update-attendance.dto");
 let AttendanceController = class AttendanceController {
@@ -33,8 +34,14 @@ let AttendanceController = class AttendanceController {
     anomalies(startDate, endDate) {
         return this.attendanceService.anomalies(startDate, endDate);
     }
+    listDeletedHistory() {
+        return this.attendanceService.listDeletedHistory();
+    }
     create(dto) {
         return this.attendanceService.create(dto);
+    }
+    restore(historyId, user) {
+        return this.attendanceService.restore(historyId, user?.userId);
     }
     employeeOnDate(employeeId, date) {
         return this.attendanceService.employeeOnDate(employeeId, date);
@@ -47,6 +54,9 @@ let AttendanceController = class AttendanceController {
     }
     update(recordId, dto) {
         return this.attendanceService.update(recordId, dto);
+    }
+    remove(recordId, user) {
+        return this.attendanceService.remove(recordId, user?.userId);
     }
 };
 exports.AttendanceController = AttendanceController;
@@ -77,6 +87,13 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], AttendanceController.prototype, "anomalies", null);
 __decorate([
+    (0, common_1.Get)('deleted/history'),
+    (0, permissions_decorator_1.Permissions)('edit_attendance'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AttendanceController.prototype, "listDeletedHistory", null);
+__decorate([
     (0, common_1.Post)(),
     (0, permissions_decorator_1.Permissions)('edit_attendance'),
     __param(0, (0, common_1.Body)()),
@@ -84,6 +101,15 @@ __decorate([
     __metadata("design:paramtypes", [create_attendance_dto_1.CreateAttendanceDto]),
     __metadata("design:returntype", void 0)
 ], AttendanceController.prototype, "create", null);
+__decorate([
+    (0, common_1.Post)('restore/:historyId'),
+    (0, permissions_decorator_1.Permissions)('edit_attendance'),
+    __param(0, (0, common_1.Param)('historyId')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], AttendanceController.prototype, "restore", null);
 __decorate([
     (0, common_1.Get)('employee/:employeeId/date/:date'),
     (0, permissions_decorator_1.Permissions)('view_attendance'),
@@ -120,6 +146,15 @@ __decorate([
     __metadata("design:paramtypes", [String, update_attendance_dto_1.UpdateAttendanceDto]),
     __metadata("design:returntype", void 0)
 ], AttendanceController.prototype, "update", null);
+__decorate([
+    (0, common_1.Delete)(':recordId'),
+    (0, permissions_decorator_1.Permissions)('edit_attendance'),
+    __param(0, (0, common_1.Param)('recordId')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], AttendanceController.prototype, "remove", null);
 exports.AttendanceController = AttendanceController = __decorate([
     (0, common_1.Controller)('attendance'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),

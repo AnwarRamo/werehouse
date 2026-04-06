@@ -14,15 +14,15 @@ export type PayrollListQuery = PaginationQueryParams & {
 };
 export declare class PayrollService {
     private readonly prisma;
-    private readonly payrollQueue;
-    constructor(prisma: PrismaService, payrollQueue: Queue);
+    private readonly payrollQueue?;
+    constructor(prisma: PrismaService, payrollQueue?: Queue | undefined);
     private resolvePeriod;
     list(query: PayrollListQuery): Promise<{
         payrollRuns: {
             id: string;
             status: string;
-            notes: string | null;
             currency: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -49,8 +49,8 @@ export declare class PayrollService {
         payrollRun: {
             id: string;
             status: string;
-            notes: string | null;
             currency: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -71,8 +71,8 @@ export declare class PayrollService {
         payrollRun: {
             id: string;
             status: string;
-            notes: string | null;
             currency: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -92,8 +92,8 @@ export declare class PayrollService {
         payrollRun: {
             id: string;
             status: string;
-            notes: string | null;
             currency: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -148,8 +148,8 @@ export declare class PayrollService {
         payrollRun: {
             id: string;
             status: string;
-            notes: string | null;
             currency: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -170,8 +170,8 @@ export declare class PayrollService {
         payrollRun: {
             id: string;
             status: string;
-            notes: string | null;
             currency: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -222,8 +222,8 @@ export declare class PayrollService {
     processPayrollRunJob(payload: PayrollQueuePayload): Promise<{
         id: string;
         status: string;
-        notes: string | null;
         currency: string;
+        notes: string | null;
         runId: string;
         periodStart: Date;
         periodEnd: Date;

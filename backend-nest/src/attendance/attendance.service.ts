@@ -19,9 +19,30 @@ type ShiftPair = {
   gracePeriodApplied?: number;
 };
 
+const ATTENDANCE_DELETION_ENTITY = 'attendance';
+
 @Injectable()
 export class AttendanceService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private async assertEmployeeExists(employeeId: string) {
+    const employee = await this.prisma.employee.findUnique({ where: { employeeId } });
+    if (!employee) {
+      throw new BadRequestException(`Employee not found: ${employeeId}`);
+    }
+  }
+
+  private toHistoryPayload(value: unknown): Prisma.InputJsonValue {
+    return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+  }
+
+  private parseRequiredString(payload: Prisma.JsonObject, key: string) {
+    const value = payload[key];
+    if (typeof value !== 'string' || !value.trim()) {
+      throw new BadRequestException(`Corrupted history payload: missing ${key}`);
+    }
+    return value;
+  }
 
   private resolveRange(startDate?: string, endDate?: string) {
     if (startDate && endDate) {
@@ -71,6 +92,8 @@ export class AttendanceService {
       throw new BadRequestException('Invalid timestamp');
     }
 
+    await this.assertEmployeeExists(dto.employeeId);
+
     const date = eventDate.toISOString().slice(0, 10);
 
     const record = await this.prisma.attendanceRecord.create({
@@ -98,7 +121,11 @@ export class AttendanceService {
 
     if (!existing) throw new NotFoundException('Attendance record not found');
 
-    const payload: Prisma.AttendanceRecordUpdateInput = {};
+    if (dto.employeeId !== undefined) {
+      await this.assertEmployeeExists(dto.employeeId);
+    }
+
+    const payload: Prisma.AttendanceRecordUncheckedUpdateInput = {};
 
     if (dto.employeeId !== undefined) payload.employeeId = dto.employeeId;
     if (dto.type !== undefined) payload.type = dto.type.toUpperCase();
@@ -123,6 +150,115 @@ export class AttendanceService {
     });
 
     return { message: 'Attendance record updated successfully', record: updated };
+  }
+
+  async listDeletedHistory() {
+    return this.prisma.deletedRecordHistory.findMany({
+      where: {
+        entityType: ATTENDANCE_DELETION_ENTITY,
+        restoredAt: null,
+      },
+      orderBy: { deletedAt: 'desc' },
+    });
+  }
+
+  async remove(recordId: string, deletedBy?: string) {
+    const record = await this.getById(recordId);
+
+    const history = await this.prisma.$transaction(async (tx) => {
+      const createdHistory = await tx.deletedRecordHistory.create({
+        data: {
+          entityType: ATTENDANCE_DELETION_ENTITY,
+          recordId: record.id,
+          payload: this.toHistoryPayload(record),
+          deletedBy: deletedBy || null,
+        },
+      });
+
+      await tx.attendanceRecord.delete({ where: { id: record.id } });
+      return createdHistory;
+    });
+
+    return {
+      message: 'Attendance record deleted successfully',
+      recordId: record.id,
+      historyId: history.id,
+    };
+  }
+
+  async restore(historyId: string, restoredBy?: string) {
+    const history = await this.prisma.deletedRecordHistory.findFirst({
+      where: { id: historyId, entityType: ATTENDANCE_DELETION_ENTITY },
+    });
+
+    if (!history) {
+      throw new NotFoundException('Deleted attendance history not found');
+    }
+
+    if (history.restoredAt) {
+      throw new BadRequestException('Attendance record has already been restored');
+    }
+
+    const payload = history.payload as Prisma.JsonObject;
+    const id = this.parseRequiredString(payload, 'id');
+    const employeeId = this.parseRequiredString(payload, 'employeeId');
+    const timestampValue = this.parseRequiredString(payload, 'timestamp');
+    const date = this.parseRequiredString(payload, 'date');
+    const type = this.parseRequiredString(payload, 'type').toUpperCase();
+    const timestamp = new Date(timestampValue);
+
+    if (Number.isNaN(timestamp.getTime())) {
+      throw new BadRequestException('Corrupted history payload: invalid timestamp');
+    }
+
+    await this.assertEmployeeExists(employeeId);
+
+    const existing = await this.prisma.attendanceRecord.findUnique({ where: { id } });
+    if (existing) {
+      throw new BadRequestException('Attendance record already exists');
+    }
+
+    const source = typeof payload.source === 'string' ? payload.source : 'manual';
+    const verified = typeof payload.verified === 'boolean' ? payload.verified : true;
+    const deviceId = typeof payload.deviceId === 'string' ? payload.deviceId : null;
+    const location = typeof payload.location === 'string' ? payload.location : null;
+    const notes = typeof payload.notes === 'string' ? payload.notes : null;
+    const shiftPair = payload.shiftPair;
+
+    const restoredRecord = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.attendanceRecord.create({
+        data: {
+          id,
+          employeeId,
+          timestamp,
+          type,
+          deviceId,
+          location,
+          source,
+          verified,
+          notes,
+          date,
+          ...(shiftPair !== undefined && shiftPair !== null
+            ? { shiftPair: shiftPair as Prisma.InputJsonValue }
+            : {}),
+        },
+      });
+
+      await tx.deletedRecordHistory.update({
+        where: { id: history.id },
+        data: {
+          restoredAt: new Date(),
+          restoredBy: restoredBy || null,
+        },
+      });
+
+      return created;
+    });
+
+    return {
+      message: 'Attendance record restored successfully',
+      record: restoredRecord,
+    };
   }
 
   async stats(startDate: string, endDate: string) {

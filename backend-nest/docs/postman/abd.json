@@ -474,7 +474,7 @@
           "name": "POST Validate Employees CSV",
           "request": {
             "method": "POST",
-            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "employees.csv" }] },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "../samples/employees.csv" }] },
             "url": "{{baseUrl}}/imports/employees/validate"
           }
         },
@@ -486,7 +486,7 @@
           ]}}],
           "request": {
             "method": "POST",
-            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "employees.csv" }] },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "../samples/employees.csv" }] },
             "url": "{{baseUrl}}/imports/employees"
           }
         },
@@ -498,7 +498,7 @@
           ]}}],
           "request": {
             "method": "POST",
-            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "employees.csv" }] },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "../samples/employees.csv" }] },
             "url": "{{baseUrl}}/imports/employees/async"
           }
         },
@@ -506,7 +506,7 @@
           "name": "POST Validate Products CSV",
           "request": {
             "method": "POST",
-            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "products.csv" }] },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "../samples/products.csv" }] },
             "url": "{{baseUrl}}/imports/products/validate"
           }
         },
@@ -518,7 +518,7 @@
           ]}}],
           "request": {
             "method": "POST",
-            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "products.csv" }] },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "../samples/products.csv" }] },
             "url": "{{baseUrl}}/imports/products"
           }
         },
@@ -530,7 +530,7 @@
           ]}}],
           "request": {
             "method": "POST",
-            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "products.csv" }] },
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "../samples/products.csv" }] },
             "url": "{{baseUrl}}/imports/products/async"
           }
         },

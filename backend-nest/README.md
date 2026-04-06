@@ -53,6 +53,20 @@ Create a .env file in backend-nest and set:
 See:
 - ../docs/NEST_MIGRATION_AR.md
 
+## Documentation Map
+
+- Core backend explanation (Arabic): `docs/BACKEND_EXPLAINED_AR.md`
+- Backend comparison (Arabic): `docs/AR_BACKEND_COMPARISON.md`
+- Postman assets and checklist: `docs/postman/`
+	- `docs/postman/postman.nest.collection.json`
+	- `docs/postman/postman.nest.environment.json`
+	- `docs/postman/postman.nest.ready.environment.json`
+	- `docs/postman/POSTMAN_ROUTE_TEST_CHECKLIST.md`
+- CSV sample files for imports: `docs/samples/`
+	- `docs/samples/employees.csv`
+	- `docs/samples/products.csv`
+- Deployment runbook: `docs/operations/DEPLOYMENT_RUNBOOK.md`
+
 ## Docker
 
 ### Run With Docker Compose (API + PostgreSQL)

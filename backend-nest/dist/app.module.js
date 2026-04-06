@@ -62,7 +62,7 @@ const insurance_module_1 = require("./insurance/insurance.module");
 const bonuses_module_1 = require("./bonuses/bonuses.module");
 let AppModule = class AppModule {
     configure(consumer) {
-        consumer.apply(request_logging_middleware_1.RequestLoggingMiddleware).forRoutes('*');
+        consumer.apply(request_logging_middleware_1.RequestLoggingMiddleware).forRoutes({ path: '*path', method: common_1.RequestMethod.ALL });
     }
 };
 exports.AppModule = AppModule;
@@ -75,26 +75,65 @@ exports.AppModule = AppModule = __decorate([
                     NODE_ENV: Joi.string().valid('development', 'test', 'production').default('development'),
                     PORT: Joi.number().default(5001),
                     DATABASE_URL: Joi.string().uri().required(),
-                    JWT_SECRET: Joi.string().min(16).required(),
+                    JWT_SECRET: Joi.when('NODE_ENV', {
+                        is: 'production',
+                        then: Joi.string().min(32).required(),
+                        otherwise: Joi.string().min(16).required(),
+                    }),
                     JWT_EXPIRE: Joi.string().default('24h'),
                     JWT_COOKIE_NAME: Joi.string().default('warehouse_access_token'),
-                    JWT_COOKIE_SECURE: Joi.boolean().default(false),
+                    JWT_COOKIE_SECURE: Joi.when('NODE_ENV', {
+                        is: 'production',
+                        then: Joi.boolean().valid(true).required(),
+                        otherwise: Joi.boolean().default(false),
+                    }),
                     JWT_COOKIE_SAME_SITE: Joi.string()
                         .valid('strict', 'lax', 'none', 'Strict', 'Lax', 'None')
                         .default('lax'),
                     JWT_COOKIE_MAX_AGE_MS: Joi.number().min(60_000).default(86_400_000),
                     ADMIN_USERNAME: Joi.string().default('admin'),
                     ADMIN_EMAIL: Joi.string().email({ tlds: { allow: false } }).default('admin@warehouse.local'),
-                    ADMIN_BOOTSTRAP_PASSWORD: Joi.string().min(8).optional(),
+                    ADMIN_BOOTSTRAP_PASSWORD: Joi.when('NODE_ENV', {
+                        is: 'production',
+                        then: Joi.string().min(12).required(),
+                        otherwise: Joi.string().min(8).optional(),
+                    }),
                     DEV_ADMIN_USERNAME: Joi.string().default('developer'),
                     DEV_ADMIN_EMAIL: Joi.string()
                         .email({ tlds: { allow: false } })
                         .default('developer@warehouse.local'),
-                    DEV_ADMIN_PASSWORD: Joi.string().min(8).optional(),
+                    DEV_ADMIN_PASSWORD: Joi.when('NODE_ENV', {
+                        is: 'production',
+                        then: Joi.string().min(12).required(),
+                        otherwise: Joi.string().min(8).optional(),
+                    }),
                     SUPERADMIN_USERNAME: Joi.string().default('superadmin'),
                     SUPERADMIN_EMAIL: Joi.string().email({ tlds: { allow: false } }).default('superadmin@warehouse.local'),
-                    SUPERADMIN_PASSWORD: Joi.string().min(8).optional(),
-                    CORS_ORIGIN: Joi.string().allow('').optional(),
+                    SUPERADMIN_PASSWORD: Joi.when('NODE_ENV', {
+                        is: 'production',
+                        then: Joi.string().min(12).required(),
+                        otherwise: Joi.string().min(8).optional(),
+                    }),
+                    CORS_ORIGIN: Joi.when('NODE_ENV', {
+                        is: 'production',
+                        then: Joi.string().min(1).required(),
+                        otherwise: Joi.string().allow('').default(''),
+                    }),
+                    JWT_ALLOW_BEARER: Joi.when('NODE_ENV', {
+                        is: 'production',
+                        then: Joi.boolean().default(false),
+                        otherwise: Joi.boolean().default(true),
+                    }),
+                    AUTH_RETURN_TOKEN_IN_BODY: Joi.when('NODE_ENV', {
+                        is: 'production',
+                        then: Joi.boolean().default(false),
+                        otherwise: Joi.boolean().default(true),
+                    }),
+                    TRUST_PROXY: Joi.when('NODE_ENV', {
+                        is: 'production',
+                        then: Joi.boolean().default(true),
+                        otherwise: Joi.boolean().default(false),
+                    }),
                     BCRYPT_ROUNDS: Joi.number().min(8).max(14).default(10),
                     THROTTLE_TTL_MS: Joi.number().min(1_000).default(60_000),
                     THROTTLE_LIMIT: Joi.number().min(10).default(120),

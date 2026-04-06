@@ -288,7 +288,7 @@ Expected: `200`
 3. `POST {{baseUrl}}/imports/employees/validate`
 - Body type: `form-data`
 - Key: `file` (type: File)
-- Use employees CSV template content
+- Use sample file: `docs/samples/employees.csv`
 - Expected: `200`
 
 4. `POST {{baseUrl}}/imports/employees`
@@ -305,6 +305,7 @@ Expected: `200`
 6. `POST {{baseUrl}}/imports/products`
 - Body type: `form-data`
 - Key: `file` (type: File)
+- Use sample file: `docs/samples/products.csv`
 - Expected: `201`
 
 7. `GET {{baseUrl}}/imports/history` -> expect `200`
