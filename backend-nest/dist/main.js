@@ -21,6 +21,17 @@ process.on('unhandledRejection', (reason) => {
     console.error('Unhandled Rejection:', reason);
     process.exit(1);
 });
+function normalizeOrigin(value) {
+    const trimmed = value.trim();
+    if (!trimmed)
+        return '';
+    try {
+        return new URL(trimmed).origin;
+    }
+    catch {
+        return trimmed.replace(/\/+$/, '');
+    }
+}
 async function bootstrap() {
     console.log('Bootstrap starting...');
     console.log('NODE_ENV:', process.env.NODE_ENV);
@@ -46,13 +57,22 @@ async function bootstrap() {
     app.use((0, cookie_parser_1.default)());
     app.useGlobalFilters(new global_exception_filter_1.GlobalExceptionFilter());
     const corsOrigin = config.get('CORS_ORIGIN', '');
+    const configuredCorsOrigins = corsOrigin
+        .split(',')
+        .map((value) => normalizeOrigin(value))
+        .filter(Boolean);
+    const allowedCorsOrigins = new Set(configuredCorsOrigins);
     const fallbackDevOrigins = [/^http:\/\/localhost:\d+$/i, /^http:\/\/127\.0\.0\.1:\d+$/i];
     app.enableCors({
-        origin: corsOrigin
-            ? corsOrigin
-                .split(',')
-                .map((v) => v.trim())
-                .filter(Boolean)
+        origin: configuredCorsOrigins.length
+            ? (origin, callback) => {
+                if (!origin) {
+                    callback(null, true);
+                    return;
+                }
+                const requestOrigin = normalizeOrigin(origin);
+                callback(null, allowedCorsOrigins.has(requestOrigin));
+            }
             : isProduction
                 ? false
                 : fallbackDevOrigins,
