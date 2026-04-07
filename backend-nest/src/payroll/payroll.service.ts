@@ -66,6 +66,24 @@ export class PayrollService {
     };
   }
 
+  private isUuid(value: string) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    );
+  }
+
+  private async resolvePayrollRun(runIdentifier: string) {
+    const where: Prisma.PayrollRunWhereInput = this.isUuid(runIdentifier)
+      ? {
+          OR: [{ id: runIdentifier }, { runId: runIdentifier }],
+        }
+      : { runId: runIdentifier };
+
+    const run = await this.prisma.payrollRun.findFirst({ where });
+    if (!run) throw new NotFoundException('Payroll run not found');
+    return run;
+  }
+
   async list(query: PayrollListQuery) {
     const { page, limit, skip } = resolvePagination(query);
 
@@ -129,9 +147,8 @@ export class PayrollService {
   }
 
   async getRun(runId: string) {
-    const payrollRun = await this.prisma.payrollRun.findUnique({ where: { id: runId } });
-    if (!payrollRun) throw new NotFoundException('Payroll run not found');
-    const items = await this.prisma.payrollItem.findMany({ where: { payrollRunId: runId } });
+    const payrollRun = await this.resolvePayrollRun(runId);
+    const items = await this.prisma.payrollItem.findMany({ where: { payrollRunId: payrollRun.id } });
     return { payrollRun, items, itemCount: items.length };
   }
 
@@ -144,11 +161,10 @@ export class PayrollService {
   }
 
   async approve(runId: string, userId?: string) {
-    const run = await this.prisma.payrollRun.findUnique({ where: { id: runId } });
-    if (!run) throw new NotFoundException('Payroll run not found');
+    const run = await this.resolvePayrollRun(runId);
 
     const updated = await this.prisma.payrollRun.update({
-      where: { id: runId },
+      where: { id: run.id },
       data: {
         status: 'approved',
         approvalStatus: 'approved',
@@ -162,11 +178,10 @@ export class PayrollService {
 
   async reject(runId: string, reason: string, userId?: string) {
     if (!reason) throw new BadRequestException('Rejection reason is required');
-    const run = await this.prisma.payrollRun.findUnique({ where: { id: runId } });
-    if (!run) throw new NotFoundException('Payroll run not found');
+    const run = await this.resolvePayrollRun(runId);
 
     const updated = await this.prisma.payrollRun.update({
-      where: { id: runId },
+      where: { id: run.id },
       data: {
         status: 'draft',
         approvalStatus: 'rejected',
@@ -198,15 +213,16 @@ export class PayrollService {
   }
 
   async anomalies(runId: string) {
+    const run = await this.resolvePayrollRun(runId);
     const anomalies = await this.prisma.payrollItem.findMany({
       where: {
-        payrollRunId: runId,
+        payrollRunId: run.id,
         NOT: { anomalies: { isEmpty: true } },
       },
     });
 
     return {
-      runId,
+      runId: run.runId,
       anomalyCount: anomalies.length,
       anomalies: anomalies.map((a: (typeof anomalies)[number]) => ({
         employeeId: a.employeeId,
@@ -217,11 +233,10 @@ export class PayrollService {
   }
 
   async export(runId: string) {
-    const run = await this.prisma.payrollRun.findUnique({ where: { id: runId } });
-    if (!run) throw new NotFoundException('Payroll run not found');
+    const run = await this.resolvePayrollRun(runId);
 
     const items = await this.prisma.payrollItem.findMany({
-      where: { payrollRunId: runId },
+      where: { payrollRunId: run.id },
       orderBy: { employeeId: 'asc' },
     });
 
@@ -234,11 +249,10 @@ export class PayrollService {
   }
 
   async exportPdf(runId: string) {
-    const run = await this.prisma.payrollRun.findUnique({ where: { id: runId } });
-    if (!run) throw new NotFoundException('Payroll run not found');
+    const run = await this.resolvePayrollRun(runId);
 
     const items = await this.prisma.payrollItem.findMany({
-      where: { payrollRunId: runId },
+      where: { payrollRunId: run.id },
       orderBy: { employeeId: 'asc' },
     });
 
