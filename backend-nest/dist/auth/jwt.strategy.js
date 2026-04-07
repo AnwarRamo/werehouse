@@ -14,6 +14,8 @@ const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const passport_1 = require("@nestjs/passport");
 const passport_jwt_1 = require("passport-jwt");
+const prisma_service_1 = require("../prisma/prisma.service");
+const token_revocation_service_1 = require("./token-revocation.service");
 const fromCookie = (cookieName) => {
     return (req) => {
         const token = req?.cookies?.[cookieName];
@@ -21,7 +23,7 @@ const fromCookie = (cookieName) => {
     };
 };
 let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy) {
-    constructor(config) {
+    constructor(config, prisma, tokenRevocation) {
         const cookieName = config.get('JWT_COOKIE_NAME', 'warehouse_access_token');
         const nodeEnv = config.get('NODE_ENV', 'development');
         const allowBearer = config.get('JWT_ALLOW_BEARER', nodeEnv !== 'production');
@@ -32,18 +34,64 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
             jwtFromRequest: passport_jwt_1.ExtractJwt.fromExtractors(extractors),
             ignoreExpiration: false,
             secretOrKey: config.getOrThrow('JWT_SECRET'),
+            passReqToCallback: true,
         });
+        this.prisma = prisma;
+        this.tokenRevocation = tokenRevocation;
+        this.cookieName = cookieName;
+        this.allowBearer = allowBearer;
     }
-    validate(payload) {
+    async validate(req, payload) {
         if (!payload?.userId) {
             throw new common_1.UnauthorizedException('Invalid token');
         }
-        return payload;
+        const rawToken = this.extractRawToken(req);
+        if (!rawToken) {
+            throw new common_1.UnauthorizedException('Missing token');
+        }
+        if (await this.tokenRevocation.isRevoked(rawToken)) {
+            throw new common_1.UnauthorizedException('Session has been revoked');
+        }
+        const user = await this.prisma.user.findUnique({
+            where: { id: payload.userId },
+            include: { role: true },
+        });
+        if (!user || user.status !== 'active') {
+            throw new common_1.UnauthorizedException('Invalid user session');
+        }
+        const roleName = user.role?.name || 'staff';
+        return {
+            userId: user.id,
+            username: user.username,
+            email: user.email,
+            role: roleName,
+            roles: [roleName],
+            permissions: user.role?.permissions || [],
+            iat: payload.iat,
+            exp: payload.exp,
+        };
+    }
+    extractRawToken(req) {
+        const cookieToken = req?.cookies?.[this.cookieName];
+        if (typeof cookieToken === 'string' && cookieToken.trim()) {
+            return cookieToken;
+        }
+        if (!this.allowBearer) {
+            return null;
+        }
+        const headerValue = req.headers.authorization;
+        if (typeof headerValue === 'string' && headerValue.startsWith('Bearer ')) {
+            const bearerToken = headerValue.slice(7).trim();
+            return bearerToken || null;
+        }
+        return null;
     }
 };
 exports.JwtStrategy = JwtStrategy;
 exports.JwtStrategy = JwtStrategy = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [config_1.ConfigService])
+    __metadata("design:paramtypes", [config_1.ConfigService,
+        prisma_service_1.PrismaService,
+        token_revocation_service_1.TokenRevocationService])
 ], JwtStrategy);
 //# sourceMappingURL=jwt.strategy.js.map

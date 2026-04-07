@@ -10,6 +10,8 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuthenticatedUser } from '../common/types/authenticated-user.types';
+import { TokenRevocationService } from './token-revocation.service';
 
 @Injectable()
 export class AuthService {
@@ -51,6 +53,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly tokenRevocation: TokenRevocationService,
   ) {
     this.bcryptRounds = this.config.get<number>('BCRYPT_ROUNDS', 10);
     this.adminUsername = this.config.get<string>('ADMIN_USERNAME', 'admin').toLowerCase();
@@ -183,6 +186,82 @@ export class AuthService {
     });
   }
 
+  private buildAuthPayload(user: {
+    id: string;
+    username: string;
+    email: string;
+    role?: { name: string; permissions: string[] } | null;
+  }): AuthenticatedUser {
+    const roleName = user.role?.name || 'staff';
+    return {
+      userId: user.id,
+      username: user.username,
+      email: user.email,
+      role: roleName,
+      roles: [roleName],
+      permissions: user.role?.permissions || [],
+    };
+  }
+
+  private toPublicAuthUser(user: {
+    id: string;
+    username: string;
+    role?: { name: string } | null;
+  }) {
+    const roleName = user.role?.name || 'staff';
+    return {
+      id: user.id,
+      name: user.username,
+      username: user.username,
+      role: roleName,
+    };
+  }
+
+  async revokeToken(token: string) {
+    if (!token) return;
+
+    const decoded = this.jwtService.decode(token);
+    const exp =
+      decoded &&
+      typeof decoded === 'object' &&
+      'exp' in decoded &&
+      typeof decoded.exp === 'number'
+        ? decoded.exp
+        : undefined;
+
+    await this.tokenRevocation.revoke(token, exp);
+  }
+
+  async rotateSessionIfNeeded(authUser: AuthenticatedUser) {
+    const exp = authUser.exp;
+    if (typeof exp !== 'number') {
+      return null;
+    }
+
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const secondsUntilExpiry = exp - nowSeconds;
+    if (secondsUntilExpiry <= 0) {
+      throw new UnauthorizedException('Session expired');
+    }
+
+    const rotateThresholdSeconds = this.config.get<number>('JWT_ROTATE_THRESHOLD_SEC', 300);
+    if (secondsUntilExpiry > rotateThresholdSeconds) {
+      return null;
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: authUser.userId },
+      include: { role: true },
+    });
+
+    if (!user || user.status !== 'active') {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const payload = this.buildAuthPayload(user);
+    return this.jwtService.signAsync(payload);
+  }
+
   async login(dto: LoginDto) {
     const loginInput = dto.username.toLowerCase();
     const user = await this.prisma.user.findFirst({
@@ -213,15 +292,7 @@ export class AuthService {
       });
     }
 
-    const role = user.role;
-
-    const payload = {
-      userId: user.id,
-      username: user.username,
-      email: user.email,
-      roles: [role?.name || 'staff'],
-      permissions: role?.permissions || [],
-    };
+    const payload = this.buildAuthPayload(user);
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -230,13 +301,9 @@ export class AuthService {
 
     return {
       token: await this.jwtService.signAsync(payload),
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: role?.name,
-        permissions: role?.permissions || [],
-      },
+      user: this.toPublicAuthUser(user),
+      roles: payload.roles || [],
+      permissions: payload.permissions || [],
     };
   }
 
@@ -288,13 +355,7 @@ export class AuthService {
       },
     });
 
-    const payload = {
-      userId: user.id,
-      username: user.username,
-      email: user.email,
-      roles: [staffRole.name],
-      permissions: staffRole.permissions || [],
-    };
+    const payload = this.buildAuthPayload({ ...user, role: staffRole });
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -304,13 +365,9 @@ export class AuthService {
     return {
       message: 'Registration successful',
       token: await this.jwtService.signAsync(payload),
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: staffRole.name,
-        permissions: staffRole.permissions || [],
-      },
+      user: this.toPublicAuthUser({ ...user, role: staffRole }),
+      roles: payload.roles || [],
+      permissions: payload.permissions || [],
     };
   }
 
@@ -324,10 +381,12 @@ export class AuthService {
 
     return {
       id: user.id,
+      name: user.username,
       username: user.username,
       email: user.email,
       status: user.status,
       role: role?.name,
+      roles: role?.name ? [role.name] : [],
       permissions: role?.permissions || [],
       lastLogin: user.lastLogin,
     };

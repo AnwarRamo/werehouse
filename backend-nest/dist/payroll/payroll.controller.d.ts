@@ -12,13 +12,14 @@ export declare class PayrollController {
     list(query: PayrollListQuery): Promise<{
         payrollRuns: {
             id: string;
+            notes: string | null;
+            status: string;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -27,7 +28,6 @@ export declare class PayrollController {
             totalDeductions: import("@prisma/client-runtime-utils").Decimal;
             totalNetPay: import("@prisma/client-runtime-utils").Decimal;
             currency: string;
-            notes: string | null;
         }[];
         pagination: {
             page: number;
@@ -51,13 +51,14 @@ export declare class PayrollController {
         message: string;
         payrollRun: {
             id: string;
+            notes: string | null;
+            status: string;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -66,20 +67,20 @@ export declare class PayrollController {
             totalDeductions: import("@prisma/client-runtime-utils").Decimal;
             totalNetPay: import("@prisma/client-runtime-utils").Decimal;
             currency: string;
-            notes: string | null;
         };
     }>;
     calculateAsync(dto: CalculatePayrollDto, user: AuthenticatedUser): Promise<{
         message: string;
         payrollRun: {
             id: string;
+            notes: string | null;
+            status: string;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -88,19 +89,19 @@ export declare class PayrollController {
             totalDeductions: import("@prisma/client-runtime-utils").Decimal;
             totalNetPay: import("@prisma/client-runtime-utils").Decimal;
             currency: string;
-            notes: string | null;
         };
     }>;
     getById(runId: string): Promise<{
         payrollRun: {
             id: string;
+            notes: string | null;
+            status: string;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -109,13 +110,14 @@ export declare class PayrollController {
             totalDeductions: import("@prisma/client-runtime-utils").Decimal;
             totalNetPay: import("@prisma/client-runtime-utils").Decimal;
             currency: string;
-            notes: string | null;
         };
         items: {
             id: string;
+            employeeId: string;
+            createdAt: Date;
+            updatedAt: Date;
             totalDeductions: import("@prisma/client-runtime-utils").Decimal;
             payrollRunId: string;
-            employeeId: string;
             employeeName: string;
             department: string | null;
             hoursWorked: import("@prisma/client-runtime-utils").Decimal;
@@ -123,8 +125,6 @@ export declare class PayrollController {
             grossPay: import("@prisma/client-runtime-utils").Decimal;
             netPay: import("@prisma/client-runtime-utils").Decimal;
             anomalies: string[];
-            createdAt: Date;
-            updatedAt: Date;
         }[];
         itemCount: number;
     }>;
@@ -141,13 +141,14 @@ export declare class PayrollController {
         message: string;
         payrollRun: {
             id: string;
+            notes: string | null;
+            status: string;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -156,20 +157,20 @@ export declare class PayrollController {
             totalDeductions: import("@prisma/client-runtime-utils").Decimal;
             totalNetPay: import("@prisma/client-runtime-utils").Decimal;
             currency: string;
-            notes: string | null;
         };
     }>;
     reject(runId: string, reason: string, user: AuthenticatedUser, req: Request): Promise<{
         message: string;
         payrollRun: {
             id: string;
+            notes: string | null;
+            status: string;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
             periodType: string;
             runDate: Date;
             runBy: string | null;
-            status: string;
             approvalStatus: string;
             approvedBy: string | null;
             approvalDate: Date | null;
@@ -178,7 +179,6 @@ export declare class PayrollController {
             totalDeductions: import("@prisma/client-runtime-utils").Decimal;
             totalNetPay: import("@prisma/client-runtime-utils").Decimal;
             currency: string;
-            notes: string | null;
         };
     }>;
     export(runId: string, req: Request, res: Response): Promise<void>;
@@ -187,9 +187,11 @@ export declare class PayrollController {
         employeeId: string;
         payrollItems: {
             id: string;
+            employeeId: string;
+            createdAt: Date;
+            updatedAt: Date;
             totalDeductions: import("@prisma/client-runtime-utils").Decimal;
             payrollRunId: string;
-            employeeId: string;
             employeeName: string;
             department: string | null;
             hoursWorked: import("@prisma/client-runtime-utils").Decimal;
@@ -197,8 +199,6 @@ export declare class PayrollController {
             grossPay: import("@prisma/client-runtime-utils").Decimal;
             netPay: import("@prisma/client-runtime-utils").Decimal;
             anomalies: string[];
-            createdAt: Date;
-            updatedAt: Date;
         }[];
     }>;
 }

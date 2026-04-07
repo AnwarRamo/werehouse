@@ -21,6 +21,7 @@ import { Permissions } from '../common/decorators/permissions.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditService } from '../common/services/audit.service';
 import { AuthenticatedUser } from '../common/types/authenticated-user.types';
+import { RequestWithCookies } from '../common/types/request-context.types';
 
 @Controller('auth')
 export class AuthController implements OnModuleInit {
@@ -53,7 +54,12 @@ export class AuthController implements OnModuleInit {
   }
 
   @Post('logout')
-  logout(@Res({ passthrough: true }) res: Response) {
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const token = this.extractTokenFromRequest(req);
+    if (token) {
+      await this.authService.revokeToken(token);
+    }
+
     const cookieName = this.config.get<string>('JWT_COOKIE_NAME', 'warehouse_access_token');
     const { maxAge, ...cookieOptions } = this.getAuthCookieOptions();
     res.clearCookie(cookieName, cookieOptions);
@@ -63,7 +69,13 @@ export class AuthController implements OnModuleInit {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  me(@CurrentUser() user: AuthenticatedUser) {
+  async me(@CurrentUser() user: AuthenticatedUser, @Res({ passthrough: true }) res: Response) {
+    const rotatedToken = await this.authService.rotateSessionIfNeeded(user);
+    if (rotatedToken) {
+      this.setAuthCookie(res, rotatedToken);
+    }
+
+    res.setHeader('Cache-Control', 'no-store');
     return this.authService.me(user.userId);
   }
 
@@ -121,7 +133,7 @@ export class AuthController implements OnModuleInit {
   }
 
   private formatAuthResult<T extends { token: string }>(result: T) {
-    const shouldReturnToken = this.config.get<boolean>('AUTH_RETURN_TOKEN_IN_BODY', true);
+    const shouldReturnToken = this.config.get<boolean>('AUTH_RETURN_TOKEN_IN_BODY', false);
     if (shouldReturnToken) {
       return result;
     }
@@ -133,7 +145,7 @@ export class AuthController implements OnModuleInit {
   private getAuthCookieOptions() {
     const secureSetting = this.config.get<boolean>('JWT_COOKIE_SECURE', false);
     const sameSiteRaw = this.config.get<string>('JWT_COOKIE_SAME_SITE', 'lax').toLowerCase();
-    const maxAge = this.config.get<number>('JWT_COOKIE_MAX_AGE_MS', 86_400_000);
+    const maxAge = this.config.get<number>('JWT_COOKIE_MAX_AGE_MS', 900_000);
     const sameSite =
       sameSiteRaw === 'strict' || sameSiteRaw === 'none' ? sameSiteRaw : 'lax';
 
@@ -144,5 +156,22 @@ export class AuthController implements OnModuleInit {
       maxAge,
       path: '/',
     } as const;
+  }
+
+  private extractTokenFromRequest(req: Request) {
+    const cookieName = this.config.get<string>('JWT_COOKIE_NAME', 'warehouse_access_token');
+    const cookieToken = (req as RequestWithCookies)?.cookies?.[cookieName];
+
+    if (typeof cookieToken === 'string' && cookieToken.trim()) {
+      return cookieToken;
+    }
+
+    const headerValue = req.headers.authorization;
+    if (typeof headerValue === 'string' && headerValue.startsWith('Bearer ')) {
+      const bearerToken = headerValue.slice(7).trim();
+      return bearerToken || null;
+    }
+
+    return null;
   }
 }

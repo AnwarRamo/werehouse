@@ -5,6 +5,14 @@ import request from 'supertest';
 import cookieParser from 'cookie-parser';
 import { AppModule } from '../src/app.module';
 
+function extractCookies(rawCookieHeader: string[] | string | undefined) {
+  return Array.isArray(rawCookieHeader)
+    ? rawCookieHeader
+    : rawCookieHeader
+      ? [rawCookieHeader]
+      : [];
+}
+
 describe('Security Controls (e2e)', () => {
   let app: INestApplication;
 
@@ -35,12 +43,7 @@ describe('Security Controls (e2e)', () => {
       .send({ username: 'admin', password: 'password123' })
       .expect(201);
 
-    const rawCookieHeader = loginResponse.headers['set-cookie'];
-    const cookies = Array.isArray(rawCookieHeader)
-      ? rawCookieHeader
-      : rawCookieHeader
-        ? [rawCookieHeader]
-        : [];
+    const cookies = extractCookies(loginResponse.headers['set-cookie']);
     expect(Array.isArray(cookies)).toBe(true);
     expect(cookies.some((cookie) => cookie.includes('warehouse_access_token='))).toBe(true);
 
@@ -48,6 +51,30 @@ describe('Security Controls (e2e)', () => {
       .get('/api/auth/me')
       .set('Cookie', cookies)
       .expect(200);
+  });
+
+  it('revokes the current token on logout', async () => {
+    const loginResponse = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ username: 'admin', password: 'password123' })
+      .expect(201);
+
+    const cookies = extractCookies(loginResponse.headers['set-cookie']);
+
+    await request(app.getHttpServer())
+      .get('/api/auth/me')
+      .set('Cookie', cookies)
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .post('/api/auth/logout')
+      .set('Cookie', cookies)
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .get('/api/auth/me')
+      .set('Cookie', cookies)
+      .expect(401);
   });
 
   it('throttles repeated login attempts (returns 429 eventually)', async () => {

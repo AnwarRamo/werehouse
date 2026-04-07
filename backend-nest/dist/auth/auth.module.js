@@ -15,6 +15,7 @@ const auth_service_1 = require("./auth.service");
 const auth_controller_1 = require("./auth.controller");
 const jwt_strategy_1 = require("./jwt.strategy");
 const audit_service_1 = require("../common/services/audit.service");
+const token_revocation_service_1 = require("./token-revocation.service");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -32,7 +33,7 @@ exports.AuthModule = AuthModule = __decorate([
                 }),
             }),
         ],
-        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, audit_service_1.AuditService],
+        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, audit_service_1.AuditService, token_revocation_service_1.TokenRevocationService],
         controllers: [auth_controller_1.AuthController],
     })
 ], AuthModule);

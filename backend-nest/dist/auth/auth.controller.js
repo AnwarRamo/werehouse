@@ -46,14 +46,23 @@ let AuthController = class AuthController {
         res.setHeader('Cache-Control', 'no-store');
         return this.formatAuthResult(result);
     }
-    logout(res) {
+    async logout(req, res) {
+        const token = this.extractTokenFromRequest(req);
+        if (token) {
+            await this.authService.revokeToken(token);
+        }
         const cookieName = this.config.get('JWT_COOKIE_NAME', 'warehouse_access_token');
         const { maxAge, ...cookieOptions } = this.getAuthCookieOptions();
         res.clearCookie(cookieName, cookieOptions);
         res.setHeader('Cache-Control', 'no-store');
         return { message: 'Logged out successfully' };
     }
-    me(user) {
+    async me(user, res) {
+        const rotatedToken = await this.authService.rotateSessionIfNeeded(user);
+        if (rotatedToken) {
+            this.setAuthCookie(res, rotatedToken);
+        }
+        res.setHeader('Cache-Control', 'no-store');
         return this.authService.me(user.userId);
     }
     async createUser(dto, user, req) {
@@ -87,7 +96,7 @@ let AuthController = class AuthController {
         res.cookie(cookieName, token, this.getAuthCookieOptions());
     }
     formatAuthResult(result) {
-        const shouldReturnToken = this.config.get('AUTH_RETURN_TOKEN_IN_BODY', true);
+        const shouldReturnToken = this.config.get('AUTH_RETURN_TOKEN_IN_BODY', false);
         if (shouldReturnToken) {
             return result;
         }
@@ -97,7 +106,7 @@ let AuthController = class AuthController {
     getAuthCookieOptions() {
         const secureSetting = this.config.get('JWT_COOKIE_SECURE', false);
         const sameSiteRaw = this.config.get('JWT_COOKIE_SAME_SITE', 'lax').toLowerCase();
-        const maxAge = this.config.get('JWT_COOKIE_MAX_AGE_MS', 86_400_000);
+        const maxAge = this.config.get('JWT_COOKIE_MAX_AGE_MS', 900_000);
         const sameSite = sameSiteRaw === 'strict' || sameSiteRaw === 'none' ? sameSiteRaw : 'lax';
         return {
             httpOnly: true,
@@ -106,6 +115,19 @@ let AuthController = class AuthController {
             maxAge,
             path: '/',
         };
+    }
+    extractTokenFromRequest(req) {
+        const cookieName = this.config.get('JWT_COOKIE_NAME', 'warehouse_access_token');
+        const cookieToken = req?.cookies?.[cookieName];
+        if (typeof cookieToken === 'string' && cookieToken.trim()) {
+            return cookieToken;
+        }
+        const headerValue = req.headers.authorization;
+        if (typeof headerValue === 'string' && headerValue.startsWith('Bearer ')) {
+            const bearerToken = headerValue.slice(7).trim();
+            return bearerToken || null;
+        }
+        return null;
     }
 };
 exports.AuthController = AuthController;
@@ -129,18 +151,20 @@ __decorate([
 ], AuthController.prototype, "register", null);
 __decorate([
     (0, common_1.Post)('logout'),
-    __param(0, (0, common_1.Res)({ passthrough: true })),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
 ], AuthController.prototype, "logout", null);
 __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Get)('me'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
 ], AuthController.prototype, "me", null);
 __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),

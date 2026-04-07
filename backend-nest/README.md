@@ -29,9 +29,20 @@ Create a .env file in backend-nest and set:
 
 - PORT=5001
 - JWT_SECRET=change_me
-- JWT_EXPIRE=24h
+- JWT_EXPIRE=15m
+- JWT_COOKIE_NAME=warehouse_access_token
+- JWT_COOKIE_SECURE=true (production)
+- JWT_COOKIE_SAME_SITE=lax
+- JWT_COOKIE_MAX_AGE_MS=900000
+- JWT_ROTATE_THRESHOLD_SEC=300
+- CORS_ORIGIN=https://your-frontend.example.com
+- AUTH_RETURN_TOKEN_IN_BODY=false
+- JWT_ALLOW_BEARER=false
 - DATABASE_URL=postgres://postgres:postgres@localhost:5432/warehouse_system
 - REDIS_URL=redis://127.0.0.1:6379
+
+Notes:
+- In production, auth token revocation is fail-closed and requires a reachable Redis instance.
 
 ## Useful Commands
 - `npm run dev` starts PostgreSQL + Redis (Docker) then runs API in watch mode.

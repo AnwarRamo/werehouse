@@ -49,11 +49,13 @@ const config_1 = require("@nestjs/config");
 const jwt_1 = require("@nestjs/jwt");
 const bcrypt = __importStar(require("bcryptjs"));
 const prisma_service_1 = require("../prisma/prisma.service");
+const token_revocation_service_1 = require("./token-revocation.service");
 let AuthService = AuthService_1 = class AuthService {
-    constructor(prisma, jwtService, config) {
+    constructor(prisma, jwtService, config, tokenRevocation) {
         this.prisma = prisma;
         this.jwtService = jwtService;
         this.config = config;
+        this.tokenRevocation = tokenRevocation;
         this.bcryptRounds = this.config.get('BCRYPT_ROUNDS', 10);
         this.adminUsername = this.config.get('ADMIN_USERNAME', 'admin').toLowerCase();
         this.adminEmail = this.config
@@ -157,6 +159,62 @@ let AuthService = AuthService_1 = class AuthService {
             roleId: adminRole.id,
         });
     }
+    buildAuthPayload(user) {
+        const roleName = user.role?.name || 'staff';
+        return {
+            userId: user.id,
+            username: user.username,
+            email: user.email,
+            role: roleName,
+            roles: [roleName],
+            permissions: user.role?.permissions || [],
+        };
+    }
+    toPublicAuthUser(user) {
+        const roleName = user.role?.name || 'staff';
+        return {
+            id: user.id,
+            name: user.username,
+            username: user.username,
+            role: roleName,
+        };
+    }
+    async revokeToken(token) {
+        if (!token)
+            return;
+        const decoded = this.jwtService.decode(token);
+        const exp = decoded &&
+            typeof decoded === 'object' &&
+            'exp' in decoded &&
+            typeof decoded.exp === 'number'
+            ? decoded.exp
+            : undefined;
+        await this.tokenRevocation.revoke(token, exp);
+    }
+    async rotateSessionIfNeeded(authUser) {
+        const exp = authUser.exp;
+        if (typeof exp !== 'number') {
+            return null;
+        }
+        const nowSeconds = Math.floor(Date.now() / 1000);
+        const secondsUntilExpiry = exp - nowSeconds;
+        if (secondsUntilExpiry <= 0) {
+            throw new common_1.UnauthorizedException('Session expired');
+        }
+        const rotateThresholdSeconds = this.config.get('JWT_ROTATE_THRESHOLD_SEC', 300);
+        if (secondsUntilExpiry > rotateThresholdSeconds) {
+            return null;
+        }
+        const user = await this.prisma.user.findUnique({
+            where: { id: authUser.userId },
+            include: { role: true },
+        });
+        if (!user || user.status !== 'active') {
+            throw new common_1.UnauthorizedException('User not found');
+        }
+        const payload = this.buildAuthPayload(user);
+        return this.jwtService.signAsync(payload);
+    }
     async login(dto) {
         const loginInput = dto.username.toLowerCase();
         const user = await this.prisma.user.findFirst({
@@ -183,27 +241,16 @@ let AuthService = AuthService_1 = class AuthService {
                 data: { status: 'active' },
             });
         }
-        const role = user.role;
-        const payload = {
-            userId: user.id,
-            username: user.username,
-            email: user.email,
-            roles: [role?.name || 'staff'],
-            permissions: role?.permissions || [],
-        };
+        const payload = this.buildAuthPayload(user);
         await this.prisma.user.update({
             where: { id: user.id },
             data: { lastLogin: new Date() },
         });
         return {
             token: await this.jwtService.signAsync(payload),
-            user: {
-                id: user.id,
-                username: user.username,
-                email: user.email,
-                role: role?.name,
-                permissions: role?.permissions || [],
-            },
+            user: this.toPublicAuthUser(user),
+            roles: payload.roles || [],
+            permissions: payload.permissions || [],
         };
     }
     async register(dto) {
@@ -249,13 +296,7 @@ let AuthService = AuthService_1 = class AuthService {
                 status: 'active',
             },
         });
-        const payload = {
-            userId: user.id,
-            username: user.username,
-            email: user.email,
-            roles: [staffRole.name],
-            permissions: staffRole.permissions || [],
-        };
+        const payload = this.buildAuthPayload({ ...user, role: staffRole });
         await this.prisma.user.update({
             where: { id: user.id },
             data: { lastLogin: new Date() },
@@ -263,13 +304,9 @@ let AuthService = AuthService_1 = class AuthService {
         return {
             message: 'Registration successful',
             token: await this.jwtService.signAsync(payload),
-            user: {
-                id: user.id,
-                username: user.username,
-                email: user.email,
-                role: staffRole.name,
-                permissions: staffRole.permissions || [],
-            },
+            user: this.toPublicAuthUser({ ...user, role: staffRole }),
+            roles: payload.roles || [],
+            permissions: payload.permissions || [],
         };
     }
     async me(userId) {
@@ -282,10 +319,12 @@ let AuthService = AuthService_1 = class AuthService {
         const role = user.role;
         return {
             id: user.id,
+            name: user.username,
             username: user.username,
             email: user.email,
             status: user.status,
             role: role?.name,
+            roles: role?.name ? [role.name] : [],
             permissions: role?.permissions || [],
             lastLogin: user.lastLogin,
         };
@@ -388,6 +427,7 @@ exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         jwt_1.JwtService,
-        config_1.ConfigService])
+        config_1.ConfigService,
+        token_revocation_service_1.TokenRevocationService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

@@ -4,10 +4,13 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuthenticatedUser } from '../common/types/authenticated-user.types';
+import { TokenRevocationService } from './token-revocation.service';
 export declare class AuthService {
     private readonly prisma;
     private readonly jwtService;
     private readonly config;
+    private readonly tokenRevocation;
     private readonly bcryptRounds;
     private readonly adminUsername;
     private readonly adminEmail;
@@ -19,37 +22,45 @@ export declare class AuthService {
     private readonly superAdminEmail;
     private readonly superAdminPassword;
     private static readonly ADMIN_PERMISSIONS;
-    constructor(prisma: PrismaService, jwtService: JwtService, config: ConfigService);
+    constructor(prisma: PrismaService, jwtService: JwtService, config: ConfigService, tokenRevocation: TokenRevocationService);
     private isProtectedAdminIdentity;
     private upsertProtectedAdminUser;
     ensureAdminBootstrap(): Promise<void>;
+    private buildAuthPayload;
+    private toPublicAuthUser;
+    revokeToken(token: string): Promise<void>;
+    rotateSessionIfNeeded(authUser: AuthenticatedUser): Promise<string | null>;
     login(dto: LoginDto): Promise<{
         token: string;
         user: {
             id: string;
+            name: string;
             username: string;
-            email: string;
             role: string;
-            permissions: string[];
         };
+        roles: string[];
+        permissions: string[];
     }>;
     register(dto: RegisterDto): Promise<{
         message: string;
         token: string;
         user: {
             id: string;
+            name: string;
             username: string;
-            email: string;
             role: string;
-            permissions: string[];
         };
+        roles: string[];
+        permissions: string[];
     }>;
     me(userId: string): Promise<{
         id: string;
+        name: string;
         username: string;
         email: string;
         status: string;
         role: string;
+        roles: string[];
         permissions: string[];
         lastLogin: Date | null;
     }>;
@@ -79,10 +90,10 @@ export declare class AuthService {
         }[];
     }>;
     getRoles(): Promise<{
-        name: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
         description: string | null;
         permissions: string[];
     }[]>;

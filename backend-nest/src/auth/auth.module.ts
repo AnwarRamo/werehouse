@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { AuditService } from '../common/services/audit.service';
+import { TokenRevocationService } from './token-revocation.service';
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { AuditService } from '../common/services/audit.service';
       }),
     }),
   ],
-  providers: [AuthService, JwtStrategy, AuditService],
+  providers: [AuthService, JwtStrategy, AuditService, TokenRevocationService],
   controllers: [AuthController],
 })
 export class AuthModule {}

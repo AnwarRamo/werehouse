@@ -32,6 +32,34 @@ function printResult(name, pass, details) {
   console.log(`${prefix} | ${name} | ${details}`);
 }
 
+function extractMessage(payload) {
+  if (!payload) return null;
+  if (typeof payload === 'string' && payload.trim()) return payload;
+
+  if (Array.isArray(payload)) {
+    const joined = payload.filter((item) => typeof item === 'string' && item.trim()).join(' | ');
+    return joined || null;
+  }
+
+  if (typeof payload !== 'object') return null;
+
+  const msg = payload.message;
+  if (typeof msg === 'string' && msg.trim()) return msg;
+  if (Array.isArray(msg)) {
+    const joined = msg.filter((item) => typeof item === 'string' && item.trim()).join(' | ');
+    if (joined) return joined;
+  }
+
+  const nestedError = payload.error;
+  if (typeof nestedError === 'string' && nestedError.trim()) return nestedError;
+  if (nestedError && typeof nestedError === 'object') {
+    const nestedMessage = extractMessage(nestedError);
+    if (nestedMessage) return nestedMessage;
+  }
+
+  return null;
+}
+
 async function loginAndGetToken() {
   const candidates = [
     { username: process.env.SUPERADMIN_USERNAME, password: process.env.SUPERADMIN_PASSWORD, label: 'SUPERADMIN' },
@@ -177,9 +205,7 @@ async function main() {
 
   const invalidAsync = await postMultipart('/imports/employees/async', login.token, 'employees-invalid.csv', invalidCsv);
   const invalidPass = invalidAsync.status === 400;
-  const invalidMessage = invalidAsync.json && invalidAsync.json.message
-    ? invalidAsync.json.message
-    : 'no_message';
+  const invalidMessage = extractMessage(invalidAsync.json) || invalidAsync.raw || 'no_message';
   printResult('POST /imports/employees/async (invalid file)', invalidPass, `status=${invalidAsync.status} message=${invalidMessage}`);
   failed = failed || !invalidPass;
 

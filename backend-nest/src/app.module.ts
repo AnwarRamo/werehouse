@@ -60,7 +60,7 @@ const queueInfraModules = queuesEnabled
           then: Joi.string().min(32).required(),
           otherwise: Joi.string().min(16).required(),
         }),
-        JWT_EXPIRE: Joi.string().default('24h'),
+        JWT_EXPIRE: Joi.string().default('15m'),
         JWT_COOKIE_NAME: Joi.string().default('warehouse_access_token'),
         JWT_COOKIE_SECURE: Joi.when('NODE_ENV', {
           is: 'production',
@@ -70,7 +70,8 @@ const queueInfraModules = queuesEnabled
         JWT_COOKIE_SAME_SITE: Joi.string()
           .valid('strict', 'lax', 'none', 'Strict', 'Lax', 'None')
           .default('lax'),
-        JWT_COOKIE_MAX_AGE_MS: Joi.number().min(60_000).default(86_400_000),
+        JWT_COOKIE_MAX_AGE_MS: Joi.number().min(60_000).default(900_000),
+        JWT_ROTATE_THRESHOLD_SEC: Joi.number().min(30).max(3_600).default(300),
         ADMIN_USERNAME: Joi.string().default('admin'),
         ADMIN_EMAIL: Joi.string().email({ tlds: { allow: false } }).default('admin@warehouse.local'),
         ADMIN_BOOTSTRAP_PASSWORD: Joi.when('NODE_ENV', {
@@ -104,11 +105,7 @@ const queueInfraModules = queuesEnabled
           then: Joi.boolean().default(false),
           otherwise: Joi.boolean().default(true),
         }),
-        AUTH_RETURN_TOKEN_IN_BODY: Joi.when('NODE_ENV', {
-          is: 'production',
-          then: Joi.boolean().default(false),
-          otherwise: Joi.boolean().default(true),
-        }),
+        AUTH_RETURN_TOKEN_IN_BODY: Joi.boolean().default(false),
         TRUST_PROXY: Joi.when('NODE_ENV', {
           is: 'production',
           then: Joi.boolean().default(true),

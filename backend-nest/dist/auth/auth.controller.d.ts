@@ -17,32 +17,36 @@ export declare class AuthController implements OnModuleInit {
         token: string;
         user: {
             id: string;
+            name: string;
             username: string;
-            email: string;
             role: string;
-            permissions: string[];
         };
+        roles: string[];
+        permissions: string[];
     }, "token">>;
     register(dto: RegisterDto, res: Response): Promise<Omit<{
         message: string;
         token: string;
         user: {
             id: string;
+            name: string;
             username: string;
-            email: string;
             role: string;
-            permissions: string[];
         };
+        roles: string[];
+        permissions: string[];
     }, "token">>;
-    logout(res: Response): {
+    logout(req: Request, res: Response): Promise<{
         message: string;
-    };
-    me(user: AuthenticatedUser): Promise<{
+    }>;
+    me(user: AuthenticatedUser, res: Response): Promise<{
         id: string;
+        name: string;
         username: string;
         email: string;
         status: string;
         role: string;
+        roles: string[];
         permissions: string[];
         lastLogin: Date | null;
     }>;
@@ -72,14 +76,15 @@ export declare class AuthController implements OnModuleInit {
         }[];
     }>;
     getRoles(user: AuthenticatedUser, req: Request): Promise<{
-        name: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
         description: string | null;
         permissions: string[];
     }[]>;
     private setAuthCookie;
     private formatAuthResult;
     private getAuthCookieOptions;
+    private extractTokenFromRequest;
 }
