@@ -113,9 +113,14 @@ exports.AppModule = AppModule = __decorate([
                         then: Joi.boolean().valid(true).required(),
                         otherwise: Joi.boolean().default(false),
                     }),
-                    JWT_COOKIE_SAME_SITE: Joi.string()
-                        .valid('strict', 'lax', 'none', 'Strict', 'Lax', 'None')
-                        .default('lax'),
+                    JWT_COOKIE_SAME_SITE: Joi.when('NODE_ENV', {
+                        is: 'production',
+                        then: Joi.string().valid('none', 'None').default('none'),
+                        otherwise: Joi.string()
+                            .valid('strict', 'lax', 'none', 'Strict', 'Lax', 'None')
+                            .default('lax'),
+                    }),
+                    JWT_COOKIE_DOMAIN: Joi.string().allow('').default(''),
                     JWT_COOKIE_MAX_AGE_MS: Joi.number().min(60_000).default(900_000),
                     JWT_ROTATE_THRESHOLD_SEC: Joi.number().min(30).max(3_600).default(300),
                     ADMIN_USERNAME: Joi.string().default('admin'),

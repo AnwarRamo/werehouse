@@ -32,7 +32,8 @@ Create a .env file in backend-nest and set:
 - JWT_EXPIRE=15m
 - JWT_COOKIE_NAME=warehouse_access_token
 - JWT_COOKIE_SECURE=true (production)
-- JWT_COOKIE_SAME_SITE=lax
+- JWT_COOKIE_SAME_SITE=none (production)
+- JWT_COOKIE_DOMAIN= (leave empty on Railway unless you intentionally share subdomains)
 - JWT_COOKIE_MAX_AGE_MS=900000
 - JWT_ROTATE_THRESHOLD_SEC=300
 - CORS_ORIGIN=https://your-frontend.example.com
@@ -43,6 +44,7 @@ Create a .env file in backend-nest and set:
 
 Notes:
 - In production, auth token revocation is fail-closed and requires a reachable Redis instance.
+- For frontend/backend on different domains, cookie auth requires: `JWT_COOKIE_SECURE=true`, `JWT_COOKIE_SAME_SITE=none`, and frontend requests with credentials.
 
 ## Useful Commands
 - `npm run dev` starts PostgreSQL + Redis (Docker) then runs API in watch mode.

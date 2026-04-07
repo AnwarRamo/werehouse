@@ -110,11 +110,15 @@ let AuthController = class AuthController {
             .get('JWT_COOKIE_SAME_SITE', isProduction ? 'none' : 'lax')
             .toLowerCase();
         const maxAge = this.config.get('JWT_COOKIE_MAX_AGE_MS', 900_000);
-        const domain = this.config.get('JWT_COOKIE_DOMAIN', '').trim();
-        const sameSite = sameSiteRaw === 'strict' || sameSiteRaw === 'none' ? sameSiteRaw : 'lax';
+        const rawDomain = this.config.get('JWT_COOKIE_DOMAIN', '').trim();
+        const domain = rawDomain && !rawDomain.includes('://') && !rawDomain.includes('/') && !rawDomain.includes(':')
+            ? rawDomain
+            : '';
+        const configuredSameSite = sameSiteRaw === 'strict' || sameSiteRaw === 'none' ? sameSiteRaw : 'lax';
+        const sameSite = isProduction ? 'none' : configuredSameSite;
         return {
             httpOnly: true,
-            secure: secureSetting || sameSite === 'none',
+            secure: isProduction ? true : secureSetting || sameSite === 'none',
             sameSite,
             maxAge,
             path: '/',
