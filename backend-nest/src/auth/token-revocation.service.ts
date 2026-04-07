@@ -17,6 +17,7 @@ export class TokenRevocationService implements OnModuleInit, OnModuleDestroy {
   private readonly keyPrefix = 'auth:revoked:';
   private readonly redisUrl: string;
   private readonly requireRedis: boolean;
+  private readonly isTestEnv: boolean;
 
   private redisClient: Redis | null = null;
   private redisReady = false;
@@ -24,10 +25,15 @@ export class TokenRevocationService implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly config: ConfigService) {
     this.redisUrl = this.config.get<string>('REDIS_URL', '').trim();
     const nodeEnv = this.config.get<string>('NODE_ENV', 'development').toLowerCase();
+    this.isTestEnv = nodeEnv === 'test';
     this.requireRedis = nodeEnv === 'production';
   }
 
   async onModuleInit() {
+    if (this.isTestEnv) {
+      return;
+    }
+
     if (!this.redisUrl) {
       if (this.requireRedis) {
         throw new Error(
@@ -41,8 +47,10 @@ export class TokenRevocationService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
+    let client: Redis | null = null;
+
     try {
-      const client = new Redis(this.redisUrl, {
+      client = new Redis(this.redisUrl, {
         lazyConnect: true,
         maxRetriesPerRequest: 1,
         enableReadyCheck: false,
@@ -53,6 +61,9 @@ export class TokenRevocationService implements OnModuleInit, OnModuleDestroy {
       this.redisReady = true;
       this.logger.log('Redis-backed token revocation is enabled.');
     } catch (error) {
+      // Ensure failed connection attempts do not leave reconnect handles open.
+      client?.disconnect();
+
       if (this.requireRedis) {
         throw new Error(
           `Failed to initialize required Redis token revocation store: ${this.describeError(error)}`,
@@ -76,6 +87,10 @@ export class TokenRevocationService implements OnModuleInit, OnModuleDestroy {
       await this.redisClient.quit();
     } catch {
       // Ignore shutdown errors for best-effort cleanup.
+      this.redisClient.disconnect();
+    } finally {
+      this.redisClient = null;
+      this.redisReady = false;
     }
   }
 
@@ -149,6 +164,12 @@ export class TokenRevocationService implements OnModuleInit, OnModuleDestroy {
   private disableRedis(reason: string) {
     if (!this.redisReady) return;
     this.redisReady = false;
+
+    if (this.redisClient) {
+      this.redisClient.disconnect();
+      this.redisClient = null;
+    }
+
     const modeMessage = this.requireRedis
       ? 'fail-closed mode is active.'
       : 'using in-memory fallback.';

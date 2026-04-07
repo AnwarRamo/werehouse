@@ -104,9 +104,13 @@ let AuthController = class AuthController {
         return sanitizedResult;
     }
     getAuthCookieOptions() {
-        const secureSetting = this.config.get('JWT_COOKIE_SECURE', false);
-        const sameSiteRaw = this.config.get('JWT_COOKIE_SAME_SITE', 'lax').toLowerCase();
+        const isProduction = this.config.get('NODE_ENV', 'development') === 'production';
+        const secureSetting = this.config.get('JWT_COOKIE_SECURE', isProduction);
+        const sameSiteRaw = this.config
+            .get('JWT_COOKIE_SAME_SITE', isProduction ? 'none' : 'lax')
+            .toLowerCase();
         const maxAge = this.config.get('JWT_COOKIE_MAX_AGE_MS', 900_000);
+        const domain = this.config.get('JWT_COOKIE_DOMAIN', '').trim();
         const sameSite = sameSiteRaw === 'strict' || sameSiteRaw === 'none' ? sameSiteRaw : 'lax';
         return {
             httpOnly: true,
@@ -114,6 +118,7 @@ let AuthController = class AuthController {
             sameSite,
             maxAge,
             path: '/',
+            ...(domain ? { domain } : {}),
         };
     }
     extractTokenFromRequest(req) {

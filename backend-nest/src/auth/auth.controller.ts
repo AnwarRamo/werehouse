@@ -143,9 +143,13 @@ export class AuthController implements OnModuleInit {
   }
 
   private getAuthCookieOptions() {
-    const secureSetting = this.config.get<boolean>('JWT_COOKIE_SECURE', false);
-    const sameSiteRaw = this.config.get<string>('JWT_COOKIE_SAME_SITE', 'lax').toLowerCase();
+    const isProduction = this.config.get<string>('NODE_ENV', 'development') === 'production';
+    const secureSetting = this.config.get<boolean>('JWT_COOKIE_SECURE', isProduction);
+    const sameSiteRaw = this.config
+      .get<string>('JWT_COOKIE_SAME_SITE', isProduction ? 'none' : 'lax')
+      .toLowerCase();
     const maxAge = this.config.get<number>('JWT_COOKIE_MAX_AGE_MS', 900_000);
+    const domain = this.config.get<string>('JWT_COOKIE_DOMAIN', '').trim();
     const sameSite =
       sameSiteRaw === 'strict' || sameSiteRaw === 'none' ? sameSiteRaw : 'lax';
 
@@ -155,6 +159,7 @@ export class AuthController implements OnModuleInit {
       sameSite,
       maxAge,
       path: '/',
+      ...(domain ? { domain } : {}),
     } as const;
   }
 

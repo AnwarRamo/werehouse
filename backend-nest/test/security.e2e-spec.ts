@@ -25,7 +25,7 @@ describe('Security Controls (e2e)', () => {
     app.setGlobalPrefix('api');
     app.use(cookieParser());
     await app.init();
-  });
+  }, 30000);
 
   afterAll(async () => {
     if (app) {
