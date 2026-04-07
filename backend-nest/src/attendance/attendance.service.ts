@@ -25,6 +25,15 @@ const ATTENDANCE_DELETION_ENTITY = 'attendance';
 export class AttendanceService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private deriveDateKey(timestampInput: string, parsed: Date) {
+    const fromInput = /^(\d{4}-\d{2}-\d{2})/.exec(timestampInput)?.[1];
+    if (fromInput) {
+      return fromInput;
+    }
+
+    return parsed.toISOString().slice(0, 10);
+  }
+
   private async assertEmployeeExists(employeeId: string) {
     const employee = await this.prisma.employee.findUnique({ where: { employeeId } });
     if (!employee) {
@@ -94,7 +103,7 @@ export class AttendanceService {
 
     await this.assertEmployeeExists(dto.employeeId);
 
-    const date = eventDate.toISOString().slice(0, 10);
+    const date = this.deriveDateKey(dto.timestamp, eventDate);
 
     const record = await this.prisma.attendanceRecord.create({
       data: {
@@ -141,7 +150,7 @@ export class AttendanceService {
         throw new BadRequestException('Invalid timestamp');
       }
       payload.timestamp = parsed;
-      payload.date = parsed.toISOString().slice(0, 10);
+      payload.date = this.deriveDateKey(dto.timestamp, parsed);
     }
 
     const updated = await this.prisma.attendanceRecord.update({

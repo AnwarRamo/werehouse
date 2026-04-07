@@ -12,9 +12,9 @@ export declare class PayrollController {
     list(query: PayrollListQuery): Promise<{
         payrollRuns: {
             id: string;
-            status: string;
-            currency: string;
             notes: string | null;
+            currency: string;
+            status: string;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -51,9 +51,9 @@ export declare class PayrollController {
         message: string;
         payrollRun: {
             id: string;
-            status: string;
-            currency: string;
             notes: string | null;
+            currency: string;
+            status: string;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -73,9 +73,9 @@ export declare class PayrollController {
         message: string;
         payrollRun: {
             id: string;
-            status: string;
-            currency: string;
             notes: string | null;
+            currency: string;
+            status: string;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -94,9 +94,9 @@ export declare class PayrollController {
     getById(runId: string): Promise<{
         payrollRun: {
             id: string;
-            status: string;
-            currency: string;
             notes: string | null;
+            currency: string;
+            status: string;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -113,9 +113,9 @@ export declare class PayrollController {
         };
         items: {
             id: string;
+            employeeId: string;
             createdAt: Date;
             updatedAt: Date;
-            employeeId: string;
             hourlyRate: import("@prisma/client-runtime-utils").Decimal;
             department: string | null;
             anomalies: string[];
@@ -141,9 +141,9 @@ export declare class PayrollController {
         message: string;
         payrollRun: {
             id: string;
-            status: string;
-            currency: string;
             notes: string | null;
+            currency: string;
+            status: string;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -163,9 +163,9 @@ export declare class PayrollController {
         message: string;
         payrollRun: {
             id: string;
-            status: string;
-            currency: string;
             notes: string | null;
+            currency: string;
+            status: string;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -187,9 +187,9 @@ export declare class PayrollController {
         employeeId: string;
         payrollItems: {
             id: string;
+            employeeId: string;
             createdAt: Date;
             updatedAt: Date;
-            employeeId: string;
             hourlyRate: import("@prisma/client-runtime-utils").Decimal;
             department: string | null;
             anomalies: string[];

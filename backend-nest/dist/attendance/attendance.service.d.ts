@@ -10,6 +10,7 @@ export type AttendanceListQuery = PaginationQueryParams & {
 export declare class AttendanceService {
     private readonly prisma;
     constructor(prisma: PrismaService);
+    private deriveDateKey;
     private assertEmployeeExists;
     private toHistoryPayload;
     private parseRequiredString;

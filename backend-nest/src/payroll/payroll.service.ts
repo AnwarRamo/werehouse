@@ -29,6 +29,24 @@ export class PayrollService {
     @Optional() @InjectQueue(QUEUE_NAMES.PAYROLL) private readonly payrollQueue?: Queue,
   ) {}
 
+  private toMoney(value: number) {
+    return Number(value.toFixed(2));
+  }
+
+  private extractMinutesLate(shiftPair: Prisma.JsonValue | null): number {
+    if (!shiftPair || typeof shiftPair !== 'object' || Array.isArray(shiftPair)) {
+      return 0;
+    }
+
+    const raw = (shiftPair as Record<string, unknown>).minutesLate;
+    const parsed = Number(raw ?? 0);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return 0;
+    }
+
+    return parsed;
+  }
+
   private resolvePeriod(periodStart?: string, periodEnd?: string) {
     if (periodStart && periodEnd) {
       return { periodStart, periodEnd };
@@ -355,48 +373,179 @@ export class PayrollService {
   }
 
   private async processPayrollRun(runId: string, dto: CalculatePayrollDto, userId?: string) {
-    const activeEmployeesCount = await this.prisma.employee.count({ where: { status: 'active' } });
-    if (activeEmployeesCount === 0) {
+    const activeEmployees = await this.prisma.employee.findMany({
+      where: { status: 'active' },
+      orderBy: { employeeId: 'asc' },
+      select: {
+        employeeId: true,
+        name: true,
+        department: true,
+        hourlyRate: true,
+      },
+    });
+
+    if (activeEmployees.length === 0) {
       throw new BadRequestException('No active employees found');
+    }
+
+    const employeeIds = activeEmployees.map((employee) => employee.employeeId);
+    const periodStart = dto.periodStart.slice(0, 10);
+    const periodEnd = dto.periodEnd.slice(0, 10);
+    const periodTag = periodStart.slice(0, 7);
+    const gracePeriodMinutes = Math.max(0, Number(dto.gracePeriodMinutes ?? 15));
+
+    const [salaryRecords, bonuses, advances, attendanceInRecords] = await Promise.all([
+      this.prisma.employeeSalary.findMany({
+        where: { employeeId: { in: employeeIds } },
+      }),
+      this.prisma.employeeBonus.findMany({
+        where: {
+          employeeId: { in: employeeIds },
+          period: periodTag,
+        },
+      }),
+      this.prisma.employeeAdvance.findMany({
+        where: {
+          employeeId: { in: employeeIds },
+          remainingAmount: { gt: new Prisma.Decimal(0) },
+        },
+      }),
+      this.prisma.attendanceRecord.findMany({
+        where: {
+          employeeId: { in: employeeIds },
+          type: 'IN',
+          date: {
+            gte: periodStart,
+            lte: periodEnd,
+          },
+        },
+        select: {
+          employeeId: true,
+          date: true,
+          shiftPair: true,
+        },
+      }),
+    ]);
+
+    const salaryByEmployee = new Map(salaryRecords.map((record) => [record.employeeId, record]));
+    const employeeById = new Map(activeEmployees.map((employee) => [employee.employeeId, employee]));
+
+    const attendanceDatesByEmployee = new Map<string, Set<string>>();
+    const latePenaltyByEmployee = new Map<string, number>();
+
+    for (const record of attendanceInRecords) {
+      const dates = attendanceDatesByEmployee.get(record.employeeId) || new Set<string>();
+      dates.add(record.date);
+      attendanceDatesByEmployee.set(record.employeeId, dates);
+
+      const minutesLate = this.extractMinutesLate(record.shiftPair);
+      const lateAfterGrace = Math.max(0, minutesLate - gracePeriodMinutes);
+      if (lateAfterGrace <= 0) {
+        continue;
+      }
+
+      const employee = employeeById.get(record.employeeId);
+      const hourlyRate = Number(employee?.hourlyRate || 0);
+      if (!hourlyRate) {
+        continue;
+      }
+
+      const penalty = (lateAfterGrace / 60) * hourlyRate;
+      latePenaltyByEmployee.set(
+        record.employeeId,
+        (latePenaltyByEmployee.get(record.employeeId) || 0) + penalty,
+      );
+    }
+
+    const attendanceDaysByEmployee = new Map<string, number>();
+    for (const [employeeId, daysSet] of attendanceDatesByEmployee.entries()) {
+      attendanceDaysByEmployee.set(employeeId, daysSet.size);
+    }
+
+    const bonusesByEmployee = new Map<string, { bonus: number; deductions: number }>();
+    for (const bonus of bonuses) {
+      const current = bonusesByEmployee.get(bonus.employeeId) || { bonus: 0, deductions: 0 };
+      current.bonus += Number(bonus.bonusAmount || 0);
+      current.deductions += Number(bonus.assistanceAmount || 0);
+      bonusesByEmployee.set(bonus.employeeId, current);
+    }
+
+    const advancesByEmployee = new Map<string, number>();
+    for (const advance of advances) {
+      const installment = Number(advance.installmentAmount || 0);
+      const remaining = Number(advance.remainingAmount || 0);
+
+      if (installment <= 0 || remaining <= 0) {
+        continue;
+      }
+
+      const deductible = Math.min(installment, remaining);
+      advancesByEmployee.set(
+        advance.employeeId,
+        (advancesByEmployee.get(advance.employeeId) || 0) + deductible,
+      );
     }
 
     await this.prisma.payrollRun.update({
       where: { id: runId },
       data: {
         status: 'processing',
-        totalEmployees: activeEmployeesCount,
+        totalEmployees: activeEmployees.length,
       },
     });
 
+    // Ensures idempotent retry for the same run id.
+    await this.prisma.payrollItem.deleteMany({ where: { payrollRunId: runId } });
+
     let totalGross = 0;
+    let totalDeductions = 0;
     let totalNet = 0;
     let processedEmployees = 0;
-    let skip = 0;
 
-    while (true) {
-      const employees = await this.prisma.employee.findMany({
-        where: { status: 'active' },
-        orderBy: { employeeId: 'asc' },
-        skip,
-        take: PAYROLL_BATCH_SIZE,
-      });
+    for (let offset = 0; offset < activeEmployees.length; offset += PAYROLL_BATCH_SIZE) {
+      const employeesBatch = activeEmployees.slice(offset, offset + PAYROLL_BATCH_SIZE);
+      const items: Prisma.PayrollItemCreateManyInput[] = [];
 
-      if (employees.length === 0) {
-        break;
-      }
+      for (const employee of employeesBatch) {
+        const salaryRecord = salaryByEmployee.get(employee.employeeId);
+        const hourlyRate = Number(employee.hourlyRate || 0);
+        const fallbackBaseSalary = hourlyRate * 8 * 26;
+        const baseSalary = Number(salaryRecord?.baseSalary ?? fallbackBaseSalary);
 
-      const items: Prisma.PayrollItemCreateManyInput[] = employees.map((employee) => {
-        const hoursWorked = 160;
-        const hourlyRate = Number(employee.hourlyRate);
-        const grossPay = Number((hoursWorked * hourlyRate).toFixed(2));
-        const totalDeductions = Number((grossPay * 0.08).toFixed(2));
-        const netPay = Number((grossPay - totalDeductions).toFixed(2));
+        const attendanceDays = attendanceDaysByEmployee.get(employee.employeeId) || 0;
+        const hoursWorked = attendanceDays * 8;
+
+        const proratedBase = this.toMoney((baseSalary / 26) * attendanceDays);
+        const employeeBonuses = bonusesByEmployee.get(employee.employeeId);
+        const bonusAmount = this.toMoney(employeeBonuses?.bonus || 0);
+        const administrativeDeductions = this.toMoney(employeeBonuses?.deductions || 0);
+        const advancesInstallments = this.toMoney(advancesByEmployee.get(employee.employeeId) || 0);
+        const latePenalty = this.toMoney(latePenaltyByEmployee.get(employee.employeeId) || 0);
+
+        const grossPay = this.toMoney(proratedBase + bonusAmount);
+        const employeeDeductions = this.toMoney(administrativeDeductions + advancesInstallments + latePenalty);
+        const netPay = this.toMoney(grossPay - employeeDeductions);
+
+        const anomalies: string[] = [];
+        if (!salaryRecord) {
+          anomalies.push('Salary configuration not found; fallback hourly-rate baseline used');
+        }
+        if (attendanceDays === 0) {
+          anomalies.push('No attendance records in selected period');
+        }
+        if (latePenalty > 0) {
+          anomalies.push(`Late penalty applied: ${latePenalty.toFixed(2)}`);
+        }
+        if (netPay < 0) {
+          anomalies.push('Net pay is negative after deductions');
+        }
 
         totalGross += grossPay;
+        totalDeductions += employeeDeductions;
         totalNet += netPay;
         processedEmployees += 1;
 
-        return {
+        items.push({
           payrollRunId: runId,
           employeeId: employee.employeeId,
           employeeName: employee.name,
@@ -404,14 +553,15 @@ export class PayrollService {
           hoursWorked: new Prisma.Decimal(hoursWorked),
           hourlyRate: new Prisma.Decimal(hourlyRate),
           grossPay: new Prisma.Decimal(grossPay),
-          totalDeductions: new Prisma.Decimal(totalDeductions),
+          totalDeductions: new Prisma.Decimal(employeeDeductions),
           netPay: new Prisma.Decimal(netPay),
-          anomalies: [],
-        };
-      });
+          anomalies,
+        });
+      }
 
-      await this.prisma.payrollItem.createMany({ data: items });
-      skip += employees.length;
+      if (items.length > 0) {
+        await this.prisma.payrollItem.createMany({ data: items });
+      }
     }
 
     const updatedRun = await this.prisma.payrollRun.update({
@@ -419,9 +569,9 @@ export class PayrollService {
       data: {
         status: 'completed',
         totalEmployees: processedEmployees,
-        totalGrossPay: new Prisma.Decimal(totalGross.toFixed(2)),
-        totalDeductions: new Prisma.Decimal((totalGross - totalNet).toFixed(2)),
-        totalNetPay: new Prisma.Decimal(totalNet.toFixed(2)),
+        totalGrossPay: new Prisma.Decimal(this.toMoney(totalGross)),
+        totalDeductions: new Prisma.Decimal(this.toMoney(totalDeductions)),
+        totalNetPay: new Prisma.Decimal(this.toMoney(totalNet)),
       },
     });
 
