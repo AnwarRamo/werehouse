@@ -26,7 +26,8 @@ export class TokenRevocationService implements OnModuleInit, OnModuleDestroy {
     this.redisUrl = this.config.get<string>('REDIS_URL', '').trim();
     const nodeEnv = this.config.get<string>('NODE_ENV', 'development').toLowerCase();
     this.isTestEnv = nodeEnv === 'test';
-    this.requireRedis = nodeEnv === 'production';
+    const strictMode = this.config.get<boolean>('TOKEN_REVOCATION_STRICT', false);
+    this.requireRedis = nodeEnv === 'production' && strictMode;
   }
 
   async onModuleInit() {

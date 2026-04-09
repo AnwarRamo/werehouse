@@ -43,7 +43,7 @@ Create a .env file in backend-nest and set:
 - REDIS_URL=redis://127.0.0.1:6379
 
 Notes:
-- In production, auth token revocation is fail-closed and requires a reachable Redis instance.
+- Redis-backed token revocation is optional by default. Set `TOKEN_REVOCATION_STRICT=true` in production if you want fail-closed behavior when Redis is unavailable.
 - For frontend/backend on different domains, cookie auth requires: `JWT_COOKIE_SECURE=true`, `JWT_COOKIE_SAME_SITE=none`, and frontend requests with credentials.
 
 ## Useful Commands

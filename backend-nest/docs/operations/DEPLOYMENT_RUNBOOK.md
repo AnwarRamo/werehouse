@@ -27,11 +27,12 @@ JWT_SECRET=<strong-random-secret>
 JWT_EXPIRE=24h
 JWT_COOKIE_NAME=warehouse_access_token
 JWT_COOKIE_SECURE=true
-JWT_COOKIE_SAME_SITE=lax
+JWT_COOKIE_SAME_SITE=none
 JWT_COOKIE_MAX_AGE_MS=86400000
 
 DATABASE_URL=postgresql://<user>:<password>@<host>:5432/warehouse_system?schema=public
 REDIS_URL=redis://<host>:6379
+TOKEN_REVOCATION_STRICT=false
 
 CORS_ORIGIN=https://<your-frontend-domain>
 

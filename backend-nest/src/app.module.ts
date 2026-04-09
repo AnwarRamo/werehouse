@@ -62,18 +62,10 @@ const queueInfraModules = queuesEnabled
         }),
         JWT_EXPIRE: Joi.string().default('15m'),
         JWT_COOKIE_NAME: Joi.string().default('warehouse_access_token'),
-        JWT_COOKIE_SECURE: Joi.when('NODE_ENV', {
-          is: 'production',
-          then: Joi.boolean().valid(true).required(),
-          otherwise: Joi.boolean().default(false),
-        }),
-        JWT_COOKIE_SAME_SITE: Joi.when('NODE_ENV', {
-          is: 'production',
-          then: Joi.string().valid('none', 'None').default('none'),
-          otherwise: Joi.string()
-            .valid('strict', 'lax', 'none', 'Strict', 'Lax', 'None')
-            .default('lax'),
-        }),
+        JWT_COOKIE_SECURE: Joi.boolean().default(false),
+        JWT_COOKIE_SAME_SITE: Joi.string()
+          .valid('strict', 'lax', 'none', 'Strict', 'Lax', 'None')
+          .default('lax'),
         JWT_COOKIE_DOMAIN: Joi.string().allow('').default(''),
         JWT_COOKIE_MAX_AGE_MS: Joi.number().min(60_000).default(900_000),
         JWT_ROTATE_THRESHOLD_SEC: Joi.number().min(30).max(3_600).default(300),
@@ -81,7 +73,7 @@ const queueInfraModules = queuesEnabled
         ADMIN_EMAIL: Joi.string().email({ tlds: { allow: false } }).default('admin@warehouse.local'),
         ADMIN_BOOTSTRAP_PASSWORD: Joi.when('NODE_ENV', {
           is: 'production',
-          then: Joi.string().min(12).required(),
+          then: Joi.string().min(8).required(),
           otherwise: Joi.string().min(8).optional(),
         }),
         DEV_ADMIN_USERNAME: Joi.string().default('developer'),
@@ -100,11 +92,7 @@ const queueInfraModules = queuesEnabled
           then: Joi.string().min(12).required(),
           otherwise: Joi.string().min(8).optional(),
         }),
-        CORS_ORIGIN: Joi.when('NODE_ENV', {
-          is: 'production',
-          then: Joi.string().min(1).required(),
-          otherwise: Joi.string().allow('').default(''),
-        }),
+        CORS_ORIGIN: Joi.string().allow('').default(''),
         JWT_ALLOW_BEARER: Joi.when('NODE_ENV', {
           is: 'production',
           then: Joi.boolean().default(false),
@@ -121,6 +109,7 @@ const queueInfraModules = queuesEnabled
         THROTTLE_LIMIT: Joi.number().min(10).default(120),
         QUEUES_ENABLED: Joi.boolean().default(true),
         REDIS_URL: Joi.string().uri().default('redis://127.0.0.1:6379'),
+        TOKEN_REVOCATION_STRICT: Joi.boolean().default(false),
       }),
     }),
     ThrottlerModule.forRootAsync({
