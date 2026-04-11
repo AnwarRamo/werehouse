@@ -129,6 +129,12 @@ export declare class ImportsService {
     private ensureNoValidationErrors;
     private parseImportRows;
     private parseImportRowsAsync;
+    private detectImportFormat;
+    private parseDelimitedRows;
+    private parseSpreadsheetRows;
+    private parseJsonRows;
+    private detectDelimiter;
+    private assertRowsLimit;
     private value;
     private resolveDefaultRoleId;
     private resolveRoleId;

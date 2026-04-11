@@ -18,6 +18,7 @@ import { SalaryModule } from './salary/salary.module';
 import { AdvancesModule } from './advances/advances.module';
 import { InsuranceModule } from './insurance/insurance.module';
 import { BonusesModule } from './bonuses/bonuses.module';
+import { FilesModule } from './files/files.module';
 
 const queuesEnabled = process.env.NODE_ENV !== 'test' && process.env.QUEUES_ENABLED !== 'false';
 
@@ -135,6 +136,7 @@ const queueInfraModules = queuesEnabled
     AdvancesModule,
     InsuranceModule,
     BonusesModule,
+    FilesModule,
   ],
   providers: [
     {

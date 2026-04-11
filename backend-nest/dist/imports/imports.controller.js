@@ -70,19 +70,52 @@ let ImportsController = class ImportsController {
 exports.ImportsController = ImportsController;
 ImportsController.uploadOptions = {
     fileFilter: (_req, file, cb) => {
-        const allowedExtensions = ['.csv', '.xlsx', '.xls'];
+        const allowedExtensions = ['.csv', '.tsv', '.txt', '.json', '.xlsx', '.xls', '.xlsm', '.xlsb', '.ods'];
         const allowedMimeTypes = [
             'text/csv',
             'application/csv',
+            'text/tab-separated-values',
+            'text/plain',
+            'application/json',
             'application/vnd.ms-excel',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-excel.sheet.macroenabled.12',
+            'application/vnd.ms-excel.sheet.binary.macroenabled.12',
+            'application/vnd.oasis.opendocument.spreadsheet',
         ];
+        const genericMimeTypes = ['application/octet-stream', 'binary/octet-stream'];
+        const extensionMimeMap = {
+            '.csv': ['text/csv', 'application/csv', 'application/vnd.ms-excel', 'text/plain'],
+            '.tsv': ['text/tab-separated-values', 'text/plain'],
+            '.txt': ['text/plain'],
+            '.json': ['application/json', 'text/json'],
+            '.xlsx': ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+            '.xls': ['application/vnd.ms-excel'],
+            '.xlsm': ['application/vnd.ms-excel.sheet.macroenabled.12'],
+            '.xlsb': ['application/vnd.ms-excel.sheet.binary.macroenabled.12'],
+            '.ods': ['application/vnd.oasis.opendocument.spreadsheet'],
+        };
         const originalName = String(file?.originalname || '').toLowerCase();
-        const hasAllowedExtension = allowedExtensions.some((ext) => originalName.endsWith(ext));
-        const hasAllowedMime = allowedMimeTypes.includes(String(file?.mimetype || '').toLowerCase());
-        if (!hasAllowedExtension && !hasAllowedMime) {
-            cb(new Error('Only CSV/XLS/XLSX files are allowed'), false);
+        const normalizedMime = String(file?.mimetype || '').toLowerCase();
+        const matchedExtension = allowedExtensions.find((ext) => originalName.endsWith(ext));
+        const hasAllowedExtension = Boolean(matchedExtension);
+        const hasAllowedMime = !normalizedMime ||
+            allowedMimeTypes.includes(normalizedMime) ||
+            genericMimeTypes.includes(normalizedMime);
+        if (!hasAllowedExtension) {
+            cb(new common_1.BadRequestException('Only tabular file extensions are allowed (csv, tsv, txt, json, xlsx, xls, xlsm, xlsb, ods)'), false);
             return;
+        }
+        if (!hasAllowedMime) {
+            cb(new common_1.BadRequestException('Uploaded file MIME type is not supported for tabular imports'), false);
+            return;
+        }
+        if (normalizedMime && !genericMimeTypes.includes(normalizedMime) && matchedExtension) {
+            const allowedMimesForExtension = extensionMimeMap[matchedExtension] || [];
+            if (!allowedMimesForExtension.includes(normalizedMime)) {
+                cb(new common_1.BadRequestException(`MIME type ${normalizedMime} is not compatible with ${matchedExtension} files`), false);
+                return;
+            }
         }
         cb(null, true);
     },

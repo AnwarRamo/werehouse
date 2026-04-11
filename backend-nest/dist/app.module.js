@@ -60,6 +60,7 @@ const salary_module_1 = require("./salary/salary.module");
 const advances_module_1 = require("./advances/advances.module");
 const insurance_module_1 = require("./insurance/insurance.module");
 const bonuses_module_1 = require("./bonuses/bonuses.module");
+const files_module_1 = require("./files/files.module");
 const queuesEnabled = process.env.NODE_ENV !== 'test' && process.env.QUEUES_ENABLED !== 'false';
 const queueInfraModules = queuesEnabled
     ? [
@@ -181,6 +182,7 @@ exports.AppModule = AppModule = __decorate([
             advances_module_1.AdvancesModule,
             insurance_module_1.InsuranceModule,
             bonuses_module_1.BonusesModule,
+            files_module_1.FilesModule,
         ],
         providers: [
             {

@@ -19,7 +19,9 @@
     "prisma:push": "prisma db push",
     "seed:demo": "node scripts/seed-demo.js",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:security": "npm run test:e2e -- security.e2e-spec.ts"
+    "test:security": "npm run test:e2e -- security.e2e-spec.ts",
+    "test:imports": "npm run test:e2e -- imports.e2e-spec.ts",
+    "test:files": "npm run test:e2e -- files.e2e-spec.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.4",
@@ -50,7 +52,8 @@
     "pdf-lib": "^1.17.1",
     "pg": "^8.13.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.17",

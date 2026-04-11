@@ -13,19 +13,19 @@ export declare class EmployeesService {
     constructor(prisma: PrismaService);
     list(query: EmployeesListQuery): Promise<{
         employees: {
-            name: string;
             id: string;
-            email: string;
-            roleId: string | null;
-            status: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
+            name: string;
+            email: string;
             hourlyRate: Prisma.Decimal;
             currency: string;
             scheduledStart: string | null;
             scheduledEnd: string | null;
             department: string;
+            roleId: string | null;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
         }[];
         pagination: {
             page: number;
@@ -45,70 +45,70 @@ export declare class EmployeesService {
         department: string;
         count: number;
         employees: {
-            name: string;
             id: string;
-            email: string;
-            roleId: string | null;
-            status: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
+            name: string;
+            email: string;
             hourlyRate: Prisma.Decimal;
             currency: string;
             scheduledStart: string | null;
             scheduledEnd: string | null;
             department: string;
+            roleId: string | null;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
         }[];
     }>;
     create(dto: CreateEmployeeDto): Promise<{
         message: string;
         employee: {
-            name: string;
             id: string;
-            email: string;
-            roleId: string | null;
-            status: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
+            name: string;
+            email: string;
             hourlyRate: Prisma.Decimal;
             currency: string;
             scheduledStart: string | null;
             scheduledEnd: string | null;
             department: string;
+            roleId: string | null;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
         };
     }>;
     getByEmployeeId(employeeId: string): Promise<{
-        name: string;
         id: string;
-        email: string;
-        roleId: string | null;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
         employeeId: string;
+        name: string;
+        email: string;
         hourlyRate: Prisma.Decimal;
         currency: string;
         scheduledStart: string | null;
         scheduledEnd: string | null;
         department: string;
+        roleId: string | null;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     update(employeeId: string, dto: UpdateEmployeeDto): Promise<{
         message: string;
         employee: {
-            name: string;
             id: string;
-            email: string;
-            roleId: string | null;
-            status: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
+            name: string;
+            email: string;
             hourlyRate: Prisma.Decimal;
             currency: string;
             scheduledStart: string | null;
             scheduledEnd: string | null;
             department: string;
+            roleId: string | null;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
         };
     }>;
     remove(employeeId: string): Promise<{

@@ -52,6 +52,8 @@ model Employee {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  @@index([status])
+  @@index([department, status])
   @@map("employees")
 }
 
@@ -141,6 +143,8 @@ model ImportJob {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@index([entity, uploadedAt])
+  @@index([status, uploadedAt])
   @@map("import_jobs")
 }
 

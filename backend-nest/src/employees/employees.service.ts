@@ -57,23 +57,25 @@ export class EmployeesService {
   }
 
   async stats() {
-    const employees = await this.prisma.employee.findMany();
-    const byDepartment: Record<string, number> = {};
-    let active = 0;
-    let inactive = 0;
-    let terminated = 0;
+    const [total, active, inactive, terminated, groupedByDepartment] = await Promise.all([
+      this.prisma.employee.count(),
+      this.prisma.employee.count({ where: { status: 'active' } }),
+      this.prisma.employee.count({ where: { status: 'inactive' } }),
+      this.prisma.employee.count({ where: { status: 'terminated' } }),
+      this.prisma.employee.groupBy({
+        by: ['department'],
+        _count: { _all: true },
+      }),
+    ]);
 
-    for (const e of employees) {
-      byDepartment[e.department || 'Unassigned'] =
-        (byDepartment[e.department || 'Unassigned'] || 0) + 1;
-
-      if (e.status === 'active') active += 1;
-      if (e.status === 'inactive') inactive += 1;
-      if (e.status === 'terminated') terminated += 1;
-    }
+    const byDepartment = groupedByDepartment.reduce<Record<string, number>>((accumulator, entry) => {
+      const key = entry.department || 'Unassigned';
+      accumulator[key] = entry._count._all;
+      return accumulator;
+    }, {});
 
     return {
-      total: employees.length,
+      total,
       active,
       inactive,
       terminated,
