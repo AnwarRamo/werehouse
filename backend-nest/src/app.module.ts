@@ -20,7 +20,26 @@ import { InsuranceModule } from './insurance/insurance.module';
 import { BonusesModule } from './bonuses/bonuses.module';
 import { FilesModule } from './files/files.module';
 
-const queuesEnabled = process.env.NODE_ENV !== 'test' && process.env.QUEUES_ENABLED !== 'false';
+function parseBooleanEnv(value: string | undefined): boolean | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+    return true;
+  }
+  if (['0', 'false', 'no', 'off'].includes(normalized)) {
+    return false;
+  }
+
+  return undefined;
+}
+
+const explicitQueuesEnabled = parseBooleanEnv(process.env.QUEUES_ENABLED);
+const queuesEnabled =
+  process.env.NODE_ENV !== 'test' &&
+  (explicitQueuesEnabled ?? process.env.NODE_ENV === 'production');
 
 const queueInfraModules = queuesEnabled
   ? [
@@ -108,7 +127,11 @@ const queueInfraModules = queuesEnabled
         BCRYPT_ROUNDS: Joi.number().min(8).max(14).default(10),
         THROTTLE_TTL_MS: Joi.number().min(1_000).default(60_000),
         THROTTLE_LIMIT: Joi.number().min(10).default(120),
-        QUEUES_ENABLED: Joi.boolean().default(true),
+        QUEUES_ENABLED: Joi.when('NODE_ENV', {
+          is: 'production',
+          then: Joi.boolean().default(true),
+          otherwise: Joi.boolean().default(false),
+        }),
         REDIS_URL: Joi.string().uri().default('redis://127.0.0.1:6379'),
         TOKEN_REVOCATION_STRICT: Joi.boolean().default(false),
       }),
