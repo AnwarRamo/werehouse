@@ -778,6 +778,56 @@ export class ImportsService {
     return '';
   }
 
+  private parseFlexibleNumber(rawValue: string) {
+    let normalized = String(rawValue ?? '')
+      .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 1632))
+      .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - 1776))
+      .trim();
+
+    if (!normalized) {
+      return Number.NaN;
+    }
+
+    normalized = normalized
+      .replace(/\u00A0/g, ' ')
+      .replace(/\s+/g, '')
+      .replace(/[^\d.,+\-]/g, '');
+
+    if (!normalized || /^[-+]?([.,])?$/.test(normalized)) {
+      return Number.NaN;
+    }
+
+    const commaCount = (normalized.match(/,/g) || []).length;
+    const dotCount = (normalized.match(/\./g) || []).length;
+
+    if (commaCount > 0 && dotCount > 0) {
+      if (normalized.lastIndexOf(',') > normalized.lastIndexOf('.')) {
+        normalized = normalized.replace(/\./g, '').replace(/,/g, '.');
+      } else {
+        normalized = normalized.replace(/,/g, '');
+      }
+    } else if (commaCount > 0) {
+      if (commaCount > 1) {
+        normalized = normalized.replace(/,/g, '');
+      } else {
+        const commaIndex = normalized.indexOf(',');
+        const fractionLength = normalized.length - commaIndex - 1;
+        const integerLength = commaIndex;
+
+        if (fractionLength === 3 && integerLength >= 1) {
+          normalized = normalized.replace(/,/g, '');
+        } else {
+          normalized = normalized.replace(',', '.');
+        }
+      }
+    } else if (dotCount > 1) {
+      normalized = normalized.replace(/\./g, '');
+    }
+
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : Number.NaN;
+  }
+
   private async resolveDefaultRoleId(): Promise<string> {
     const preferred = await this.prisma.role.findFirst({ where: { name: { in: ['staff', 'admin'] } } });
     if (preferred?.id) return preferred.id;
@@ -843,7 +893,7 @@ export class ImportsService {
         if (!SIMPLE_EMAIL_REGEX.test(normalizedEmail)) {
           throw new Error('email must be a valid email address');
         }
-        const hourlyRate = Number(hourlyRateRaw);
+        const hourlyRate = this.parseFlexibleNumber(hourlyRateRaw);
         if (!Number.isFinite(hourlyRate) || hourlyRate < 0) {
           throw new Error('hourlyRate must be a finite non-negative number');
         }
@@ -926,11 +976,14 @@ export class ImportsService {
         const normalizedStatus = String(status).toLowerCase();
 
         if (!sku || !name || !category || !unitPriceRaw || !costPriceRaw) throw new Error('Missing required fields: sku, name, category, unitPrice, costPrice');
-        const unitPrice = Number(unitPriceRaw);
-        const costPrice = Number(costPriceRaw);
-        const reorderLevel = reorderLevelRaw ? Number(reorderLevelRaw) : 10;
+        const unitPrice = this.parseFlexibleNumber(unitPriceRaw);
+        const costPrice = this.parseFlexibleNumber(costPriceRaw);
+        const reorderLevel = reorderLevelRaw ? this.parseFlexibleNumber(reorderLevelRaw) : 10;
         if (!Number.isFinite(unitPrice) || !Number.isFinite(costPrice) || !Number.isFinite(reorderLevel)) {
           throw new Error('unitPrice, costPrice and reorderLevel must be finite numbers');
+        }
+        if (!Number.isInteger(reorderLevel)) {
+          throw new Error('reorderLevel must be an integer number');
         }
         if (unitPrice < 0 || costPrice < 0 || reorderLevel < 0) {
           throw new Error('unitPrice, costPrice and reorderLevel must be non-negative numbers');
