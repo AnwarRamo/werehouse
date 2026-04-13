@@ -17,12 +17,12 @@ export declare class InventoryService {
     listProducts(query: InventoryProductsQueryDto): Promise<{
         products: {
             id: string;
-            status: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            category: string;
+            status: string;
             sku: string;
+            category: string;
             unitPrice: Prisma.Decimal;
             costPrice: Prisma.Decimal;
             reorderLevel: number;
@@ -38,12 +38,12 @@ export declare class InventoryService {
         message: string;
         product: {
             id: string;
-            status: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            category: string;
+            status: string;
             sku: string;
+            category: string;
             unitPrice: Prisma.Decimal;
             costPrice: Prisma.Decimal;
             reorderLevel: number;
@@ -52,12 +52,12 @@ export declare class InventoryService {
     getProduct(productId: string): Promise<{
         product: {
             id: string;
-            status: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            category: string;
+            status: string;
             sku: string;
+            category: string;
             unitPrice: Prisma.Decimal;
             costPrice: Prisma.Decimal;
             reorderLevel: number;
@@ -66,8 +66,8 @@ export declare class InventoryService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            location: string;
             sku: string;
+            location: string;
             quantity: number;
             reserved: number;
             available: number;
@@ -77,12 +77,12 @@ export declare class InventoryService {
         message: string;
         product: {
             id: string;
-            status: string;
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            category: string;
+            status: string;
             sku: string;
+            category: string;
             unitPrice: Prisma.Decimal;
             costPrice: Prisma.Decimal;
             reorderLevel: number;
@@ -95,8 +95,8 @@ export declare class InventoryService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            location: string;
             sku: string;
+            location: string;
             quantity: number;
             reserved: number;
             available: number;
@@ -108,8 +108,8 @@ export declare class InventoryService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            location: string;
             sku: string;
+            location: string;
             quantity: number;
             reserved: number;
             available: number;
@@ -121,8 +121,8 @@ export declare class InventoryService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            location: string;
             sku: string;
+            location: string;
             quantity: number;
             reserved: number;
             available: number;
@@ -134,8 +134,8 @@ export declare class InventoryService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            location: string;
             sku: string;
+            location: string;
             quantity: number;
             reserved: number;
             available: number;

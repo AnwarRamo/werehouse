@@ -4,7 +4,7 @@ import { Request } from 'express';
 import { AuthenticatedUser } from '../common/types/authenticated-user.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { TokenRevocationService } from './token-revocation.service';
-declare const JwtStrategy_base: new (...args: [opt: import("passport-jwt").StrategyOptionsWithRequest] | [opt: import("passport-jwt").StrategyOptionsWithoutRequest]) => Strategy & {
+declare const JwtStrategy_base: new (...args: [opt: import("passport-jwt").StrategyOptionsWithoutRequest] | [opt: import("passport-jwt").StrategyOptionsWithRequest]) => Strategy & {
     validate(...args: any[]): unknown;
 };
 export declare class JwtStrategy extends JwtStrategy_base {

@@ -38,9 +38,10 @@ export class PrismaService
   }
 
   private resolveSlowQueryThreshold() {
-    const configured = Number(process.env.PRISMA_SLOW_QUERY_MS || 200);
+    const defaultThreshold = process.env.NODE_ENV === 'production' ? 200 : 800;
+    const configured = Number(process.env.PRISMA_SLOW_QUERY_MS || defaultThreshold);
     if (!Number.isFinite(configured) || configured <= 0) {
-      return 200;
+      return defaultThreshold;
     }
 
     return Math.round(configured);

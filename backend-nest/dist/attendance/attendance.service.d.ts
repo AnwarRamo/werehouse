@@ -39,18 +39,18 @@ export declare class AttendanceService {
     list(query: AttendanceListQueryDto): Promise<{
         records: {
             id: string;
+            notes: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             employeeId: string;
+            location: string | null;
             timestamp: Date;
             type: string;
             deviceId: string | null;
-            location: string | null;
             source: string;
             verified: boolean;
-            notes: string | null;
             date: string;
             shiftPair: Prisma.JsonValue | null;
-            createdAt: Date;
-            updatedAt: Date;
         }[];
         pagination: {
             page: number;
@@ -63,18 +63,18 @@ export declare class AttendanceService {
         message: string;
         record: {
             id: string;
+            notes: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             employeeId: string;
+            location: string | null;
             timestamp: Date;
             type: string;
             deviceId: string | null;
-            location: string | null;
             source: string;
             verified: boolean;
-            notes: string | null;
             date: string;
             shiftPair: Prisma.JsonValue | null;
-            createdAt: Date;
-            updatedAt: Date;
         };
     }>;
     upload(file: Express.Multer.File, userId?: string): Promise<{
@@ -101,51 +101,51 @@ export declare class AttendanceService {
         };
         records: {
             id: string;
+            notes: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             employeeId: string;
+            location: string | null;
             timestamp: Date;
             type: string;
             deviceId: string | null;
-            location: string | null;
             source: string;
             verified: boolean;
-            notes: string | null;
             date: string;
             shiftPair: Prisma.JsonValue | null;
-            createdAt: Date;
-            updatedAt: Date;
         }[];
     }>;
     getById(recordId: string): Promise<{
         id: string;
+        notes: string | null;
+        createdAt: Date;
+        updatedAt: Date;
         employeeId: string;
+        location: string | null;
         timestamp: Date;
         type: string;
         deviceId: string | null;
-        location: string | null;
         source: string;
         verified: boolean;
-        notes: string | null;
         date: string;
         shiftPair: Prisma.JsonValue | null;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     update(recordId: string, dto: UpdateAttendanceDto): Promise<{
         message: string;
         record: {
             id: string;
+            notes: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             employeeId: string;
+            location: string | null;
             timestamp: Date;
             type: string;
             deviceId: string | null;
-            location: string | null;
             source: string;
             verified: boolean;
-            notes: string | null;
             date: string;
             shiftPair: Prisma.JsonValue | null;
-            createdAt: Date;
-            updatedAt: Date;
         };
     }>;
     listDeletedHistory(): Promise<{
@@ -167,18 +167,18 @@ export declare class AttendanceService {
         message: string;
         record: {
             id: string;
+            notes: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             employeeId: string;
+            location: string | null;
             timestamp: Date;
             type: string;
             deviceId: string | null;
-            location: string | null;
             source: string;
             verified: boolean;
-            notes: string | null;
             date: string;
             shiftPair: Prisma.JsonValue | null;
-            createdAt: Date;
-            updatedAt: Date;
         };
     }>;
     stats(startDate?: string, endDate?: string): Promise<{
@@ -199,18 +199,18 @@ export declare class AttendanceService {
         };
         anomalies: {
             id: string;
+            notes: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             employeeId: string;
+            location: string | null;
             timestamp: Date;
             type: string;
             deviceId: string | null;
-            location: string | null;
             source: string;
             verified: boolean;
-            notes: string | null;
             date: string;
             shiftPair: Prisma.JsonValue | null;
-            createdAt: Date;
-            updatedAt: Date;
         }[];
         anomalyCount: number;
     }>;
@@ -231,18 +231,18 @@ export declare class AttendanceService {
         date: string;
         records: {
             id: string;
+            notes: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             employeeId: string;
+            location: string | null;
             timestamp: Date;
             type: string;
             deviceId: string | null;
-            location: string | null;
             source: string;
             verified: boolean;
-            notes: string | null;
             date: string;
             shiftPair: Prisma.JsonValue | null;
-            createdAt: Date;
-            updatedAt: Date;
         }[];
         recordCount: number;
     }>;
@@ -254,18 +254,18 @@ export declare class AttendanceService {
         };
         records: {
             id: string;
+            notes: string | null;
+            createdAt: Date;
+            updatedAt: Date;
             employeeId: string;
+            location: string | null;
             timestamp: Date;
             type: string;
             deviceId: string | null;
-            location: string | null;
             source: string;
             verified: boolean;
-            notes: string | null;
             date: string;
             shiftPair: Prisma.JsonValue | null;
-            createdAt: Date;
-            updatedAt: Date;
         }[];
         statistics: {
             totalDays: number;

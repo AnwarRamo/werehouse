@@ -17,21 +17,38 @@ export class TokenRevocationService implements OnModuleInit, OnModuleDestroy {
   private readonly keyPrefix = 'auth:revoked:';
   private readonly redisUrl: string;
   private readonly requireRedis: boolean;
+  private readonly redisConnectionEnabled: boolean;
   private readonly isTestEnv: boolean;
 
   private redisClient: Redis | null = null;
   private redisReady = false;
 
   constructor(private readonly config: ConfigService) {
-    this.redisUrl = this.config.get<string>('REDIS_URL', '').trim();
     const nodeEnv = this.config.get<string>('NODE_ENV', 'development').toLowerCase();
     this.isTestEnv = nodeEnv === 'test';
     const strictMode = this.config.get<boolean>('TOKEN_REVOCATION_STRICT', false);
     this.requireRedis = nodeEnv === 'production' && strictMode;
+
+    const queuesEnabled = this.config.get<boolean>(
+      'QUEUES_ENABLED',
+      nodeEnv === 'production',
+    );
+
+    this.redisConnectionEnabled = this.requireRedis || queuesEnabled;
+    this.redisUrl = this.redisConnectionEnabled
+      ? this.config.get<string>('REDIS_URL', '').trim()
+      : '';
   }
 
   async onModuleInit() {
     if (this.isTestEnv) {
+      return;
+    }
+
+    if (!this.redisConnectionEnabled) {
+      this.logger.log(
+        'Redis token revocation connection is disabled for this environment; using in-memory fallback only.',
+      );
       return;
     }
 
@@ -55,6 +72,10 @@ export class TokenRevocationService implements OnModuleInit, OnModuleDestroy {
         lazyConnect: true,
         maxRetriesPerRequest: 1,
         enableReadyCheck: false,
+      });
+
+      client.on('error', () => {
+        // Prevent unhandled ioredis error event noise during failed initial connection attempts.
       });
 
       await client.connect();

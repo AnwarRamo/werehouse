@@ -112,18 +112,18 @@ export declare class PayrollService {
         };
         items: {
             id: string;
-            employeeId: string;
             createdAt: Date;
             updatedAt: Date;
+            employeeId: string;
             hourlyRate: Prisma.Decimal;
             department: string | null;
-            anomalies: string[];
             totalDeductions: Prisma.Decimal;
             payrollRunId: string;
             employeeName: string;
             hoursWorked: Prisma.Decimal;
             grossPay: Prisma.Decimal;
             netPay: Prisma.Decimal;
+            anomalies: string[];
         }[];
         itemCount: number;
     }>;
@@ -131,18 +131,18 @@ export declare class PayrollService {
         employeeId: string;
         payrollItems: {
             id: string;
-            employeeId: string;
             createdAt: Date;
             updatedAt: Date;
+            employeeId: string;
             hourlyRate: Prisma.Decimal;
             department: string | null;
-            anomalies: string[];
             totalDeductions: Prisma.Decimal;
             payrollRunId: string;
             employeeName: string;
             hoursWorked: Prisma.Decimal;
             grossPay: Prisma.Decimal;
             netPay: Prisma.Decimal;
+            anomalies: string[];
         }[];
     }>;
     approve(runId: string, userId?: string): Promise<{
@@ -247,18 +247,18 @@ export declare class PayrollService {
         };
         items: {
             id: string;
-            employeeId: string;
             createdAt: Date;
             updatedAt: Date;
+            employeeId: string;
             hourlyRate: Prisma.Decimal;
             department: string | null;
-            anomalies: string[];
             totalDeductions: Prisma.Decimal;
             payrollRunId: string;
             employeeName: string;
             hoursWorked: Prisma.Decimal;
             grossPay: Prisma.Decimal;
             netPay: Prisma.Decimal;
+            anomalies: string[];
         }[];
     }>;
     anomalies(runId: string): Promise<{

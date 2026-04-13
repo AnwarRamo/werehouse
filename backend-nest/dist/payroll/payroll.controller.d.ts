@@ -140,18 +140,18 @@ export declare class PayrollController {
         };
         items: {
             id: string;
-            employeeId: string;
             createdAt: Date;
             updatedAt: Date;
+            employeeId: string;
             hourlyRate: import("@prisma/client-runtime-utils").Decimal;
             department: string | null;
-            anomalies: string[];
             totalDeductions: import("@prisma/client-runtime-utils").Decimal;
             payrollRunId: string;
             employeeName: string;
             hoursWorked: import("@prisma/client-runtime-utils").Decimal;
             grossPay: import("@prisma/client-runtime-utils").Decimal;
             netPay: import("@prisma/client-runtime-utils").Decimal;
+            anomalies: string[];
         }[];
     }>;
     getById(runId: string): Promise<{
@@ -176,18 +176,18 @@ export declare class PayrollController {
         };
         items: {
             id: string;
-            employeeId: string;
             createdAt: Date;
             updatedAt: Date;
+            employeeId: string;
             hourlyRate: import("@prisma/client-runtime-utils").Decimal;
             department: string | null;
-            anomalies: string[];
             totalDeductions: import("@prisma/client-runtime-utils").Decimal;
             payrollRunId: string;
             employeeName: string;
             hoursWorked: import("@prisma/client-runtime-utils").Decimal;
             grossPay: import("@prisma/client-runtime-utils").Decimal;
             netPay: import("@prisma/client-runtime-utils").Decimal;
+            anomalies: string[];
         }[];
         itemCount: number;
     }>;
@@ -250,18 +250,18 @@ export declare class PayrollController {
         employeeId: string;
         payrollItems: {
             id: string;
-            employeeId: string;
             createdAt: Date;
             updatedAt: Date;
+            employeeId: string;
             hourlyRate: import("@prisma/client-runtime-utils").Decimal;
             department: string | null;
-            anomalies: string[];
             totalDeductions: import("@prisma/client-runtime-utils").Decimal;
             payrollRunId: string;
             employeeName: string;
             hoursWorked: import("@prisma/client-runtime-utils").Decimal;
             grossPay: import("@prisma/client-runtime-utils").Decimal;
             netPay: import("@prisma/client-runtime-utils").Decimal;
+            anomalies: string[];
         }[];
     }>;
 }
