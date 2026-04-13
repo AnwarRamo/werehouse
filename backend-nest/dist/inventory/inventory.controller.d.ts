@@ -2,24 +2,20 @@ import { InventoryService } from './inventory.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { ReserveStockDto } from './dto/reserve-stock.dto';
-import { PaginationQueryParams } from '../common/types/query.types';
-type InventoryProductsQuery = PaginationQueryParams & {
-    category?: string;
-    status?: string;
-    search?: string;
-};
+import { InventoryProductsQueryDto } from './dto/inventory-products-query.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 export declare class InventoryController {
     private readonly inventoryService;
     constructor(inventoryService: InventoryService);
-    listProducts(query: InventoryProductsQuery): Promise<{
+    listProducts(query: InventoryProductsQueryDto): Promise<{
         products: {
-            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
+            name: string;
             category: string;
+            sku: string;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
             costPrice: import("@prisma/client-runtime-utils").Decimal;
             reorderLevel: number;
@@ -34,13 +30,13 @@ export declare class InventoryController {
     createProduct(dto: CreateProductDto): Promise<{
         message: string;
         product: {
-            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
+            name: string;
             category: string;
+            sku: string;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
             costPrice: import("@prisma/client-runtime-utils").Decimal;
             reorderLevel: number;
@@ -48,13 +44,13 @@ export declare class InventoryController {
     }>;
     getProduct(productId: string): Promise<{
         product: {
-            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
+            name: string;
             category: string;
+            sku: string;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
             costPrice: import("@prisma/client-runtime-utils").Decimal;
             reorderLevel: number;
@@ -70,16 +66,16 @@ export declare class InventoryController {
             available: number;
         }[];
     }>;
-    updateProduct(productId: string, dto: Partial<CreateProductDto>): Promise<{
+    updateProduct(productId: string, dto: UpdateProductDto): Promise<{
         message: string;
         product: {
-            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
+            name: string;
             category: string;
+            sku: string;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
             costPrice: import("@prisma/client-runtime-utils").Decimal;
             reorderLevel: number;
@@ -154,4 +150,3 @@ export declare class InventoryController {
         totalReserved: number;
     }>;
 }
-export {};

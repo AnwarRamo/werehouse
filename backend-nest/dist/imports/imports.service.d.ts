@@ -1,35 +1,31 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { Queue } from 'bullmq';
-import { PaginationQueryParams } from '../common/types/query.types';
+import { ImportsHistoryQueryDto } from './dto/imports-history-query.dto';
 type ParsedRow = Record<string, string>;
 type RowError = {
     row: number;
     error: string;
 };
-export type ImportsHistoryQuery = PaginationQueryParams & {
-    entity?: string;
-    status?: string;
-};
 export declare class ImportsService {
     private readonly prisma;
     private readonly importsQueue?;
     constructor(prisma: PrismaService, importsQueue?: Queue | undefined);
-    history(query: ImportsHistoryQuery): Promise<{
+    history(query: ImportsHistoryQueryDto): Promise<{
         imports: {
             id: string;
-            jobId: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
             entity: string;
+            jobId: string;
             fileName: string;
             uploadedBy: string;
             uploadedAt: Date;
-            status: string;
             totalRows: number;
             successRows: number;
             errorRows: number;
             errors: Prisma.JsonValue;
-            createdAt: Date;
-            updatedAt: Date;
         }[];
         pagination: {
             page: number;
@@ -49,18 +45,18 @@ export declare class ImportsService {
     details(jobId: string): Promise<{
         errorSummary: Record<string, number>;
         id: string;
-        jobId: string;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
         entity: string;
+        jobId: string;
         fileName: string;
         uploadedBy: string;
         uploadedAt: Date;
-        status: string;
         totalRows: number;
         successRows: number;
         errorRows: number;
         errors: Prisma.JsonValue;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     getEmployeesTemplateCsv(): string;
     getProductsTemplateCsv(): string;

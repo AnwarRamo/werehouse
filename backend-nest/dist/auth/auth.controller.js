@@ -106,8 +106,9 @@ let AuthController = class AuthController {
     getAuthCookieOptions() {
         const isProduction = this.config.get('NODE_ENV', 'development') === 'production';
         const secureSetting = this.config.get('JWT_COOKIE_SECURE', isProduction);
+        const defaultSameSite = isProduction ? 'none' : 'lax';
         const sameSiteRaw = this.config
-            .get('JWT_COOKIE_SAME_SITE', isProduction ? 'none' : 'lax')
+            .get('JWT_COOKIE_SAME_SITE', defaultSameSite)
             .toLowerCase();
         const maxAge = this.config.get('JWT_COOKIE_MAX_AGE_MS', 900_000);
         const rawDomain = this.config.get('JWT_COOKIE_DOMAIN', '').trim();
@@ -115,7 +116,7 @@ let AuthController = class AuthController {
             ? rawDomain
             : '';
         const configuredSameSite = sameSiteRaw === 'strict' || sameSiteRaw === 'none' ? sameSiteRaw : 'lax';
-        const sameSite = isProduction ? 'none' : configuredSameSite;
+        const sameSite = configuredSameSite;
         return {
             httpOnly: true,
             secure: isProduction ? true : secureSetting || sameSite === 'none',

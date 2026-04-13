@@ -14,11 +14,13 @@ import { InventoryModule } from './inventory/inventory.module';
 import { ImportsModule } from './imports/imports.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
+import { CsrfOriginCheckMiddleware } from './common/middleware/csrf-origin-check.middleware';
 import { SalaryModule } from './salary/salary.module';
 import { AdvancesModule } from './advances/advances.module';
 import { InsuranceModule } from './insurance/insurance.module';
 import { BonusesModule } from './bonuses/bonuses.module';
 import { FilesModule } from './files/files.module';
+import { FinancesModule } from './finances/finances.module';
 
 function parseBooleanEnv(value: string | undefined): boolean | undefined {
   if (value === undefined) {
@@ -89,6 +91,13 @@ const queueInfraModules = queuesEnabled
         JWT_COOKIE_DOMAIN: Joi.string().allow('').default(''),
         JWT_COOKIE_MAX_AGE_MS: Joi.number().min(60_000).default(900_000),
         JWT_ROTATE_THRESHOLD_SEC: Joi.number().min(30).max(3_600).default(300),
+        AUTH_MAX_LOGIN_ATTEMPTS: Joi.number().min(3).max(20).default(5),
+        AUTH_LOCKOUT_MINUTES: Joi.number().min(1).max(1_440).default(15),
+        CSRF_PROTECTION_ENABLED: Joi.when('NODE_ENV', {
+          is: 'production',
+          then: Joi.boolean().default(true),
+          otherwise: Joi.boolean().default(false),
+        }),
         ADMIN_USERNAME: Joi.string().default('admin'),
         ADMIN_EMAIL: Joi.string().email({ tlds: { allow: false } }).default('admin@warehouse.local'),
         ADMIN_BOOTSTRAP_PASSWORD: Joi.when('NODE_ENV', {
@@ -160,6 +169,7 @@ const queueInfraModules = queuesEnabled
     InsuranceModule,
     BonusesModule,
     FilesModule,
+    FinancesModule,
   ],
   providers: [
     {
@@ -170,6 +180,8 @@ const queueInfraModules = queuesEnabled
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(RequestLoggingMiddleware).forRoutes({ path: '*path', method: RequestMethod.ALL });
+    consumer
+      .apply(RequestLoggingMiddleware, CsrfOriginCheckMiddleware)
+      .forRoutes({ path: '*path', method: RequestMethod.ALL });
   }
 }

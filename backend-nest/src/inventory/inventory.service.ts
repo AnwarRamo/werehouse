@@ -1,18 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaginationQueryParams } from '../common/types/query.types';
 import { resolvePagination } from '../common/utils/pagination.util';
 import { CreateProductDto } from './dto/create-product.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { ReserveStockDto } from './dto/reserve-stock.dto';
-
-type UpdateProductDto = Partial<CreateProductDto> & { status?: string };
-type InventoryListProductsQuery = PaginationQueryParams & {
-  category?: string;
-  status?: string;
-  search?: string;
-};
+import { InventoryProductsQueryDto } from './dto/inventory-products-query.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 
 type LowStockAlert = {
   sku: string;
@@ -25,7 +19,7 @@ type LowStockAlert = {
 export class InventoryService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listProducts(query: InventoryListProductsQuery) {
+  async listProducts(query: InventoryProductsQueryDto) {
     const { page, limit, skip } = resolvePagination(query);
 
     const where: Prisma.ProductWhereInput = {};

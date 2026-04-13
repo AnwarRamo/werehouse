@@ -11,7 +11,10 @@ export declare class AuthService {
     private readonly jwtService;
     private readonly config;
     private readonly tokenRevocation;
+    private readonly logger;
     private readonly bcryptRounds;
+    private readonly maxLoginAttempts;
+    private readonly lockoutMinutes;
     private readonly adminUsername;
     private readonly adminEmail;
     private readonly adminBootstrapPassword;
@@ -25,6 +28,10 @@ export declare class AuthService {
     constructor(prisma: PrismaService, jwtService: JwtService, config: ConfigService, tokenRevocation: TokenRevocationService);
     private isProtectedAdminIdentity;
     private upsertProtectedAdminUser;
+    private resolveLockoutUntilDate;
+    private isAccountLocked;
+    private registerFailedLoginAttempt;
+    private clearFailedLoginState;
     ensureAdminBootstrap(): Promise<void>;
     private buildAuthPayload;
     private toPublicAuthUser;

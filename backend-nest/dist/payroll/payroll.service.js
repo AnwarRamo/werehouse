@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var PayrollService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PayrollService = void 0;
 const common_1 = require("@nestjs/common");
@@ -22,10 +23,11 @@ const bullmq_2 = require("bullmq");
 const queue_constants_1 = require("../queues/queue.constants");
 const pdf_lib_1 = require("pdf-lib");
 const PAYROLL_BATCH_SIZE = 250;
-let PayrollService = class PayrollService {
+let PayrollService = PayrollService_1 = class PayrollService {
     constructor(prisma, payrollQueue) {
         this.prisma = prisma;
         this.payrollQueue = payrollQueue;
+        this.logger = new common_1.Logger(PayrollService_1.name);
     }
     toMoney(value) {
         return Number(value.toFixed(2));
@@ -54,6 +56,22 @@ let PayrollService = class PayrollService {
         return {
             periodStart: start.toISOString().slice(0, 10),
             periodEnd: end.toISOString().slice(0, 10),
+        };
+    }
+    resolveMonthPeriod(month) {
+        const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(month);
+        if (!match) {
+            throw new common_1.BadRequestException('Month must be in YYYY-MM format');
+        }
+        const year = Number(match[1]);
+        const monthIndex = Number(match[2]) - 1;
+        const periodStartDate = new Date(Date.UTC(year, monthIndex, 1));
+        const periodEndDate = new Date(Date.UTC(year, monthIndex + 1, 0));
+        return {
+            periodStartDate,
+            periodEndDate,
+            periodStart: `${match[1]}-${match[2]}-01`,
+            periodEnd: `${match[1]}-${match[2]}-${String(periodEndDate.getUTCDate()).padStart(2, '0')}`,
         };
     }
     isUuid(value) {
@@ -176,6 +194,55 @@ let PayrollService = class PayrollService {
                 totalNetPay: runs.reduce((s, r) => s + Number(r.totalNetPay || 0), 0),
                 totalGrossPay: runs.reduce((s, r) => s + Number(r.totalGrossPay || 0), 0),
             },
+        };
+    }
+    async report(month) {
+        const period = this.resolveMonthPeriod(month);
+        const runs = await this.prisma.payrollRun.findMany({
+            where: {
+                periodStart: {
+                    gte: period.periodStartDate,
+                    lte: period.periodEndDate,
+                },
+            },
+            orderBy: { runDate: 'desc' },
+        });
+        if (runs.length === 0) {
+            return {
+                month,
+                period: {
+                    startDate: period.periodStart,
+                    endDate: period.periodEnd,
+                },
+                runsCount: 0,
+                latestRun: null,
+                totals: {
+                    totalGrossPay: 0,
+                    totalDeductions: 0,
+                    totalNetPay: 0,
+                },
+                items: [],
+            };
+        }
+        const latestRun = runs[0];
+        const items = await this.prisma.payrollItem.findMany({
+            where: { payrollRunId: latestRun.id },
+            orderBy: { employeeId: 'asc' },
+        });
+        return {
+            month,
+            period: {
+                startDate: period.periodStart,
+                endDate: period.periodEnd,
+            },
+            runsCount: runs.length,
+            latestRun,
+            totals: {
+                totalGrossPay: this.toMoney(runs.reduce((sum, run) => sum + Number(run.totalGrossPay || 0), 0)),
+                totalDeductions: this.toMoney(runs.reduce((sum, run) => sum + Number(run.totalDeductions || 0), 0)),
+                totalNetPay: this.toMoney(runs.reduce((sum, run) => sum + Number(run.totalNetPay || 0), 0)),
+            },
+            items,
         };
     }
     async anomalies(runId) {
@@ -320,13 +387,18 @@ let PayrollService = class PayrollService {
             if (!this.payrollQueue) {
                 throw new Error('Payroll queue is not available');
             }
+            const workers = await this.payrollQueue.getWorkers();
+            if (workers.length === 0) {
+                throw new Error('No payroll worker is currently connected');
+            }
             await this.payrollQueue.add(queue_constants_1.QUEUE_JOBS.PAYROLL_CALCULATE, payload, {
                 attempts: 3,
                 backoff: { type: 'exponential', delay: 2_000 },
             });
             return;
         }
-        catch {
+        catch (error) {
+            this.logger.warn(`Payroll queue unavailable; falling back to inline execution. Reason: ${error instanceof Error ? error.message : 'unknown'}`);
             await this.processPayrollRunJob(payload);
         }
     }
@@ -502,7 +574,7 @@ let PayrollService = class PayrollService {
     }
 };
 exports.PayrollService = PayrollService;
-exports.PayrollService = PayrollService = __decorate([
+exports.PayrollService = PayrollService = PayrollService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(1, (0, common_1.Optional)()),
     __param(1, (0, bullmq_1.InjectQueue)(queue_constants_1.QUEUE_NAMES.PAYROLL)),

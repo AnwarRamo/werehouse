@@ -145,8 +145,9 @@ export class AuthController implements OnModuleInit {
   private getAuthCookieOptions() {
     const isProduction = this.config.get<string>('NODE_ENV', 'development') === 'production';
     const secureSetting = this.config.get<boolean>('JWT_COOKIE_SECURE', isProduction);
+    const defaultSameSite = isProduction ? 'none' : 'lax';
     const sameSiteRaw = this.config
-      .get<string>('JWT_COOKIE_SAME_SITE', isProduction ? 'none' : 'lax')
+      .get<string>('JWT_COOKIE_SAME_SITE', defaultSameSite)
       .toLowerCase();
     const maxAge = this.config.get<number>('JWT_COOKIE_MAX_AGE_MS', 900_000);
     const rawDomain = this.config.get<string>('JWT_COOKIE_DOMAIN', '').trim();
@@ -156,9 +157,7 @@ export class AuthController implements OnModuleInit {
         : '';
     const configuredSameSite =
       sameSiteRaw === 'strict' || sameSiteRaw === 'none' ? sameSiteRaw : 'lax';
-    // In production, frontend and backend are on different domains.
-    // SameSite=None is required or browsers won't send auth cookie on XHR/fetch.
-    const sameSite = isProduction ? 'none' : configuredSameSite;
+    const sameSite = configuredSameSite;
 
     return {
       httpOnly: true,

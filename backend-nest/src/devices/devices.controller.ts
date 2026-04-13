@@ -14,7 +14,7 @@ import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Permissions } from '../common/decorators/permissions.decorator';
 import { CreateDeviceDto } from './dto/create-device.dto';
 import { UpdateDeviceDto } from './dto/update-device.dto';
-import { DevicesListQuery } from './devices.service';
+import { DevicesListQueryDto } from './dto/devices-list-query.dto';
 
 @Controller('devices')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -23,7 +23,7 @@ export class DevicesController {
 
   @Get()
   @Permissions('view_devices')
-  list(@Query() query: DevicesListQuery) {
+  list(@Query() query: DevicesListQueryDto) {
     return this.devicesService.list(query);
   }
 

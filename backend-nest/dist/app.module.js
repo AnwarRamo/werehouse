@@ -56,11 +56,13 @@ const inventory_module_1 = require("./inventory/inventory.module");
 const imports_module_1 = require("./imports/imports.module");
 const prisma_module_1 = require("./prisma/prisma.module");
 const request_logging_middleware_1 = require("./common/middleware/request-logging.middleware");
+const csrf_origin_check_middleware_1 = require("./common/middleware/csrf-origin-check.middleware");
 const salary_module_1 = require("./salary/salary.module");
 const advances_module_1 = require("./advances/advances.module");
 const insurance_module_1 = require("./insurance/insurance.module");
 const bonuses_module_1 = require("./bonuses/bonuses.module");
 const files_module_1 = require("./files/files.module");
+const finances_module_1 = require("./finances/finances.module");
 function parseBooleanEnv(value) {
     if (value === undefined) {
         return undefined;
@@ -104,7 +106,9 @@ const queueInfraModules = queuesEnabled
     : [];
 let AppModule = class AppModule {
     configure(consumer) {
-        consumer.apply(request_logging_middleware_1.RequestLoggingMiddleware).forRoutes({ path: '*path', method: common_1.RequestMethod.ALL });
+        consumer
+            .apply(request_logging_middleware_1.RequestLoggingMiddleware, csrf_origin_check_middleware_1.CsrfOriginCheckMiddleware)
+            .forRoutes({ path: '*path', method: common_1.RequestMethod.ALL });
     }
 };
 exports.AppModule = AppModule;
@@ -131,6 +135,13 @@ exports.AppModule = AppModule = __decorate([
                     JWT_COOKIE_DOMAIN: Joi.string().allow('').default(''),
                     JWT_COOKIE_MAX_AGE_MS: Joi.number().min(60_000).default(900_000),
                     JWT_ROTATE_THRESHOLD_SEC: Joi.number().min(30).max(3_600).default(300),
+                    AUTH_MAX_LOGIN_ATTEMPTS: Joi.number().min(3).max(20).default(5),
+                    AUTH_LOCKOUT_MINUTES: Joi.number().min(1).max(1_440).default(15),
+                    CSRF_PROTECTION_ENABLED: Joi.when('NODE_ENV', {
+                        is: 'production',
+                        then: Joi.boolean().default(true),
+                        otherwise: Joi.boolean().default(false),
+                    }),
                     ADMIN_USERNAME: Joi.string().default('admin'),
                     ADMIN_EMAIL: Joi.string().email({ tlds: { allow: false } }).default('admin@warehouse.local'),
                     ADMIN_BOOTSTRAP_PASSWORD: Joi.when('NODE_ENV', {
@@ -202,6 +213,7 @@ exports.AppModule = AppModule = __decorate([
             insurance_module_1.InsuranceModule,
             bonuses_module_1.BonusesModule,
             files_module_1.FilesModule,
+            finances_module_1.FinancesModule,
         ],
         providers: [
             {

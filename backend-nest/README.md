@@ -32,25 +32,37 @@ Create a .env file in backend-nest and set:
 - JWT_EXPIRE=15m
 - JWT_COOKIE_NAME=warehouse_access_token
 - JWT_COOKIE_SECURE=true (production)
-- JWT_COOKIE_SAME_SITE=none (production)
+- JWT_COOKIE_SAME_SITE=lax|strict|none (production default: none)
 - JWT_COOKIE_DOMAIN= (leave empty on Railway unless you intentionally share subdomains)
 - JWT_COOKIE_MAX_AGE_MS=900000
 - JWT_ROTATE_THRESHOLD_SEC=300
+- AUTH_MAX_LOGIN_ATTEMPTS=5
+- AUTH_LOCKOUT_MINUTES=15
+- CSRF_PROTECTION_ENABLED=true (recommended in production)
 - CORS_ORIGIN=https://your-frontend.example.com
 - AUTH_RETURN_TOKEN_IN_BODY=false
 - JWT_ALLOW_BEARER=false
 - DATABASE_URL=postgres://postgres:postgres@localhost:5432/warehouse_system
 - REDIS_URL=redis://127.0.0.1:6379
+- PRISMA_SLOW_QUERY_MS=200
 
 Notes:
 - Redis-backed token revocation is optional by default. Set `TOKEN_REVOCATION_STRICT=true` in production if you want fail-closed behavior when Redis is unavailable.
 - For frontend/backend on different domains, cookie auth requires: `JWT_COOKIE_SECURE=true`, `JWT_COOKIE_SAME_SITE=none`, and frontend requests with credentials.
+- If frontend/backend are same-site, prefer `JWT_COOKIE_SAME_SITE=lax` or `strict` for stronger CSRF protection.
+- Account lockout is enabled: repeated failed logins lock the account temporarily based on `AUTH_MAX_LOGIN_ATTEMPTS` and `AUTH_LOCKOUT_MINUTES`.
+- CSRF origin check middleware protects state-changing cookie-auth requests when `CSRF_PROTECTION_ENABLED=true`.
 
 ## Useful Commands
 - `npm run dev` starts PostgreSQL + Redis (Docker) then runs API in watch mode.
 - `npm run infra:up` starts PostgreSQL + Redis only.
 - `npm run infra:down` stops local infrastructure containers.
 - `npm run start:dev` runs the API only.
+- `npm run start:worker:payroll` runs payroll queue worker in a separate process.
+
+Recommended for async payroll in development:
+1. Terminal A: `npm run start:dev`
+2. Terminal B: `npm run start:worker:payroll`
 
 ## Implemented Modules
 - auth

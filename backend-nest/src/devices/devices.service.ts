@@ -5,21 +5,16 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaginationQueryParams } from '../common/types/query.types';
 import { resolvePagination } from '../common/utils/pagination.util';
 import { CreateDeviceDto } from './dto/create-device.dto';
 import { UpdateDeviceDto } from './dto/update-device.dto';
-
-export type DevicesListQuery = PaginationQueryParams & {
-  location?: string;
-  status?: string;
-};
+import { DevicesListQueryDto } from './dto/devices-list-query.dto';
 
 @Injectable()
 export class DevicesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(query: DevicesListQuery) {
+  async list(query: DevicesListQueryDto) {
     const { page, limit, skip } = resolvePagination(query);
 
     const where: Prisma.DeviceWhereInput = {};

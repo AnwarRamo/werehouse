@@ -1,17 +1,10 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaginationQueryParams } from '../common/types/query.types';
 import { CreateProductDto } from './dto/create-product.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { ReserveStockDto } from './dto/reserve-stock.dto';
-type UpdateProductDto = Partial<CreateProductDto> & {
-    status?: string;
-};
-type InventoryListProductsQuery = PaginationQueryParams & {
-    category?: string;
-    status?: string;
-    search?: string;
-};
+import { InventoryProductsQueryDto } from './dto/inventory-products-query.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 type LowStockAlert = {
     sku: string;
     name: string;
@@ -21,15 +14,15 @@ type LowStockAlert = {
 export declare class InventoryService {
     private readonly prisma;
     constructor(prisma: PrismaService);
-    listProducts(query: InventoryListProductsQuery): Promise<{
+    listProducts(query: InventoryProductsQueryDto): Promise<{
         products: {
-            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
+            name: string;
             category: string;
+            sku: string;
             unitPrice: Prisma.Decimal;
             costPrice: Prisma.Decimal;
             reorderLevel: number;
@@ -44,13 +37,13 @@ export declare class InventoryService {
     createProduct(dto: CreateProductDto): Promise<{
         message: string;
         product: {
-            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
+            name: string;
             category: string;
+            sku: string;
             unitPrice: Prisma.Decimal;
             costPrice: Prisma.Decimal;
             reorderLevel: number;
@@ -58,13 +51,13 @@ export declare class InventoryService {
     }>;
     getProduct(productId: string): Promise<{
         product: {
-            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
+            name: string;
             category: string;
+            sku: string;
             unitPrice: Prisma.Decimal;
             costPrice: Prisma.Decimal;
             reorderLevel: number;
@@ -83,13 +76,13 @@ export declare class InventoryService {
     updateProduct(productId: string, dto: UpdateProductDto): Promise<{
         message: string;
         product: {
-            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
+            name: string;
             category: string;
+            sku: string;
             unitPrice: Prisma.Decimal;
             costPrice: Prisma.Decimal;
             reorderLevel: number;

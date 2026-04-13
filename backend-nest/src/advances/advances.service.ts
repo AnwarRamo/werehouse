@@ -55,6 +55,11 @@ export class AdvancesService {
     await this.assertEmployeeExists(dto.employeeId);
 
     const totalAmount = new Prisma.Decimal(dto.totalAmount);
+    const issueDate = dto.issueDate ? new Date(dto.issueDate) : new Date();
+    if (Number.isNaN(issueDate.getTime())) {
+      throw new BadRequestException('Invalid issueDate');
+    }
+
     return this.prisma.employeeAdvance.create({
       data: {
         employeeId: dto.employeeId,
@@ -63,6 +68,7 @@ export class AdvancesService {
         installmentAmount: new Prisma.Decimal(dto.installmentAmount ?? 0),
         remainingAmount: totalAmount,
         notes: dto.notes ?? null,
+        issueDate,
       },
     });
   }

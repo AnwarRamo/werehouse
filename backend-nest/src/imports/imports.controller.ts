@@ -18,7 +18,7 @@ import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Permissions } from '../common/decorators/permissions.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../common/types/authenticated-user.types';
-import { ImportsHistoryQuery } from './imports.service';
+import { ImportsHistoryQueryDto } from './dto/imports-history-query.dto';
 
 @Controller('imports')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -105,7 +105,7 @@ export class ImportsController {
 
   @Get('history')
   @Permissions('view_imports')
-  history(@Query() query: ImportsHistoryQuery) {
+  history(@Query() query: ImportsHistoryQueryDto) {
     return this.importsService.history(query);
   }
 

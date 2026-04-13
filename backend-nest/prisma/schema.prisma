@@ -27,10 +27,13 @@ model User {
   roleId       String   @db.Uuid
   role         Role     @relation(fields: [roleId], references: [id], onDelete: Restrict)
   status       String   @default("active")
+  failedLoginAttempts Int @default(0)
+  lockoutUntil DateTime?
   lastLogin    DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  @@index([lockoutUntil])
   @@map("users")
 }
 
@@ -53,7 +56,10 @@ model Employee {
   updatedAt      DateTime @updatedAt
 
   @@index([status])
+  @@index([status, employeeId])
   @@index([department, status])
+  @@index([status, createdAt])
+  @@index([department, status, createdAt])
   @@map("employees")
 }
 
@@ -71,6 +77,8 @@ model Device {
   updatedAt DateTime @updatedAt
 
   @@map("devices")
+  @@index([status, createdAt])
+  @@index([location, status, createdAt])
 }
 
 model AttendanceRecord {
@@ -89,9 +97,13 @@ model AttendanceRecord {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  @@index([date])
   @@index([employeeId, timestamp])
   @@index([date, employeeId])
   @@index([deviceId, timestamp])
+  @@index([employeeId, type, date])
+  @@index([employeeId, date, timestamp])
+  @@index([type, date])
   @@map("attendance_records")
 }
 
@@ -109,6 +121,8 @@ model Product {
 
   stockLevels StockLevel[]
 
+  @@index([status, createdAt])
+  @@index([category, status, createdAt])
   @@map("products")
 }
 
@@ -168,6 +182,11 @@ model PayrollRun {
   notes            String?
   items            PayrollItem[]
 
+  @@index([runDate])
+  @@index([status, runDate])
+  @@index([approvalStatus, runDate])
+  @@index([periodStart])
+  @@index([periodStart, periodEnd])
   @@map("payroll_runs")
 }
 
@@ -189,6 +208,7 @@ model PayrollItem {
   run PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
 
   @@unique([payrollRunId, employeeId])
+  @@index([employeeId, createdAt])
   @@map("payroll_items")
 }
 
@@ -226,6 +246,8 @@ model EmployeeAdvance {
   updatedAt       DateTime @updatedAt
 
   @@index([employeeId])
+  @@index([employeeId, issueDate])
+  @@index([employeeId, remainingAmount])
   @@map("employee_advances")
 }
 
@@ -241,6 +263,7 @@ model DeletedRecordHistory {
 
   @@index([entityType, recordId])
   @@index([entityType, deletedAt])
+  @@index([entityType, restoredAt, deletedAt])
   @@map("deleted_record_history")
 }
 
@@ -273,5 +296,7 @@ model EmployeeBonus {
   updatedAt        DateTime @updatedAt
 
   @@index([employeeId])
+  @@index([employeeId, period])
+  @@index([period, createdAt])
   @@map("employee_bonuses")
 }

@@ -7,6 +7,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../common/types/authenticated-user.types';
 import { CreateAdvanceDto } from './dto/create-advance.dto';
 import { UpdateAdvanceDto } from './dto/update-advance.dto';
+import { AdvancesListQueryDto } from './dto/advances-list-query.dto';
 
 @Controller('advances')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -15,8 +16,8 @@ export class AdvancesController {
 
   @Get()
   @Permissions('manage_advances')
-  list(@Query('employeeId') employeeId?: string) {
-    return this.advancesService.list(employeeId);
+  list(@Query() query: AdvancesListQueryDto) {
+    return this.advancesService.list(query.employeeId);
   }
 
   @Get('summary/:employeeId')

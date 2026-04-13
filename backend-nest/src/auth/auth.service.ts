@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -15,7 +16,10 @@ import { TokenRevocationService } from './token-revocation.service';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly bcryptRounds: number;
+  private readonly maxLoginAttempts: number;
+  private readonly lockoutMinutes: number;
   private readonly adminUsername: string;
   private readonly adminEmail: string;
   private readonly adminBootstrapPassword: string;
@@ -56,6 +60,8 @@ export class AuthService {
     private readonly tokenRevocation: TokenRevocationService,
   ) {
     this.bcryptRounds = this.config.get<number>('BCRYPT_ROUNDS', 10);
+    this.maxLoginAttempts = this.config.get<number>('AUTH_MAX_LOGIN_ATTEMPTS', 5);
+    this.lockoutMinutes = this.config.get<number>('AUTH_LOCKOUT_MINUTES', 15);
     this.adminUsername = this.config.get<string>('ADMIN_USERNAME', 'admin').toLowerCase();
     this.adminEmail = this.config
       .get<string>('ADMIN_EMAIL', 'admin@warehouse.local')
@@ -138,6 +144,73 @@ export class AuthService {
         passwordHash: hash,
         roleId: input.roleId,
         status: 'active',
+        failedLoginAttempts: 0,
+        lockoutUntil: null,
+      },
+    });
+  }
+
+  private resolveLockoutUntilDate() {
+    const lockedUntil = new Date();
+    lockedUntil.setMinutes(lockedUntil.getMinutes() + this.lockoutMinutes);
+    return lockedUntil;
+  }
+
+  private isAccountLocked(lockoutUntil: Date | null) {
+    return Boolean(lockoutUntil && lockoutUntil.getTime() > Date.now());
+  }
+
+  private async registerFailedLoginAttempt(user: {
+    id: string;
+    failedLoginAttempts: number | null;
+  }): Promise<
+    | { locked: true; lockedUntil: Date }
+    | { locked: false; remainingAttempts: number }
+  > {
+    const nextAttempts = Number(user.failedLoginAttempts || 0) + 1;
+
+    if (nextAttempts >= this.maxLoginAttempts) {
+      const lockedUntil = this.resolveLockoutUntilDate();
+
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginAttempts: 0,
+          lockoutUntil: lockedUntil,
+        },
+      });
+
+      return {
+        locked: true,
+        lockedUntil,
+      };
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { failedLoginAttempts: nextAttempts },
+    });
+
+    return {
+      locked: false,
+      remainingAttempts: Math.max(this.maxLoginAttempts - nextAttempts, 0),
+    };
+  }
+
+  private async clearFailedLoginState(user: {
+    id: string;
+    failedLoginAttempts: number | null;
+    lockoutUntil: Date | null;
+  }) {
+    if (!user.failedLoginAttempts && !user.lockoutUntil) {
+      return;
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginAttempts: 0,
+        lockoutUntil: null,
       },
     });
   }
@@ -276,8 +349,29 @@ export class AuthService {
 
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
+    if (this.isAccountLocked(user.lockoutUntil)) {
+      this.logger.warn(
+        `Blocked login for locked account ${user.username}; lockoutUntil=${user.lockoutUntil?.toISOString()}`,
+      );
+      throw new UnauthorizedException('Account is temporarily locked. Please try again later.');
+    }
+
     const passwordOk = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!passwordOk) throw new UnauthorizedException('Invalid credentials');
+    if (!passwordOk) {
+      const attemptState = await this.registerFailedLoginAttempt(user);
+
+      if (attemptState.locked) {
+        this.logger.warn(
+          `Account ${user.username} locked after repeated failed logins until ${attemptState.lockedUntil.toISOString()}`,
+        );
+        throw new UnauthorizedException('Account is temporarily locked. Please try again later.');
+      }
+
+      this.logger.warn(
+        `Failed login for ${user.username}; remainingAttempts=${attemptState.remainingAttempts}`,
+      );
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     const isProtectedAdmin = this.isProtectedAdminIdentity(user.username, user.email);
 
@@ -291,6 +385,8 @@ export class AuthService {
         data: { status: 'active' },
       });
     }
+
+    await this.clearFailedLoginState(user);
 
     const payload = this.buildAuthPayload(user);
 

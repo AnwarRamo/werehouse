@@ -12,7 +12,6 @@ const bullmq_1 = require("@nestjs/bullmq");
 const payroll_controller_1 = require("./payroll.controller");
 const payroll_service_1 = require("./payroll.service");
 const audit_service_1 = require("../common/services/audit.service");
-const payroll_queue_processor_1 = require("./payroll.queue.processor");
 const queue_constants_1 = require("../queues/queue.constants");
 const queuesEnabled = process.env.NODE_ENV !== 'test' && process.env.QUEUES_ENABLED !== 'false';
 const payrollQueueModules = queuesEnabled
@@ -20,7 +19,6 @@ const payrollQueueModules = queuesEnabled
         bullmq_1.BullModule.registerQueue({ name: queue_constants_1.QUEUE_NAMES.PAYROLL }, { name: queue_constants_1.QUEUE_NAMES.DEAD_LETTER }),
     ]
     : [];
-const payrollProcessors = queuesEnabled ? [payroll_queue_processor_1.PayrollQueueProcessor] : [];
 let PayrollModule = class PayrollModule {
 };
 exports.PayrollModule = PayrollModule;
@@ -28,7 +26,7 @@ exports.PayrollModule = PayrollModule = __decorate([
     (0, common_1.Module)({
         imports: [...payrollQueueModules],
         controllers: [payroll_controller_1.PayrollController],
-        providers: [payroll_service_1.PayrollService, ...payrollProcessors, audit_service_1.AuditService],
+        providers: [payroll_service_1.PayrollService, audit_service_1.AuditService],
     })
 ], PayrollModule);
 //# sourceMappingURL=payroll.module.js.map

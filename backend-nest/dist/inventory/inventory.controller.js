@@ -21,6 +21,8 @@ const permissions_decorator_1 = require("../common/decorators/permissions.decora
 const create_product_dto_1 = require("./dto/create-product.dto");
 const adjust_stock_dto_1 = require("./dto/adjust-stock.dto");
 const reserve_stock_dto_1 = require("./dto/reserve-stock.dto");
+const inventory_products_query_dto_1 = require("./dto/inventory-products-query.dto");
+const update_product_dto_1 = require("./dto/update-product.dto");
 let InventoryController = class InventoryController {
     constructor(inventoryService) {
         this.inventoryService = inventoryService;
@@ -62,7 +64,7 @@ __decorate([
     (0, permissions_decorator_1.Permissions)('view_inventory'),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [inventory_products_query_dto_1.InventoryProductsQueryDto]),
     __metadata("design:returntype", void 0)
 ], InventoryController.prototype, "listProducts", null);
 __decorate([
@@ -87,7 +89,7 @@ __decorate([
     __param(0, (0, common_1.Param)('productId')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, update_product_dto_1.UpdateProductDto]),
     __metadata("design:returntype", void 0)
 ], InventoryController.prototype, "updateProduct", null);
 __decorate([

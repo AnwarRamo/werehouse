@@ -1,11 +1,17 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaginationQueryParams } from '../common/types/query.types';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
-export type AttendanceListQuery = PaginationQueryParams & {
-    employeeId?: string;
-    date?: string;
+import { AttendanceListQueryDto } from './dto/attendance-list-query.dto';
+type AttendanceAlertStatus = 'absent' | 'late';
+type AttendanceAlertItem = {
+    status: AttendanceAlertStatus;
+    employeeId: string;
+    name: string;
+    department: string;
+    scheduledStart: string;
+    checkIn: string | null;
+    minutesLate: number;
 };
 export declare class AttendanceService {
     private readonly prisma;
@@ -15,7 +21,22 @@ export declare class AttendanceService {
     private toHistoryPayload;
     private parseRequiredString;
     private resolveRange;
-    list(query: AttendanceListQuery): Promise<{
+    private toDateKey;
+    private parseClockMinutes;
+    private minutesFromCheckIn;
+    private resolveMinutesLate;
+    private normalizeImportHeader;
+    private normalizeImportRow;
+    private detectDelimiter;
+    private parseDelimitedRows;
+    private parseJsonRows;
+    private parseSpreadsheetRows;
+    private pickRowValue;
+    private normalizeAttendanceType;
+    private normalizeAttendanceSource;
+    private extractAttendanceRows;
+    private resolveMonthRange;
+    list(query: AttendanceListQueryDto): Promise<{
         records: {
             id: string;
             employeeId: string;
@@ -55,6 +76,44 @@ export declare class AttendanceService {
             createdAt: Date;
             updatedAt: Date;
         };
+    }>;
+    upload(file: Express.Multer.File, userId?: string): Promise<{
+        message: string;
+        uploadedBy: string | null;
+        totalRows: number;
+        importedRows: number;
+        failedRows: number;
+        errors: {
+            row: number;
+            error: string;
+        }[];
+    }>;
+    month(month: string): Promise<{
+        month: string;
+        period: {
+            startDate: string;
+            endDate: string;
+        };
+        statistics: {
+            totalRecords: number;
+            totalEmployees: number;
+            totalLateRecords: number;
+        };
+        records: {
+            id: string;
+            employeeId: string;
+            timestamp: Date;
+            type: string;
+            deviceId: string | null;
+            location: string | null;
+            source: string;
+            verified: boolean;
+            notes: string | null;
+            date: string;
+            shiftPair: Prisma.JsonValue | null;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
     }>;
     getById(recordId: string): Promise<{
         id: string;
@@ -122,7 +181,7 @@ export declare class AttendanceService {
             updatedAt: Date;
         };
     }>;
-    stats(startDate: string, endDate: string): Promise<{
+    stats(startDate?: string, endDate?: string): Promise<{
         period: {
             startDate: string;
             endDate: string;
@@ -133,7 +192,7 @@ export declare class AttendanceService {
             totalLateArrivals: number;
         };
     }>;
-    anomalies(startDate: string, endDate: string): Promise<{
+    anomalies(startDate?: string, endDate?: string): Promise<{
         period: {
             startDate: string;
             endDate: string;
@@ -154,6 +213,18 @@ export declare class AttendanceService {
             updatedAt: Date;
         }[];
         anomalyCount: number;
+    }>;
+    alerts(date?: string, lateThresholdMinutes?: number): Promise<{
+        date: string;
+        lateThresholdMinutes: number;
+        summary: {
+            activeEmployees: number;
+            checkedInCount: number;
+            absentCount: number;
+            lateCount: number;
+            totalAlerts: number;
+        };
+        alerts: AttendanceAlertItem[];
     }>;
     employeeOnDate(employeeId: string, date: string): Promise<{
         employeeId: string;
@@ -202,3 +273,4 @@ export declare class AttendanceService {
         };
     }>;
 }
+export {};

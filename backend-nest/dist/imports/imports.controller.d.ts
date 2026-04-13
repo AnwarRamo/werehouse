@@ -1,26 +1,26 @@
 import { Response } from 'express';
 import { ImportsService } from './imports.service';
 import { AuthenticatedUser } from '../common/types/authenticated-user.types';
-import { ImportsHistoryQuery } from './imports.service';
+import { ImportsHistoryQueryDto } from './dto/imports-history-query.dto';
 export declare class ImportsController {
     private readonly importsService;
     constructor(importsService: ImportsService);
     private static readonly uploadOptions;
-    history(query: ImportsHistoryQuery): Promise<{
+    history(query: ImportsHistoryQueryDto): Promise<{
         imports: {
             id: string;
-            jobId: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
             entity: string;
+            jobId: string;
             fileName: string;
             uploadedBy: string;
             uploadedAt: Date;
-            status: string;
             totalRows: number;
             successRows: number;
             errorRows: number;
             errors: import("@prisma/client/runtime/client").JsonValue;
-            createdAt: Date;
-            updatedAt: Date;
         }[];
         pagination: {
             page: number;
@@ -40,18 +40,18 @@ export declare class ImportsController {
     details(jobId: string): Promise<{
         errorSummary: Record<string, number>;
         id: string;
-        jobId: string;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
         entity: string;
+        jobId: string;
         fileName: string;
         uploadedBy: string;
         uploadedAt: Date;
-        status: string;
         totalRows: number;
         successRows: number;
         errorRows: number;
         errors: import("@prisma/client/runtime/client").JsonValue;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     employeesTemplate(res: Response): void;
     productsTemplate(res: Response): void;

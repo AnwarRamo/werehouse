@@ -54,7 +54,17 @@ async function bootstrap() {
   await prisma.enableShutdownHooks(app);
 
   app.setGlobalPrefix('api');
-  app.use(helmet());
+  app.use(
+    helmet({
+      hsts: isProduction
+        ? {
+            maxAge: 15552000,
+            includeSubDomains: true,
+            preload: true,
+          }
+        : false,
+    }),
+  );
   app.use(compression());
   app.use(cookieParser());
   app.useGlobalFilters(new GlobalExceptionFilter());

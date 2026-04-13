@@ -5,22 +5,16 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaginationQueryParams } from '../common/types/query.types';
 import { resolvePagination } from '../common/utils/pagination.util';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
-
-export type EmployeesListQuery = PaginationQueryParams & {
-  department?: string;
-  status?: string;
-  search?: string;
-};
+import { EmployeesListQueryDto } from './dto/employees-list-query.dto';
 
 @Injectable()
 export class EmployeesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(query: EmployeesListQuery) {
+  async list(query: EmployeesListQueryDto) {
     const { page, limit, skip } = resolvePagination(query);
     const where: Prisma.EmployeeWhereInput = {};
 

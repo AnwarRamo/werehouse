@@ -56,7 +56,10 @@ let AuthService = AuthService_1 = class AuthService {
         this.jwtService = jwtService;
         this.config = config;
         this.tokenRevocation = tokenRevocation;
+        this.logger = new common_1.Logger(AuthService_1.name);
         this.bcryptRounds = this.config.get('BCRYPT_ROUNDS', 10);
+        this.maxLoginAttempts = this.config.get('AUTH_MAX_LOGIN_ATTEMPTS', 5);
+        this.lockoutMinutes = this.config.get('AUTH_LOCKOUT_MINUTES', 15);
         this.adminUsername = this.config.get('ADMIN_USERNAME', 'admin').toLowerCase();
         this.adminEmail = this.config
             .get('ADMIN_EMAIL', 'admin@warehouse.local')
@@ -117,6 +120,53 @@ let AuthService = AuthService_1 = class AuthService {
                 passwordHash: hash,
                 roleId: input.roleId,
                 status: 'active',
+                failedLoginAttempts: 0,
+                lockoutUntil: null,
+            },
+        });
+    }
+    resolveLockoutUntilDate() {
+        const lockedUntil = new Date();
+        lockedUntil.setMinutes(lockedUntil.getMinutes() + this.lockoutMinutes);
+        return lockedUntil;
+    }
+    isAccountLocked(lockoutUntil) {
+        return Boolean(lockoutUntil && lockoutUntil.getTime() > Date.now());
+    }
+    async registerFailedLoginAttempt(user) {
+        const nextAttempts = Number(user.failedLoginAttempts || 0) + 1;
+        if (nextAttempts >= this.maxLoginAttempts) {
+            const lockedUntil = this.resolveLockoutUntilDate();
+            await this.prisma.user.update({
+                where: { id: user.id },
+                data: {
+                    failedLoginAttempts: 0,
+                    lockoutUntil: lockedUntil,
+                },
+            });
+            return {
+                locked: true,
+                lockedUntil,
+            };
+        }
+        await this.prisma.user.update({
+            where: { id: user.id },
+            data: { failedLoginAttempts: nextAttempts },
+        });
+        return {
+            locked: false,
+            remainingAttempts: Math.max(this.maxLoginAttempts - nextAttempts, 0),
+        };
+    }
+    async clearFailedLoginState(user) {
+        if (!user.failedLoginAttempts && !user.lockoutUntil) {
+            return;
+        }
+        await this.prisma.user.update({
+            where: { id: user.id },
+            data: {
+                failedLoginAttempts: 0,
+                lockoutUntil: null,
             },
         });
     }
@@ -228,9 +278,20 @@ let AuthService = AuthService_1 = class AuthService {
         });
         if (!user)
             throw new common_1.UnauthorizedException('Invalid credentials');
+        if (this.isAccountLocked(user.lockoutUntil)) {
+            this.logger.warn(`Blocked login for locked account ${user.username}; lockoutUntil=${user.lockoutUntil?.toISOString()}`);
+            throw new common_1.UnauthorizedException('Account is temporarily locked. Please try again later.');
+        }
         const passwordOk = await bcrypt.compare(dto.password, user.passwordHash);
-        if (!passwordOk)
+        if (!passwordOk) {
+            const attemptState = await this.registerFailedLoginAttempt(user);
+            if (attemptState.locked) {
+                this.logger.warn(`Account ${user.username} locked after repeated failed logins until ${attemptState.lockedUntil.toISOString()}`);
+                throw new common_1.UnauthorizedException('Account is temporarily locked. Please try again later.');
+            }
+            this.logger.warn(`Failed login for ${user.username}; remainingAttempts=${attemptState.remainingAttempts}`);
             throw new common_1.UnauthorizedException('Invalid credentials');
+        }
         const isProtectedAdmin = this.isProtectedAdminIdentity(user.username, user.email);
         if (user.status !== 'active' && !isProtectedAdmin) {
             throw new common_1.UnauthorizedException('User account is inactive');
@@ -241,6 +302,7 @@ let AuthService = AuthService_1 = class AuthService {
                 data: { status: 'active' },
             });
         }
+        await this.clearFailedLoginState(user);
         const payload = this.buildAuthPayload(user);
         await this.prisma.user.update({
             where: { id: user.id },

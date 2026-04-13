@@ -20,6 +20,7 @@ const permissions_guard_1 = require("../common/guards/permissions.guard");
 const permissions_decorator_1 = require("../common/decorators/permissions.decorator");
 const create_device_dto_1 = require("./dto/create-device.dto");
 const update_device_dto_1 = require("./dto/update-device.dto");
+const devices_list_query_dto_1 = require("./dto/devices-list-query.dto");
 let DevicesController = class DevicesController {
     constructor(devicesService) {
         this.devicesService = devicesService;
@@ -46,7 +47,7 @@ __decorate([
     (0, permissions_decorator_1.Permissions)('view_devices'),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [devices_list_query_dto_1.DevicesListQueryDto]),
     __metadata("design:returntype", void 0)
 ], DevicesController.prototype, "list", null);
 __decorate([

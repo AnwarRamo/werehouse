@@ -1,24 +1,20 @@
 import { PrismaService } from '../prisma/prisma.service';
-import { PaginationQueryParams } from '../common/types/query.types';
 import { CreateDeviceDto } from './dto/create-device.dto';
 import { UpdateDeviceDto } from './dto/update-device.dto';
-export type DevicesListQuery = PaginationQueryParams & {
-    location?: string;
-    status?: string;
-};
+import { DevicesListQueryDto } from './dto/devices-list-query.dto';
 export declare class DevicesService {
     private readonly prisma;
     constructor(prisma: PrismaService);
-    list(query: DevicesListQuery): Promise<{
+    list(query: DevicesListQueryDto): Promise<{
         devices: {
-            port: number | null;
-            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            deviceId: string;
+            name: string;
+            port: number | null;
             location: string;
+            deviceId: string;
             model: string;
             ip: string | null;
             lastSync: Date | null;
@@ -33,28 +29,28 @@ export declare class DevicesService {
     create(dto: CreateDeviceDto): Promise<{
         message: string;
         device: {
-            port: number | null;
-            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            deviceId: string;
+            name: string;
+            port: number | null;
             location: string;
+            deviceId: string;
             model: string;
             ip: string | null;
             lastSync: Date | null;
         };
     }>;
     getByDeviceId(deviceId: string): Promise<{
-        port: number | null;
-        name: string;
         id: string;
         status: string;
         createdAt: Date;
         updatedAt: Date;
-        deviceId: string;
+        name: string;
+        port: number | null;
         location: string;
+        deviceId: string;
         model: string;
         ip: string | null;
         lastSync: Date | null;
@@ -62,14 +58,14 @@ export declare class DevicesService {
     update(deviceId: string, dto: UpdateDeviceDto): Promise<{
         message: string;
         device: {
-            port: number | null;
-            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            deviceId: string;
+            name: string;
+            port: number | null;
             location: string;
+            deviceId: string;
             model: string;
             ip: string | null;
             lastSync: Date | null;

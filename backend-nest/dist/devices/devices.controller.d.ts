@@ -1,20 +1,20 @@
 import { DevicesService } from './devices.service';
 import { CreateDeviceDto } from './dto/create-device.dto';
 import { UpdateDeviceDto } from './dto/update-device.dto';
-import { DevicesListQuery } from './devices.service';
+import { DevicesListQueryDto } from './dto/devices-list-query.dto';
 export declare class DevicesController {
     private readonly devicesService;
     constructor(devicesService: DevicesService);
-    list(query: DevicesListQuery): Promise<{
+    list(query: DevicesListQueryDto): Promise<{
         devices: {
-            port: number | null;
-            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            deviceId: string;
+            name: string;
+            port: number | null;
             location: string;
+            deviceId: string;
             model: string;
             ip: string | null;
             lastSync: Date | null;
@@ -29,28 +29,28 @@ export declare class DevicesController {
     create(dto: CreateDeviceDto): Promise<{
         message: string;
         device: {
-            port: number | null;
-            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            deviceId: string;
+            name: string;
+            port: number | null;
             location: string;
+            deviceId: string;
             model: string;
             ip: string | null;
             lastSync: Date | null;
         };
     }>;
     getOne(deviceId: string): Promise<{
-        port: number | null;
-        name: string;
         id: string;
         status: string;
         createdAt: Date;
         updatedAt: Date;
-        deviceId: string;
+        name: string;
+        port: number | null;
         location: string;
+        deviceId: string;
         model: string;
         ip: string | null;
         lastSync: Date | null;
@@ -58,14 +58,14 @@ export declare class DevicesController {
     update(deviceId: string, dto: UpdateDeviceDto): Promise<{
         message: string;
         device: {
-            port: number | null;
-            name: string;
             id: string;
             status: string;
             createdAt: Date;
             updatedAt: Date;
-            deviceId: string;
+            name: string;
+            port: number | null;
             location: string;
+            deviceId: string;
             model: string;
             ip: string | null;
             lastSync: Date | null;

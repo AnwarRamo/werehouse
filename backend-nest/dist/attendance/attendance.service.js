@@ -1,19 +1,70 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AttendanceService = void 0;
 const common_1 = require("@nestjs/common");
+const sync_1 = require("csv-parse/sync");
+const path_1 = require("path");
+const XLSX = __importStar(require("xlsx"));
 const prisma_service_1 = require("../prisma/prisma.service");
 const pagination_util_1 = require("../common/utils/pagination.util");
 const ATTENDANCE_DELETION_ENTITY = 'attendance';
+const DEFAULT_ALERT_SCHEDULE_START = '08:00';
+const DEFAULT_LATE_THRESHOLD_MINUTES = 15;
+const TIME_HH_MM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const ATTENDANCE_MONTH_REGEX = /^\d{4}-(0[1-9]|1[0-2])$/;
+const ATTENDANCE_IMPORT_EXTENSIONS = new Set([
+    '.csv',
+    '.tsv',
+    '.txt',
+    '.json',
+    '.xlsx',
+    '.xls',
+    '.xlsm',
+    '.xlsb',
+    '.ods',
+]);
 let AttendanceService = class AttendanceService {
     constructor(prisma) {
         this.prisma = prisma;
@@ -56,6 +107,189 @@ let AttendanceService = class AttendanceService {
             endDate: end.toISOString().slice(0, 10),
         };
     }
+    toDateKey(date = new Date()) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    parseClockMinutes(value) {
+        const source = (value || DEFAULT_ALERT_SCHEDULE_START).slice(0, 5);
+        const match = TIME_HH_MM_REGEX.exec(source);
+        if (!match)
+            return null;
+        return Number(match[1]) * 60 + Number(match[2]);
+    }
+    minutesFromCheckIn(checkIn) {
+        return (checkIn.getHours() * 60) + checkIn.getMinutes();
+    }
+    resolveMinutesLate(firstIn, scheduledStart, minutesLateFromShiftPair) {
+        if (typeof minutesLateFromShiftPair === 'number' && Number.isFinite(minutesLateFromShiftPair)) {
+            return Math.max(0, Math.floor(minutesLateFromShiftPair));
+        }
+        const scheduledMinutes = this.parseClockMinutes(scheduledStart);
+        if (scheduledMinutes === null)
+            return 0;
+        return Math.max(0, this.minutesFromCheckIn(firstIn) - scheduledMinutes);
+    }
+    normalizeImportHeader(value) {
+        return value.toLowerCase().replace(/[\s_-]+/g, '');
+    }
+    normalizeImportRow(row) {
+        const normalized = {};
+        for (const [key, value] of Object.entries(row)) {
+            normalized[this.normalizeImportHeader(key)] = String(value ?? '').trim();
+        }
+        return normalized;
+    }
+    detectDelimiter(content) {
+        const firstLine = content.split(/\r?\n/, 1)[0] || '';
+        const commaCount = (firstLine.match(/,/g) || []).length;
+        const tabCount = (firstLine.match(/\t/g) || []).length;
+        return tabCount > commaCount ? '\t' : ',';
+    }
+    parseDelimitedRows(content, delimiter) {
+        let parsed;
+        try {
+            parsed = (0, sync_1.parse)(content, {
+                columns: true,
+                skip_empty_lines: true,
+                trim: true,
+                bom: true,
+                delimiter,
+            });
+        }
+        catch {
+            throw new common_1.BadRequestException('Unable to parse attendance file');
+        }
+        return parsed
+            .map((row) => this.normalizeImportRow(row))
+            .filter((row) => Object.values(row).some((value) => value !== ''));
+    }
+    parseJsonRows(content) {
+        let parsed;
+        try {
+            parsed = JSON.parse(content);
+        }
+        catch {
+            throw new common_1.BadRequestException('Invalid JSON attendance file');
+        }
+        if (!Array.isArray(parsed)) {
+            throw new common_1.BadRequestException('Attendance JSON file must contain an array of rows');
+        }
+        return parsed
+            .filter((entry) => Boolean(entry) && typeof entry === 'object')
+            .map((entry) => this.normalizeImportRow(entry))
+            .filter((row) => Object.values(row).some((value) => value !== ''));
+    }
+    parseSpreadsheetRows(buffer) {
+        try {
+            const workbook = XLSX.read(buffer, {
+                type: 'buffer',
+                raw: false,
+                cellDates: false,
+                dense: true,
+            });
+            const firstSheetName = workbook.SheetNames?.[0];
+            if (!firstSheetName) {
+                throw new common_1.BadRequestException('Attendance spreadsheet must contain at least one sheet');
+            }
+            const worksheet = workbook.Sheets[firstSheetName];
+            const rows = XLSX.utils.sheet_to_json(worksheet, {
+                defval: '',
+                raw: false,
+            });
+            return rows
+                .map((row) => this.normalizeImportRow(row))
+                .filter((row) => Object.values(row).some((value) => value !== ''));
+        }
+        catch (error) {
+            if (error instanceof common_1.BadRequestException) {
+                throw error;
+            }
+            throw new common_1.BadRequestException('Unable to parse attendance spreadsheet file');
+        }
+    }
+    pickRowValue(row, keys) {
+        for (const key of keys) {
+            const value = row[this.normalizeImportHeader(key)];
+            if (value) {
+                return value;
+            }
+        }
+        return '';
+    }
+    normalizeAttendanceType(value) {
+        const normalized = value.trim().toLowerCase();
+        if (['in', 'checkin', 'entry', 'arrival', 'حضور', 'دخول'].includes(normalized)) {
+            return 'IN';
+        }
+        if (['out', 'checkout', 'exit', 'departure', 'انصراف', 'خروج'].includes(normalized)) {
+            return 'OUT';
+        }
+        return null;
+    }
+    normalizeAttendanceSource(value) {
+        return value?.trim().toLowerCase() === 'device' ? 'device' : 'manual';
+    }
+    extractAttendanceRows(file) {
+        if (!file?.buffer || file.buffer.length === 0) {
+            throw new common_1.BadRequestException('Attendance file is required');
+        }
+        const extension = (0, path_1.extname)(String(file.originalname || '')).toLowerCase();
+        if (!ATTENDANCE_IMPORT_EXTENSIONS.has(extension)) {
+            throw new common_1.BadRequestException('Unsupported attendance file extension');
+        }
+        let rows = [];
+        if (extension === '.json') {
+            rows = this.parseJsonRows(file.buffer.toString('utf8'));
+        }
+        else if (['.xlsx', '.xls', '.xlsm', '.xlsb', '.ods'].includes(extension)) {
+            rows = this.parseSpreadsheetRows(file.buffer);
+        }
+        else {
+            const content = file.buffer.toString('utf8');
+            const delimiter = extension === '.tsv' ? '\t' : this.detectDelimiter(content);
+            rows = this.parseDelimitedRows(content, delimiter);
+        }
+        return rows
+            .map((row) => ({
+            employeeId: this.pickRowValue(row, [
+                'employeeId',
+                'employee_id',
+                'empId',
+                'id',
+                'رقم الموظف',
+                'كود الموظف',
+            ]),
+            timestamp: this.pickRowValue(row, [
+                'timestamp',
+                'datetime',
+                'eventTime',
+                'time',
+                'التاريخ',
+                'الوقت',
+            ]),
+            type: this.pickRowValue(row, ['type', 'eventType', 'direction', 'status', 'النوع']),
+            deviceId: this.pickRowValue(row, ['deviceId', 'device_id', 'device', 'الجهاز']) || undefined,
+            location: this.pickRowValue(row, ['location', 'site', 'الموقع']) || undefined,
+            source: this.pickRowValue(row, ['source', 'المصدر']) || undefined,
+            notes: this.pickRowValue(row, ['notes', 'note', 'ملاحظات']) || undefined,
+        }))
+            .filter((row) => row.employeeId || row.timestamp || row.type);
+    }
+    resolveMonthRange(month) {
+        if (!ATTENDANCE_MONTH_REGEX.test(month)) {
+            throw new common_1.BadRequestException('Month must be in YYYY-MM format');
+        }
+        const [year, monthNumber] = month.split('-').map(Number);
+        const monthEndDate = new Date(Date.UTC(year, monthNumber, 0));
+        const endDay = String(monthEndDate.getUTCDate()).padStart(2, '0');
+        return {
+            startDate: `${month}-01`,
+            endDate: `${month}-${endDay}`,
+        };
+    }
     async list(query) {
         const { page, limit, skip } = (0, pagination_util_1.resolvePagination)(query, { defaultLimit: 100 });
         const where = {};
@@ -95,6 +329,98 @@ let AttendanceService = class AttendanceService {
             },
         });
         return { message: 'Attendance record created successfully', record };
+    }
+    async upload(file, userId) {
+        const rows = this.extractAttendanceRows(file);
+        if (rows.length === 0) {
+            throw new common_1.BadRequestException('No attendance rows found in uploaded file');
+        }
+        const employeeIds = Array.from(new Set(rows.map((row) => row.employeeId).filter(Boolean)));
+        const employees = await this.prisma.employee.findMany({
+            where: { employeeId: { in: employeeIds } },
+            select: { employeeId: true },
+        });
+        const employeeSet = new Set(employees.map((employee) => employee.employeeId));
+        const errors = [];
+        let importedRows = 0;
+        for (let index = 0; index < rows.length; index += 1) {
+            const row = rows[index];
+            const rowNumber = index + 2;
+            if (!row.employeeId || !employeeSet.has(row.employeeId)) {
+                errors.push({ row: rowNumber, error: `Employee not found: ${row.employeeId || 'unknown'}` });
+                continue;
+            }
+            if (!row.timestamp) {
+                errors.push({ row: rowNumber, error: 'Missing timestamp' });
+                continue;
+            }
+            const parsedTimestamp = new Date(row.timestamp);
+            if (Number.isNaN(parsedTimestamp.getTime())) {
+                errors.push({ row: rowNumber, error: 'Invalid timestamp format' });
+                continue;
+            }
+            const normalizedType = this.normalizeAttendanceType(row.type || '');
+            if (!normalizedType) {
+                errors.push({ row: rowNumber, error: 'Attendance type must be IN or OUT' });
+                continue;
+            }
+            try {
+                await this.prisma.attendanceRecord.create({
+                    data: {
+                        employeeId: row.employeeId,
+                        timestamp: parsedTimestamp,
+                        type: normalizedType,
+                        deviceId: row.deviceId || null,
+                        location: row.location || null,
+                        source: this.normalizeAttendanceSource(row.source),
+                        verified: true,
+                        notes: row.notes || null,
+                        date: this.deriveDateKey(row.timestamp, parsedTimestamp),
+                    },
+                });
+                importedRows += 1;
+            }
+            catch (error) {
+                errors.push({
+                    row: rowNumber,
+                    error: error instanceof Error ? error.message : 'Failed to save attendance row',
+                });
+            }
+        }
+        return {
+            message: errors.length > 0
+                ? 'Attendance upload completed with partial failures'
+                : 'Attendance upload completed successfully',
+            uploadedBy: userId || null,
+            totalRows: rows.length,
+            importedRows,
+            failedRows: errors.length,
+            errors: errors.slice(0, 100),
+        };
+    }
+    async month(month) {
+        const range = this.resolveMonthRange(month);
+        const records = await this.prisma.attendanceRecord.findMany({
+            where: {
+                date: {
+                    gte: range.startDate,
+                    lte: range.endDate,
+                },
+            },
+            orderBy: [{ date: 'asc' }, { timestamp: 'asc' }],
+        });
+        const employeeCount = new Set(records.map((record) => record.employeeId)).size;
+        const lateCount = records.filter((record) => (record.shiftPair?.minutesLate || 0) > 0).length;
+        return {
+            month,
+            period: range,
+            statistics: {
+                totalRecords: records.length,
+                totalEmployees: employeeCount,
+                totalLateRecords: lateCount,
+            },
+            records,
+        };
     }
     async getById(recordId) {
         const record = await this.prisma.attendanceRecord.findUnique({ where: { id: recordId } });
@@ -265,6 +591,97 @@ let AttendanceService = class AttendanceService {
             period: range,
             anomalies,
             anomalyCount: anomalies.length,
+        };
+    }
+    async alerts(date, lateThresholdMinutes = DEFAULT_LATE_THRESHOLD_MINUTES) {
+        const targetDate = date || this.toDateKey();
+        const threshold = Number.isFinite(lateThresholdMinutes)
+            ? Math.max(0, Math.floor(lateThresholdMinutes))
+            : DEFAULT_LATE_THRESHOLD_MINUTES;
+        const [activeEmployees, records] = await Promise.all([
+            this.prisma.employee.findMany({
+                where: { status: 'active' },
+                select: {
+                    employeeId: true,
+                    name: true,
+                    department: true,
+                    scheduledStart: true,
+                },
+            }),
+            this.prisma.attendanceRecord.findMany({
+                where: { date: targetDate },
+                orderBy: { timestamp: 'asc' },
+                select: {
+                    employeeId: true,
+                    type: true,
+                    timestamp: true,
+                    shiftPair: true,
+                },
+            }),
+        ]);
+        const attendanceByEmployee = new Map();
+        for (const record of records) {
+            const snapshot = attendanceByEmployee.get(record.employeeId) || {
+                firstIn: null,
+                maxMinutesLateFromShiftPair: null,
+            };
+            const shiftPair = record.shiftPair;
+            if (typeof shiftPair?.minutesLate === 'number' && Number.isFinite(shiftPair.minutesLate)) {
+                const existingMinutes = snapshot.maxMinutesLateFromShiftPair ?? 0;
+                snapshot.maxMinutesLateFromShiftPair = Math.max(existingMinutes, Math.max(0, Math.floor(shiftPair.minutesLate)));
+            }
+            if (record.type.toUpperCase() === 'IN' && !snapshot.firstIn) {
+                snapshot.firstIn = record.timestamp;
+            }
+            attendanceByEmployee.set(record.employeeId, snapshot);
+        }
+        const absentAlerts = [];
+        const lateAlerts = [];
+        for (const employee of activeEmployees) {
+            const snapshot = attendanceByEmployee.get(employee.employeeId);
+            const scheduledStart = employee.scheduledStart || DEFAULT_ALERT_SCHEDULE_START;
+            if (!snapshot?.firstIn) {
+                absentAlerts.push({
+                    status: 'absent',
+                    employeeId: employee.employeeId,
+                    name: employee.name,
+                    department: employee.department,
+                    scheduledStart,
+                    checkIn: null,
+                    minutesLate: 0,
+                });
+                continue;
+            }
+            const minutesLate = this.resolveMinutesLate(snapshot.firstIn, scheduledStart, snapshot.maxMinutesLateFromShiftPair);
+            if (minutesLate >= threshold) {
+                lateAlerts.push({
+                    status: 'late',
+                    employeeId: employee.employeeId,
+                    name: employee.name,
+                    department: employee.department,
+                    scheduledStart,
+                    checkIn: snapshot.firstIn.toISOString(),
+                    minutesLate,
+                });
+            }
+        }
+        const alerts = [...absentAlerts, ...lateAlerts].sort((a, b) => {
+            if (a.status !== b.status) {
+                return a.status === 'absent' ? -1 : 1;
+            }
+            return a.name.localeCompare(b.name);
+        });
+        return {
+            date: targetDate,
+            lateThresholdMinutes: threshold,
+            summary: {
+                activeEmployees: activeEmployees.length,
+                checkedInCount: activeEmployees.length - absentAlerts.length,
+                absentCount: absentAlerts.length,
+                lateCount: lateAlerts.length,
+                totalAlerts: alerts.length,
+            },
+            alerts,
         };
     }
     async employeeOnDate(employeeId, date) {

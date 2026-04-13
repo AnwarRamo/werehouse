@@ -1,10 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaginationQueryParams } from '../common/types/query.types';
 import { resolvePagination } from '../common/utils/pagination.util';
 import { CalculatePayrollDto } from './dto/calculate-payroll.dto';
+import { PayrollListQueryDto } from './dto/payroll-list-query.dto';
 import { Queue } from 'bullmq';
 import { QUEUE_JOBS, QUEUE_NAMES } from '../queues/queue.constants';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
@@ -17,13 +17,10 @@ type PayrollQueuePayload = {
   userId?: string;
 };
 
-export type PayrollListQuery = PaginationQueryParams & {
-  status?: string;
-  approvalStatus?: string;
-};
-
 @Injectable()
 export class PayrollService {
+  private readonly logger = new Logger(PayrollService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @Optional() @InjectQueue(QUEUE_NAMES.PAYROLL) private readonly payrollQueue?: Queue,
@@ -66,6 +63,25 @@ export class PayrollService {
     };
   }
 
+  private resolveMonthPeriod(month: string) {
+    const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(month);
+    if (!match) {
+      throw new BadRequestException('Month must be in YYYY-MM format');
+    }
+
+    const year = Number(match[1]);
+    const monthIndex = Number(match[2]) - 1;
+    const periodStartDate = new Date(Date.UTC(year, monthIndex, 1));
+    const periodEndDate = new Date(Date.UTC(year, monthIndex + 1, 0));
+
+    return {
+      periodStartDate,
+      periodEndDate,
+      periodStart: `${match[1]}-${match[2]}-01`,
+      periodEnd: `${match[1]}-${match[2]}-${String(periodEndDate.getUTCDate()).padStart(2, '0')}`,
+    };
+  }
+
   private isUuid(value: string) {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       value,
@@ -84,7 +100,7 @@ export class PayrollService {
     return run;
   }
 
-  async list(query: PayrollListQuery) {
+  async list(query: PayrollListQueryDto) {
     const { page, limit, skip } = resolvePagination(query);
 
     const where: Prisma.PayrollRunWhereInput = {};
@@ -193,7 +209,7 @@ export class PayrollService {
     return { message: 'Payroll rejected successfully', payrollRun: updated };
   }
 
-  async summary(periodStart: string, periodEnd: string) {
+  async summary(periodStart?: string, periodEnd?: string) {
     const period = this.resolvePeriod(periodStart, periodEnd);
 
     const runs = await this.prisma.payrollRun.findMany({
@@ -209,6 +225,66 @@ export class PayrollService {
         totalNetPay: runs.reduce((s: number, r: (typeof runs)[number]) => s + Number(r.totalNetPay || 0), 0),
         totalGrossPay: runs.reduce((s: number, r: (typeof runs)[number]) => s + Number(r.totalGrossPay || 0), 0),
       },
+    };
+  }
+
+  async report(month: string) {
+    const period = this.resolveMonthPeriod(month);
+
+    const runs = await this.prisma.payrollRun.findMany({
+      where: {
+        periodStart: {
+          gte: period.periodStartDate,
+          lte: period.periodEndDate,
+        },
+      },
+      orderBy: { runDate: 'desc' },
+    });
+
+    if (runs.length === 0) {
+      return {
+        month,
+        period: {
+          startDate: period.periodStart,
+          endDate: period.periodEnd,
+        },
+        runsCount: 0,
+        latestRun: null,
+        totals: {
+          totalGrossPay: 0,
+          totalDeductions: 0,
+          totalNetPay: 0,
+        },
+        items: [],
+      };
+    }
+
+    const latestRun = runs[0];
+    const items = await this.prisma.payrollItem.findMany({
+      where: { payrollRunId: latestRun.id },
+      orderBy: { employeeId: 'asc' },
+    });
+
+    return {
+      month,
+      period: {
+        startDate: period.periodStart,
+        endDate: period.periodEnd,
+      },
+      runsCount: runs.length,
+      latestRun,
+      totals: {
+        totalGrossPay: this.toMoney(
+          runs.reduce((sum, run) => sum + Number(run.totalGrossPay || 0), 0),
+        ),
+        totalDeductions: this.toMoney(
+          runs.reduce((sum, run) => sum + Number(run.totalDeductions || 0), 0),
+        ),
+        totalNetPay: this.toMoney(
+          runs.reduce((sum, run) => sum + Number(run.totalNetPay || 0), 0),
+        ),
+      },
+      items,
     };
   }
 
@@ -376,12 +452,22 @@ export class PayrollService {
         throw new Error('Payroll queue is not available');
       }
 
+      const workers = await this.payrollQueue.getWorkers();
+      if (workers.length === 0) {
+        throw new Error('No payroll worker is currently connected');
+      }
+
       await this.payrollQueue.add(QUEUE_JOBS.PAYROLL_CALCULATE, payload, {
         attempts: 3,
         backoff: { type: 'exponential', delay: 2_000 },
       });
       return;
-    } catch {
+    } catch (error) {
+      this.logger.warn(
+        `Payroll queue unavailable; falling back to inline execution. Reason: ${
+          error instanceof Error ? error.message : 'unknown'
+        }`,
+      );
       await this.processPayrollRunJob(payload);
     }
   }

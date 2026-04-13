@@ -20,6 +20,7 @@ const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const permissions_guard_1 = require("../common/guards/permissions.guard");
 const permissions_decorator_1 = require("../common/decorators/permissions.decorator");
 const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
+const imports_history_query_dto_1 = require("./dto/imports-history-query.dto");
 let ImportsController = class ImportsController {
     constructor(importsService) {
         this.importsService = importsService;
@@ -128,7 +129,7 @@ __decorate([
     (0, permissions_decorator_1.Permissions)('view_imports'),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [imports_history_query_dto_1.ImportsHistoryQueryDto]),
     __metadata("design:returntype", void 0)
 ], ImportsController.prototype, "history", null);
 __decorate([

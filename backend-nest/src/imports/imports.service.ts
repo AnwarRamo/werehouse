@@ -7,8 +7,8 @@ import { extname } from 'path';
 import { Queue } from 'bullmq';
 import * as XLSX from 'xlsx';
 import { QUEUE_JOBS, QUEUE_NAMES } from '../queues/queue.constants';
-import { PaginationQueryParams } from '../common/types/query.types';
 import { resolvePagination } from '../common/utils/pagination.util';
+import { ImportsHistoryQueryDto } from './dto/imports-history-query.dto';
 
 type ParsedRow = Record<string, string>;
 type RowError = { row: number; error: string };
@@ -164,11 +164,6 @@ const PRODUCT_POSITIONAL_HEADERS: Array<'sku' | 'name' | 'category' | 'unitprice
   'costprice',
 ];
 
-export type ImportsHistoryQuery = PaginationQueryParams & {
-  entity?: string;
-  status?: string;
-};
-
 @Injectable()
 export class ImportsService {
   constructor(
@@ -176,7 +171,7 @@ export class ImportsService {
     @Optional() @InjectQueue(QUEUE_NAMES.IMPORTS) private readonly importsQueue?: Queue,
   ) {}
 
-  async history(query: ImportsHistoryQuery) {
+  async history(query: ImportsHistoryQueryDto) {
     const { page, limit, skip } = resolvePagination(query);
     const where: Prisma.ImportJobWhereInput = {};
     if (query.entity) where.entity = query.entity;

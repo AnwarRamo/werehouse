@@ -20,6 +20,7 @@ const permissions_guard_1 = require("../common/guards/permissions.guard");
 const permissions_decorator_1 = require("../common/decorators/permissions.decorator");
 const create_employee_dto_1 = require("./dto/create-employee.dto");
 const update_employee_dto_1 = require("./dto/update-employee.dto");
+const employees_list_query_dto_1 = require("./dto/employees-list-query.dto");
 let EmployeesController = class EmployeesController {
     constructor(employeesService) {
         this.employeesService = employeesService;
@@ -52,7 +53,7 @@ __decorate([
     (0, permissions_decorator_1.Permissions)('view_employees'),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [employees_list_query_dto_1.EmployeesListQueryDto]),
     __metadata("design:returntype", void 0)
 ], EmployeesController.prototype, "list", null);
 __decorate([

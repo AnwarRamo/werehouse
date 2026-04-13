@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Put, UseGuards } from '@nestjs/common';
 import { InsuranceService } from './insurance.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
@@ -16,6 +16,12 @@ export class InsuranceController {
     return this.insuranceService.list();
   }
 
+  @Get('status')
+  @Permissions('manage_insurance')
+  status() {
+    return this.insuranceService.status();
+  }
+
   @Get(':employeeId')
   @Permissions('manage_insurance')
   getOne(@Param('employeeId') employeeId: string) {
@@ -25,6 +31,12 @@ export class InsuranceController {
   @Put(':employeeId')
   @Permissions('manage_insurance')
   upsert(@Param('employeeId') employeeId: string, @Body() dto: UpsertInsuranceDto) {
+    return this.insuranceService.upsert(employeeId, dto);
+  }
+
+  @Patch('update/:employeeId')
+  @Permissions('manage_insurance')
+  updateAlias(@Param('employeeId') employeeId: string, @Body() dto: UpsertInsuranceDto) {
     return this.insuranceService.upsert(employeeId, dto);
   }
 

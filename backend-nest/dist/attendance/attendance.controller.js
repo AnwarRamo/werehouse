@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AttendanceController = void 0;
 const common_1 = require("@nestjs/common");
+const platform_express_1 = require("@nestjs/platform-express");
 const attendance_service_1 = require("./attendance.service");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const permissions_guard_1 = require("../common/guards/permissions.guard");
@@ -21,6 +22,10 @@ const permissions_decorator_1 = require("../common/decorators/permissions.decora
 const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
 const create_attendance_dto_1 = require("./dto/create-attendance.dto");
 const update_attendance_dto_1 = require("./dto/update-attendance.dto");
+const attendance_list_query_dto_1 = require("./dto/attendance-list-query.dto");
+const attendance_range_query_dto_1 = require("./dto/attendance-range-query.dto");
+const attendance_period_query_dto_1 = require("./dto/attendance-period-query.dto");
+const attendance_alerts_query_dto_1 = require("./dto/attendance-alerts-query.dto");
 let AttendanceController = class AttendanceController {
     constructor(attendanceService) {
         this.attendanceService = attendanceService;
@@ -28,11 +33,14 @@ let AttendanceController = class AttendanceController {
     list(query) {
         return this.attendanceService.list(query);
     }
-    stats(startDate, endDate) {
-        return this.attendanceService.stats(startDate, endDate);
+    stats(query) {
+        return this.attendanceService.stats(query.startDate, query.endDate);
     }
-    anomalies(startDate, endDate) {
-        return this.attendanceService.anomalies(startDate, endDate);
+    anomalies(query) {
+        return this.attendanceService.anomalies(query.startDate, query.endDate);
+    }
+    alerts(query) {
+        return this.attendanceService.alerts(query.date, query.lateThresholdMinutes);
     }
     listDeletedHistory() {
         return this.attendanceService.listDeletedHistory();
@@ -40,14 +48,20 @@ let AttendanceController = class AttendanceController {
     create(dto) {
         return this.attendanceService.create(dto);
     }
+    upload(file, user) {
+        return this.attendanceService.upload(file, user?.userId);
+    }
     restore(historyId, user) {
         return this.attendanceService.restore(historyId, user?.userId);
     }
     employeeOnDate(employeeId, date) {
         return this.attendanceService.employeeOnDate(employeeId, date);
     }
-    employeePeriod(employeeId, startDate, endDate) {
-        return this.attendanceService.employeePeriod(employeeId, startDate, endDate);
+    employeePeriod(employeeId, query) {
+        return this.attendanceService.employeePeriod(employeeId, query.startDate, query.endDate);
+    }
+    month(month) {
+        return this.attendanceService.month(month);
     }
     getById(recordId) {
         return this.attendanceService.getById(recordId);
@@ -60,32 +74,53 @@ let AttendanceController = class AttendanceController {
     }
 };
 exports.AttendanceController = AttendanceController;
+AttendanceController.uploadOptions = {
+    fileFilter: (_req, file, cb) => {
+        const allowedExtensions = ['.csv', '.tsv', '.txt', '.json', '.xlsx', '.xls', '.xlsm', '.xlsb', '.ods'];
+        const originalName = String(file?.originalname || '').toLowerCase();
+        const hasAllowedExtension = allowedExtensions.some((extension) => originalName.endsWith(extension));
+        if (!hasAllowedExtension) {
+            cb(new common_1.BadRequestException('Only tabular attendance files are allowed (csv, tsv, txt, json, xlsx, xls, xlsm, xlsb, ods)'), false);
+            return;
+        }
+        cb(null, true);
+    },
+    limits: {
+        fileSize: 10 * 1024 * 1024,
+    },
+};
 __decorate([
     (0, common_1.Get)(),
     (0, permissions_decorator_1.Permissions)('view_attendance'),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [attendance_list_query_dto_1.AttendanceListQueryDto]),
     __metadata("design:returntype", void 0)
 ], AttendanceController.prototype, "list", null);
 __decorate([
     (0, common_1.Get)('stats'),
     (0, permissions_decorator_1.Permissions)('view_attendance'),
-    __param(0, (0, common_1.Query)('startDate')),
-    __param(1, (0, common_1.Query)('endDate')),
+    __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [attendance_range_query_dto_1.AttendanceRangeQueryDto]),
     __metadata("design:returntype", void 0)
 ], AttendanceController.prototype, "stats", null);
 __decorate([
     (0, common_1.Get)('anomalies'),
     (0, permissions_decorator_1.Permissions)('view_attendance'),
-    __param(0, (0, common_1.Query)('startDate')),
-    __param(1, (0, common_1.Query)('endDate')),
+    __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [attendance_range_query_dto_1.AttendanceRangeQueryDto]),
     __metadata("design:returntype", void 0)
 ], AttendanceController.prototype, "anomalies", null);
+__decorate([
+    (0, common_1.Get)('alerts'),
+    (0, permissions_decorator_1.Permissions)('view_attendance'),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [attendance_alerts_query_dto_1.AttendanceAlertsQueryDto]),
+    __metadata("design:returntype", void 0)
+], AttendanceController.prototype, "alerts", null);
 __decorate([
     (0, common_1.Get)('deleted/history'),
     (0, permissions_decorator_1.Permissions)('edit_attendance'),
@@ -101,6 +136,16 @@ __decorate([
     __metadata("design:paramtypes", [create_attendance_dto_1.CreateAttendanceDto]),
     __metadata("design:returntype", void 0)
 ], AttendanceController.prototype, "create", null);
+__decorate([
+    (0, common_1.Post)('upload'),
+    (0, permissions_decorator_1.Permissions)('edit_attendance'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file', AttendanceController.uploadOptions)),
+    __param(0, (0, common_1.UploadedFile)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], AttendanceController.prototype, "upload", null);
 __decorate([
     (0, common_1.Post)('restore/:historyId'),
     (0, permissions_decorator_1.Permissions)('edit_attendance'),
@@ -123,12 +168,19 @@ __decorate([
     (0, common_1.Get)('employee/:employeeId/period'),
     (0, permissions_decorator_1.Permissions)('view_attendance'),
     __param(0, (0, common_1.Param)('employeeId')),
-    __param(1, (0, common_1.Query)('startDate')),
-    __param(2, (0, common_1.Query)('endDate')),
+    __param(1, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:paramtypes", [String, attendance_period_query_dto_1.AttendancePeriodQueryDto]),
     __metadata("design:returntype", void 0)
 ], AttendanceController.prototype, "employeePeriod", null);
+__decorate([
+    (0, common_1.Get)(':month(\\d{4}-\\d{2})'),
+    (0, permissions_decorator_1.Permissions)('view_attendance'),
+    __param(0, (0, common_1.Param)('month')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AttendanceController.prototype, "month", null);
 __decorate([
     (0, common_1.Get)(':recordId'),
     (0, permissions_decorator_1.Permissions)('view_attendance'),

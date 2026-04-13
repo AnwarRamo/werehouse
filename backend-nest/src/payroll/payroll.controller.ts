@@ -9,8 +9,10 @@ import { Permissions } from '../common/decorators/permissions.decorator';
 import { CalculatePayrollDto } from './dto/calculate-payroll.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditService } from '../common/services/audit.service';
-import { PayrollListQuery } from './payroll.service';
 import { AuthenticatedUser } from '../common/types/authenticated-user.types';
+import { PayrollListQueryDto } from './dto/payroll-list-query.dto';
+import { PayrollSummaryQueryDto } from './dto/payroll-summary-query.dto';
+import { RejectPayrollDto } from './dto/reject-payroll.dto';
 
 @Controller('payroll')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -22,14 +24,14 @@ export class PayrollController {
 
   @Get()
   @Permissions('view_payroll')
-  list(@Query() query: PayrollListQuery) {
+  list(@Query() query: PayrollListQueryDto) {
     return this.payrollService.list(query);
   }
 
   @Get('summary')
   @Permissions('view_payroll')
-  summary(@Query('periodStart') periodStart: string, @Query('periodEnd') periodEnd: string) {
-    return this.payrollService.summary(periodStart, periodEnd);
+  summary(@Query() query: PayrollSummaryQueryDto) {
+    return this.payrollService.summary(query.periodStart, query.periodEnd);
   }
 
   @Post('calculate')
@@ -42,6 +44,12 @@ export class PayrollController {
   @Permissions('run_payroll')
   calculateAsync(@Body() dto: CalculatePayrollDto, @CurrentUser() user: AuthenticatedUser) {
     return this.payrollService.calculateAsync(dto, user?.userId);
+  }
+
+  @Get('report/:month')
+  @Permissions('view_payroll')
+  report(@Param('month') month: string) {
+    return this.payrollService.report(month);
   }
 
   @Get(':runId')
@@ -81,11 +89,11 @@ export class PayrollController {
   @Permissions('approve_payroll')
   async reject(
     @Param('runId') runId: string,
-    @Body('reason') reason: string,
+    @Body() dto: RejectPayrollDto,
     @CurrentUser() user: AuthenticatedUser,
     @Req() req: Request,
   ) {
-    const result = await this.payrollService.reject(runId, reason, user?.userId);
+    const result = await this.payrollService.reject(runId, dto.reason, user?.userId);
     this.audit.log(
       {
         action: 'payroll.reject',
@@ -93,7 +101,7 @@ export class PayrollController {
         actorUsername: user?.username,
         targetType: 'payroll_run',
         targetId: runId,
-        metadata: { reason },
+        metadata: { reason: dto.reason },
       },
       req,
     );

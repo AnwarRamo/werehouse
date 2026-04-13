@@ -1,7 +1,8 @@
-import { IsIn, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsDateString, IsIn, IsNumber, IsOptional, IsString, Matches, Min } from 'class-validator';
 
 export class CreateAdvanceDto {
   @IsString()
+  @Matches(/^EMP[0-9]{3,}$/)
   employeeId: string;
 
   @IsOptional()
@@ -9,7 +10,7 @@ export class CreateAdvanceDto {
   advanceType?: string;
 
   @IsNumber()
-  @Min(0)
+  @Min(0.01)
   totalAmount: number;
 
   @IsOptional()
@@ -20,4 +21,8 @@ export class CreateAdvanceDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsDateString()
+  issueDate?: string;
 }

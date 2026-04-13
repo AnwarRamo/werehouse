@@ -22,6 +22,9 @@ const permissions_decorator_1 = require("../common/decorators/permissions.decora
 const calculate_payroll_dto_1 = require("./dto/calculate-payroll.dto");
 const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
 const audit_service_1 = require("../common/services/audit.service");
+const payroll_list_query_dto_1 = require("./dto/payroll-list-query.dto");
+const payroll_summary_query_dto_1 = require("./dto/payroll-summary-query.dto");
+const reject_payroll_dto_1 = require("./dto/reject-payroll.dto");
 let PayrollController = class PayrollController {
     constructor(payrollService, audit) {
         this.payrollService = payrollService;
@@ -30,14 +33,17 @@ let PayrollController = class PayrollController {
     list(query) {
         return this.payrollService.list(query);
     }
-    summary(periodStart, periodEnd) {
-        return this.payrollService.summary(periodStart, periodEnd);
+    summary(query) {
+        return this.payrollService.summary(query.periodStart, query.periodEnd);
     }
     calculate(dto, user) {
         return this.payrollService.calculate(dto, user?.userId);
     }
     calculateAsync(dto, user) {
         return this.payrollService.calculateAsync(dto, user?.userId);
+    }
+    report(month) {
+        return this.payrollService.report(month);
     }
     getById(runId) {
         return this.payrollService.getRun(runId);
@@ -56,15 +62,15 @@ let PayrollController = class PayrollController {
         }, req);
         return result;
     }
-    async reject(runId, reason, user, req) {
-        const result = await this.payrollService.reject(runId, reason, user?.userId);
+    async reject(runId, dto, user, req) {
+        const result = await this.payrollService.reject(runId, dto.reason, user?.userId);
         this.audit.log({
             action: 'payroll.reject',
             actorId: user?.userId,
             actorUsername: user?.username,
             targetType: 'payroll_run',
             targetId: runId,
-            metadata: { reason },
+            metadata: { reason: dto.reason },
         }, req);
         return result;
     }
@@ -100,16 +106,15 @@ __decorate([
     (0, permissions_decorator_1.Permissions)('view_payroll'),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [payroll_list_query_dto_1.PayrollListQueryDto]),
     __metadata("design:returntype", void 0)
 ], PayrollController.prototype, "list", null);
 __decorate([
     (0, common_1.Get)('summary'),
     (0, permissions_decorator_1.Permissions)('view_payroll'),
-    __param(0, (0, common_1.Query)('periodStart')),
-    __param(1, (0, common_1.Query)('periodEnd')),
+    __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [payroll_summary_query_dto_1.PayrollSummaryQueryDto]),
     __metadata("design:returntype", void 0)
 ], PayrollController.prototype, "summary", null);
 __decorate([
@@ -130,6 +135,14 @@ __decorate([
     __metadata("design:paramtypes", [calculate_payroll_dto_1.CalculatePayrollDto, Object]),
     __metadata("design:returntype", void 0)
 ], PayrollController.prototype, "calculateAsync", null);
+__decorate([
+    (0, common_1.Get)('report/:month'),
+    (0, permissions_decorator_1.Permissions)('view_payroll'),
+    __param(0, (0, common_1.Param)('month')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], PayrollController.prototype, "report", null);
 __decorate([
     (0, common_1.Get)(':runId'),
     (0, permissions_decorator_1.Permissions)('view_payroll'),
@@ -160,11 +173,11 @@ __decorate([
     (0, common_1.Put)(':runId/reject'),
     (0, permissions_decorator_1.Permissions)('approve_payroll'),
     __param(0, (0, common_1.Param)('runId')),
-    __param(1, (0, common_1.Body)('reason')),
+    __param(1, (0, common_1.Body)()),
     __param(2, (0, current_user_decorator_1.CurrentUser)()),
     __param(3, (0, common_2.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, Object, Object]),
+    __metadata("design:paramtypes", [String, reject_payroll_dto_1.RejectPayrollDto, Object, Object]),
     __metadata("design:returntype", Promise)
 ], PayrollController.prototype, "reject", null);
 __decorate([

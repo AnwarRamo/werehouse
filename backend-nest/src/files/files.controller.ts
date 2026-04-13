@@ -16,6 +16,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { AuthenticatedUser } from '../common/types/authenticated-user.types';
 import { GENERAL_FILE_EXTENSIONS, FilesService } from './files.service';
+import { FilesListQueryDto } from './dto/files-list-query.dto';
 
 @Controller('files')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -24,13 +25,8 @@ export class FilesController {
 
   @Get()
   @Permissions('run_imports')
-  list(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
-    const parsedPage = Number.parseInt(String(page || '1'), 10);
-    const parsedLimit = Number.parseInt(String(limit || '20'), 10);
-    return this.filesService.listGeneralFiles(parsedPage, parsedLimit);
+  list(@Query() query: FilesListQueryDto) {
+    return this.filesService.listGeneralFiles(query.page ?? 1, query.limit ?? 20);
   }
 
   private static readonly uploadOptions = {

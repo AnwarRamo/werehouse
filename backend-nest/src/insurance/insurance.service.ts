@@ -7,6 +7,27 @@ import { UpsertInsuranceDto } from './dto/upsert-insurance.dto';
 export class InsuranceService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async status() {
+    const [records, totalEmployees] = await Promise.all([
+      this.prisma.employeeInsurance.findMany({ orderBy: { employeeId: 'asc' } }),
+      this.prisma.employee.count(),
+    ]);
+
+    const insuredEmployees = records.length;
+    const uninsuredEmployees = Math.max(0, totalEmployees - insuredEmployees);
+    const coverageRate = totalEmployees
+      ? Number(((insuredEmployees / totalEmployees) * 100).toFixed(2))
+      : 0;
+
+    return {
+      totalEmployees,
+      insuredEmployees,
+      uninsuredEmployees,
+      coverageRate,
+      records,
+    };
+  }
+
   async list() {
     return this.prisma.employeeInsurance.findMany({ orderBy: { employeeId: 'asc' } });
   }

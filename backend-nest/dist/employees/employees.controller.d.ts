@@ -1,25 +1,25 @@
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
-import { EmployeesListQuery } from './employees.service';
+import { EmployeesListQueryDto } from './dto/employees-list-query.dto';
 export declare class EmployeesController {
     private readonly employeesService;
     constructor(employeesService: EmployeesService);
-    list(query: EmployeesListQuery): Promise<{
+    list(query: EmployeesListQueryDto): Promise<{
         employees: {
             id: string;
-            employeeId: string;
-            name: string;
             email: string;
-            hourlyRate: import("@prisma/client-runtime-utils").Decimal;
-            currency: string;
-            scheduledStart: string | null;
-            scheduledEnd: string | null;
-            department: string;
             roleId: string | null;
             status: string;
             createdAt: Date;
             updatedAt: Date;
+            name: string;
+            department: string;
+            employeeId: string;
+            hourlyRate: import("@prisma/client-runtime-utils").Decimal;
+            currency: string;
+            scheduledStart: string | null;
+            scheduledEnd: string | null;
         }[];
         pagination: {
             page: number;
@@ -40,69 +40,69 @@ export declare class EmployeesController {
         count: number;
         employees: {
             id: string;
-            employeeId: string;
-            name: string;
             email: string;
-            hourlyRate: import("@prisma/client-runtime-utils").Decimal;
-            currency: string;
-            scheduledStart: string | null;
-            scheduledEnd: string | null;
-            department: string;
             roleId: string | null;
             status: string;
             createdAt: Date;
             updatedAt: Date;
+            name: string;
+            department: string;
+            employeeId: string;
+            hourlyRate: import("@prisma/client-runtime-utils").Decimal;
+            currency: string;
+            scheduledStart: string | null;
+            scheduledEnd: string | null;
         }[];
     }>;
     create(dto: CreateEmployeeDto): Promise<{
         message: string;
         employee: {
             id: string;
-            employeeId: string;
-            name: string;
             email: string;
-            hourlyRate: import("@prisma/client-runtime-utils").Decimal;
-            currency: string;
-            scheduledStart: string | null;
-            scheduledEnd: string | null;
-            department: string;
             roleId: string | null;
             status: string;
             createdAt: Date;
             updatedAt: Date;
+            name: string;
+            department: string;
+            employeeId: string;
+            hourlyRate: import("@prisma/client-runtime-utils").Decimal;
+            currency: string;
+            scheduledStart: string | null;
+            scheduledEnd: string | null;
         };
     }>;
     getOne(employeeId: string): Promise<{
         id: string;
-        employeeId: string;
-        name: string;
         email: string;
-        hourlyRate: import("@prisma/client-runtime-utils").Decimal;
-        currency: string;
-        scheduledStart: string | null;
-        scheduledEnd: string | null;
-        department: string;
         roleId: string | null;
         status: string;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        department: string;
+        employeeId: string;
+        hourlyRate: import("@prisma/client-runtime-utils").Decimal;
+        currency: string;
+        scheduledStart: string | null;
+        scheduledEnd: string | null;
     }>;
     update(employeeId: string, dto: UpdateEmployeeDto): Promise<{
         message: string;
         employee: {
             id: string;
-            employeeId: string;
-            name: string;
             email: string;
-            hourlyRate: import("@prisma/client-runtime-utils").Decimal;
-            currency: string;
-            scheduledStart: string | null;
-            scheduledEnd: string | null;
-            department: string;
             roleId: string | null;
             status: string;
             createdAt: Date;
             updatedAt: Date;
+            name: string;
+            department: string;
+            employeeId: string;
+            hourlyRate: import("@prisma/client-runtime-utils").Decimal;
+            currency: string;
+            scheduledStart: string | null;
+            scheduledEnd: string | null;
         };
     }>;
     remove(employeeId: string): Promise<{

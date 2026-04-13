@@ -5,6 +5,7 @@ import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Permissions } from '../common/decorators/permissions.decorator';
 import { CreateBonusDto } from './dto/create-bonus.dto';
 import { UpdateBonusDto } from './dto/update-bonus.dto';
+import { BonusesListQueryDto } from './dto/bonuses-list-query.dto';
 
 @Controller('bonuses')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -13,8 +14,8 @@ export class BonusesController {
 
   @Get()
   @Permissions('manage_bonuses')
-  list(@Query('employeeId') employeeId?: string, @Query('period') period?: string) {
-    return this.bonusesService.list(employeeId, period);
+  list(@Query() query: BonusesListQueryDto) {
+    return this.bonusesService.list(query.employeeId, query.period);
   }
 
   @Get('summary/:period')
