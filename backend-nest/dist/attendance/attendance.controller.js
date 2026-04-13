@@ -174,7 +174,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], AttendanceController.prototype, "employeePeriod", null);
 __decorate([
-    (0, common_1.Get)(':month(\\d{4}-\\d{2})'),
+    (0, common_1.Get)(':month'),
     (0, permissions_decorator_1.Permissions)('view_attendance'),
     __param(0, (0, common_1.Param)('month')),
     __metadata("design:type", Function),
@@ -182,7 +182,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], AttendanceController.prototype, "month", null);
 __decorate([
-    (0, common_1.Get)(':recordId'),
+    (0, common_1.Get)('record/:recordId'),
     (0, permissions_decorator_1.Permissions)('view_attendance'),
     __param(0, (0, common_1.Param)('recordId')),
     __metadata("design:type", Function),

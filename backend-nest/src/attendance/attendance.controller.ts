@@ -129,13 +129,13 @@ export class AttendanceController {
     return this.attendanceService.employeePeriod(employeeId, query.startDate, query.endDate);
   }
 
-  @Get(':month(\\d{4}-\\d{2})')
+  @Get(':month')
   @Permissions('view_attendance')
   month(@Param('month') month: string) {
     return this.attendanceService.month(month);
   }
 
-  @Get(':recordId')
+  @Get('record/:recordId')
   @Permissions('view_attendance')
   getById(@Param('recordId') recordId: string) {
     return this.attendanceService.getById(recordId);
