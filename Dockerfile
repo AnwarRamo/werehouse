@@ -22,4 +22,4 @@ COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts
 
 EXPOSE 5001
-CMD ["sh", "-c", "npx prisma db push && node dist/main"]
+CMD ["sh", "-c", "echo 'Running prisma schema sync...' && npm run prisma:push; echo 'Prisma exit:' $?; echo 'Starting node dist/main...'; node dist/main"]
