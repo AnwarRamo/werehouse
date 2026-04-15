@@ -7,6 +7,7 @@ import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { ReserveStockDto } from './dto/reserve-stock.dto';
 import { InventoryProductsQueryDto } from './dto/inventory-products-query.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { ShortCacheService } from '../common/cache/short-cache.service';
 
 type LowStockAlert = {
   sku: string;
@@ -17,7 +18,17 @@ type LowStockAlert = {
 
 @Injectable()
 export class InventoryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly shortCache: ShortCacheService,
+  ) {}
+
+  private async invalidateInventoryCaches() {
+    await Promise.all([
+      this.shortCache.invalidatePrefix('inventory:stats'),
+      this.shortCache.invalidatePrefix('inventory:alerts:low-stock'),
+    ]);
+  }
 
   async listProducts(query: InventoryProductsQueryDto) {
     const { page, limit, skip } = resolvePagination(query);
@@ -59,6 +70,8 @@ export class InventoryService {
       },
     });
 
+    await this.invalidateInventoryCaches();
+
     return { message: 'Product created successfully', product };
   }
 
@@ -87,6 +100,9 @@ export class InventoryService {
         status: safeDto.status,
       },
     });
+
+    await this.invalidateInventoryCaches();
+
     return { message: 'Product updated successfully', product };
   }
 
@@ -116,6 +132,8 @@ export class InventoryService {
       },
     });
 
+    await this.invalidateInventoryCaches();
+
     return { message: 'Stock adjusted successfully', stockLevel: updated };
   }
 
@@ -137,6 +155,8 @@ export class InventoryService {
         available: Math.max(0, stock.quantity - reserved),
       },
     });
+
+    await this.invalidateInventoryCaches();
 
     return { message: 'Stock reserved successfully', stockLevel: updated };
   }
@@ -160,48 +180,54 @@ export class InventoryService {
       },
     });
 
+    await this.invalidateInventoryCaches();
+
     return { message: 'Reservation released successfully', stockLevel: updated };
   }
 
   async lowStockAlerts() {
-    const [products, stockSums] = await Promise.all([
-      this.prisma.product.findMany({
-        where: { status: 'active' },
-        select: { sku: true, name: true, reorderLevel: true },
-      }),
-      this.prisma.stockLevel.groupBy({
-        by: ['sku'],
-        _sum: { available: true },
-      }),
-    ]);
+    return this.shortCache.getOrSetJson('inventory:alerts:low-stock', 20, async () => {
+      const [products, stockSums] = await Promise.all([
+        this.prisma.product.findMany({
+          where: { status: 'active' },
+          select: { sku: true, name: true, reorderLevel: true },
+        }),
+        this.prisma.stockLevel.groupBy({
+          by: ['sku'],
+          _sum: { available: true },
+        }),
+      ]);
 
-    const availableBySku = new Map<string, number>(
-      stockSums.map((entry) => [entry.sku, entry._sum.available ?? 0]),
-    );
+      const availableBySku = new Map<string, number>(
+        stockSums.map((entry) => [entry.sku, entry._sum.available ?? 0]),
+      );
 
-    const alerts: LowStockAlert[] = products
-      .filter((product) => (availableBySku.get(product.sku) ?? 0) < product.reorderLevel)
-      .map((product) => ({
-        sku: product.sku,
-        name: product.name,
-        available: availableBySku.get(product.sku) ?? 0,
-        reorderLevel: product.reorderLevel,
-      }));
+      const alerts: LowStockAlert[] = products
+        .filter((product) => (availableBySku.get(product.sku) ?? 0) < product.reorderLevel)
+        .map((product) => ({
+          sku: product.sku,
+          name: product.name,
+          available: availableBySku.get(product.sku) ?? 0,
+          reorderLevel: product.reorderLevel,
+        }));
 
-    return { alerts, count: alerts.length };
+      return { alerts, count: alerts.length };
+    });
   }
 
   async stats() {
-    const [totalProducts, stock] = await Promise.all([
-      this.prisma.product.count(),
-      this.prisma.stockLevel.findMany(),
-    ]);
+    return this.shortCache.getOrSetJson('inventory:stats', 30, async () => {
+      const [totalProducts, stock] = await Promise.all([
+        this.prisma.product.count(),
+        this.prisma.stockLevel.findMany(),
+      ]);
 
-    return {
-      totalProducts,
-      totalStockRecords: stock.length,
-      totalQuantity: stock.reduce((s: number, x: (typeof stock)[number]) => s + x.quantity, 0),
-      totalReserved: stock.reduce((s: number, x: (typeof stock)[number]) => s + x.reserved, 0),
-    };
+      return {
+        totalProducts,
+        totalStockRecords: stock.length,
+        totalQuantity: stock.reduce((s: number, x: (typeof stock)[number]) => s + x.quantity, 0),
+        totalReserved: stock.reduce((s: number, x: (typeof stock)[number]) => s + x.reserved, 0),
+      };
+    });
   }
 }

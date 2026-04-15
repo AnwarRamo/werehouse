@@ -10,4 +10,12 @@ export class AttendanceListQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsDateString()
   date?: string;
+
+  @IsOptional()
+  @IsDateString()
+  startDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
 }

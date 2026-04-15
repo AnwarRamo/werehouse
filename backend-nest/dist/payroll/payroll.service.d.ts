@@ -22,9 +22,9 @@ export declare class PayrollService {
     list(query: PayrollListQueryDto): Promise<{
         payrollRuns: {
             id: string;
-            notes: string | null;
             currency: string;
             status: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -50,9 +50,9 @@ export declare class PayrollService {
         message: string;
         payrollRun: {
             id: string;
-            notes: string | null;
             currency: string;
             status: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -72,9 +72,9 @@ export declare class PayrollService {
         message: string;
         payrollRun: {
             id: string;
-            notes: string | null;
             currency: string;
             status: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -93,9 +93,9 @@ export declare class PayrollService {
     getRun(runId: string): Promise<{
         payrollRun: {
             id: string;
-            notes: string | null;
             currency: string;
             status: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -112,18 +112,18 @@ export declare class PayrollService {
         };
         items: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
             hourlyRate: Prisma.Decimal;
             department: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            anomalies: string[];
             totalDeductions: Prisma.Decimal;
             payrollRunId: string;
             employeeName: string;
             hoursWorked: Prisma.Decimal;
             grossPay: Prisma.Decimal;
             netPay: Prisma.Decimal;
-            anomalies: string[];
         }[];
         itemCount: number;
     }>;
@@ -131,27 +131,27 @@ export declare class PayrollService {
         employeeId: string;
         payrollItems: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
             hourlyRate: Prisma.Decimal;
             department: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            anomalies: string[];
             totalDeductions: Prisma.Decimal;
             payrollRunId: string;
             employeeName: string;
             hoursWorked: Prisma.Decimal;
             grossPay: Prisma.Decimal;
             netPay: Prisma.Decimal;
-            anomalies: string[];
         }[];
     }>;
     approve(runId: string, userId?: string): Promise<{
         message: string;
         payrollRun: {
             id: string;
-            notes: string | null;
             currency: string;
             status: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -171,9 +171,9 @@ export declare class PayrollService {
         message: string;
         payrollRun: {
             id: string;
-            notes: string | null;
             currency: string;
             status: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -223,9 +223,9 @@ export declare class PayrollService {
         runsCount: number;
         latestRun: {
             id: string;
-            notes: string | null;
             currency: string;
             status: string;
+            notes: string | null;
             runId: string;
             periodStart: Date;
             periodEnd: Date;
@@ -247,18 +247,18 @@ export declare class PayrollService {
         };
         items: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             employeeId: string;
             hourlyRate: Prisma.Decimal;
             department: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            anomalies: string[];
             totalDeductions: Prisma.Decimal;
             payrollRunId: string;
             employeeName: string;
             hoursWorked: Prisma.Decimal;
             grossPay: Prisma.Decimal;
             netPay: Prisma.Decimal;
-            anomalies: string[];
         }[];
     }>;
     anomalies(runId: string): Promise<{
@@ -284,9 +284,9 @@ export declare class PayrollService {
     private escapeCsv;
     processPayrollRunJob(payload: PayrollQueuePayload): Promise<{
         id: string;
-        notes: string | null;
         currency: string;
         status: string;
+        notes: string | null;
         runId: string;
         periodStart: Date;
         periodEnd: Date;

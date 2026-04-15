@@ -77,9 +77,9 @@ export declare class AuthController implements OnModuleInit {
     }>;
     getRoles(user: AuthenticatedUser, req: Request): Promise<{
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         description: string | null;
         permissions: string[];
     }[]>;

@@ -16,6 +16,9 @@ import { Permissions } from '../common/decorators/permissions.decorator';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { EmployeesListQueryDto } from './dto/employees-list-query.dto';
+import { EmployeeProfileQueryDto } from './dto/employee-profile-query.dto';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { AuthenticatedUser } from '../common/types/authenticated-user.types';
 
 @Controller('employees')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -44,6 +47,16 @@ export class EmployeesController {
   @Permissions('edit_employees')
   create(@Body() dto: CreateEmployeeDto) {
     return this.employeesService.create(dto);
+  }
+
+  @Get(':employeeId/profile')
+  @Permissions('view_employees')
+  getProfile(
+    @Param('employeeId') employeeId: string,
+    @Query() query: EmployeeProfileQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.employeesService.getProfile(employeeId, query, user);
   }
 
   @Get(':employeeId')

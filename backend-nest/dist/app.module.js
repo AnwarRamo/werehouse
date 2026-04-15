@@ -63,6 +63,7 @@ const insurance_module_1 = require("./insurance/insurance.module");
 const bonuses_module_1 = require("./bonuses/bonuses.module");
 const files_module_1 = require("./files/files.module");
 const finances_module_1 = require("./finances/finances.module");
+const short_cache_module_1 = require("./common/cache/short-cache.module");
 function parseBooleanEnv(value) {
     if (value === undefined) {
         return undefined;
@@ -185,6 +186,11 @@ exports.AppModule = AppModule = __decorate([
                         then: Joi.boolean().default(true),
                         otherwise: Joi.boolean().default(false),
                     }),
+                    CACHE_ENABLED: Joi.when('NODE_ENV', {
+                        is: 'test',
+                        then: Joi.boolean().default(false),
+                        otherwise: Joi.boolean().default(true),
+                    }),
                     REDIS_URL: Joi.string().uri().default('redis://127.0.0.1:6379'),
                     TOKEN_REVOCATION_STRICT: Joi.boolean().default(false),
                 }),
@@ -199,6 +205,7 @@ exports.AppModule = AppModule = __decorate([
                 ],
             }),
             ...queueInfraModules,
+            short_cache_module_1.ShortCacheModule,
             prisma_module_1.PrismaModule,
             health_module_1.HealthModule,
             auth_1.AuthModule,

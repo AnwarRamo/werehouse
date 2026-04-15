@@ -21,6 +21,7 @@ import { InsuranceModule } from './insurance/insurance.module';
 import { BonusesModule } from './bonuses/bonuses.module';
 import { FilesModule } from './files/files.module';
 import { FinancesModule } from './finances/finances.module';
+import { ShortCacheModule } from './common/cache/short-cache.module';
 
 function parseBooleanEnv(value: string | undefined): boolean | undefined {
   if (value === undefined) {
@@ -141,6 +142,11 @@ const queueInfraModules = queuesEnabled
           then: Joi.boolean().default(true),
           otherwise: Joi.boolean().default(false),
         }),
+        CACHE_ENABLED: Joi.when('NODE_ENV', {
+          is: 'test',
+          then: Joi.boolean().default(false),
+          otherwise: Joi.boolean().default(true),
+        }),
         REDIS_URL: Joi.string().uri().default('redis://127.0.0.1:6379'),
         TOKEN_REVOCATION_STRICT: Joi.boolean().default(false),
       }),
@@ -155,6 +161,7 @@ const queueInfraModules = queuesEnabled
       ],
     }),
     ...queueInfraModules,
+    ShortCacheModule,
     PrismaModule,
     HealthModule,
     AuthModule,

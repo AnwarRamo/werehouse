@@ -42,10 +42,14 @@ model Employee {
   employeeId     String   @unique
   name           String
   email          String   @unique
+  mobile         String?
+  nationalId     String?  @unique
   hourlyRate     Decimal  @db.Decimal(10, 2)
   currency       String   @default("SYP")
   scheduledStart String?
   scheduledEnd   String?
+  employmentStartDate DateTime? @db.Date
+  terminationDate DateTime? @db.Date
   department     String   @default("Warehouse")
   roleId         String?  @db.Uuid
   role           Role?    @relation(fields: [roleId], references: [id], onDelete: SetNull)
@@ -56,6 +60,8 @@ model Employee {
   updatedAt      DateTime @updatedAt
 
   @@index([status])
+  @@index([name])
+  @@index([createdAt])
   @@index([status, employeeId])
   @@index([department, status])
   @@index([status, createdAt])
@@ -98,6 +104,7 @@ model AttendanceRecord {
   updatedAt  DateTime @updatedAt
 
   @@index([date])
+  @@index([date, timestamp])
   @@index([employeeId, timestamp])
   @@index([date, employeeId])
   @@index([deviceId, timestamp])
@@ -121,6 +128,7 @@ model Product {
 
   stockLevels StockLevel[]
 
+  @@index([createdAt])
   @@index([status, createdAt])
   @@index([category, status, createdAt])
   @@map("products")
@@ -158,6 +166,7 @@ model ImportJob {
   updatedAt   DateTime @updatedAt
 
   @@index([entity, uploadedAt])
+  @@index([uploadedAt])
   @@index([status, uploadedAt])
   @@map("import_jobs")
 }

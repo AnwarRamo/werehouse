@@ -5,6 +5,7 @@ import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { ReserveStockDto } from './dto/reserve-stock.dto';
 import { InventoryProductsQueryDto } from './dto/inventory-products-query.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { ShortCacheService } from '../common/cache/short-cache.service';
 type LowStockAlert = {
     sku: string;
     name: string;
@@ -13,16 +14,18 @@ type LowStockAlert = {
 };
 export declare class InventoryService {
     private readonly prisma;
-    constructor(prisma: PrismaService);
+    private readonly shortCache;
+    constructor(prisma: PrismaService, shortCache: ShortCacheService);
+    private invalidateInventoryCaches;
     listProducts(query: InventoryProductsQueryDto): Promise<{
         products: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             status: string;
-            sku: string;
+            createdAt: Date;
+            updatedAt: Date;
             category: string;
+            sku: string;
             unitPrice: Prisma.Decimal;
             costPrice: Prisma.Decimal;
             reorderLevel: number;
@@ -38,12 +41,12 @@ export declare class InventoryService {
         message: string;
         product: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             status: string;
-            sku: string;
+            createdAt: Date;
+            updatedAt: Date;
             category: string;
+            sku: string;
             unitPrice: Prisma.Decimal;
             costPrice: Prisma.Decimal;
             reorderLevel: number;
@@ -52,12 +55,12 @@ export declare class InventoryService {
     getProduct(productId: string): Promise<{
         product: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             status: string;
-            sku: string;
+            createdAt: Date;
+            updatedAt: Date;
             category: string;
+            sku: string;
             unitPrice: Prisma.Decimal;
             costPrice: Prisma.Decimal;
             reorderLevel: number;
@@ -66,8 +69,8 @@ export declare class InventoryService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
             location: string;
+            sku: string;
             quantity: number;
             reserved: number;
             available: number;
@@ -77,12 +80,12 @@ export declare class InventoryService {
         message: string;
         product: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             status: string;
-            sku: string;
+            createdAt: Date;
+            updatedAt: Date;
             category: string;
+            sku: string;
             unitPrice: Prisma.Decimal;
             costPrice: Prisma.Decimal;
             reorderLevel: number;
@@ -95,8 +98,8 @@ export declare class InventoryService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
             location: string;
+            sku: string;
             quantity: number;
             reserved: number;
             available: number;
@@ -108,8 +111,8 @@ export declare class InventoryService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
             location: string;
+            sku: string;
             quantity: number;
             reserved: number;
             available: number;
@@ -121,8 +124,8 @@ export declare class InventoryService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
             location: string;
+            sku: string;
             quantity: number;
             reserved: number;
             available: number;
@@ -134,8 +137,8 @@ export declare class InventoryService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
             location: string;
+            sku: string;
             quantity: number;
             reserved: number;
             available: number;

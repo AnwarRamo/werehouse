@@ -98,9 +98,9 @@ export declare class AuthService {
     }>;
     getRoles(): Promise<{
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         description: string | null;
         permissions: string[];
     }[]>;

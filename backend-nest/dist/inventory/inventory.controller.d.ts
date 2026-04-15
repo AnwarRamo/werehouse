@@ -10,12 +10,12 @@ export declare class InventoryController {
     listProducts(query: InventoryProductsQueryDto): Promise<{
         products: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             status: string;
-            sku: string;
+            createdAt: Date;
+            updatedAt: Date;
             category: string;
+            sku: string;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
             costPrice: import("@prisma/client-runtime-utils").Decimal;
             reorderLevel: number;
@@ -31,12 +31,12 @@ export declare class InventoryController {
         message: string;
         product: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             status: string;
-            sku: string;
+            createdAt: Date;
+            updatedAt: Date;
             category: string;
+            sku: string;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
             costPrice: import("@prisma/client-runtime-utils").Decimal;
             reorderLevel: number;
@@ -45,12 +45,12 @@ export declare class InventoryController {
     getProduct(productId: string): Promise<{
         product: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             status: string;
-            sku: string;
+            createdAt: Date;
+            updatedAt: Date;
             category: string;
+            sku: string;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
             costPrice: import("@prisma/client-runtime-utils").Decimal;
             reorderLevel: number;
@@ -59,8 +59,8 @@ export declare class InventoryController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
             location: string;
+            sku: string;
             quantity: number;
             reserved: number;
             available: number;
@@ -70,12 +70,12 @@ export declare class InventoryController {
         message: string;
         product: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             status: string;
-            sku: string;
+            createdAt: Date;
+            updatedAt: Date;
             category: string;
+            sku: string;
             unitPrice: import("@prisma/client-runtime-utils").Decimal;
             costPrice: import("@prisma/client-runtime-utils").Decimal;
             reorderLevel: number;
@@ -88,8 +88,8 @@ export declare class InventoryController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
             location: string;
+            sku: string;
             quantity: number;
             reserved: number;
             available: number;
@@ -101,8 +101,8 @@ export declare class InventoryController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
             location: string;
+            sku: string;
             quantity: number;
             reserved: number;
             available: number;
@@ -114,8 +114,8 @@ export declare class InventoryController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
             location: string;
+            sku: string;
             quantity: number;
             reserved: number;
             available: number;
@@ -127,8 +127,8 @@ export declare class InventoryController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            sku: string;
             location: string;
+            sku: string;
             quantity: number;
             reserved: number;
             available: number;

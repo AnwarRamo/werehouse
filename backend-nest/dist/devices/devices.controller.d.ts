@@ -8,15 +8,15 @@ export declare class DevicesController {
     list(query: DevicesListQueryDto): Promise<{
         devices: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             status: string;
-            location: string;
+            createdAt: Date;
+            updatedAt: Date;
             deviceId: string;
+            location: string;
+            port: number | null;
             model: string;
             ip: string | null;
-            port: number | null;
             lastSync: Date | null;
         }[];
         pagination: {
@@ -30,44 +30,44 @@ export declare class DevicesController {
         message: string;
         device: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             status: string;
-            location: string;
+            createdAt: Date;
+            updatedAt: Date;
             deviceId: string;
+            location: string;
+            port: number | null;
             model: string;
             ip: string | null;
-            port: number | null;
             lastSync: Date | null;
         };
     }>;
     getOne(deviceId: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         name: string;
         status: string;
-        location: string;
+        createdAt: Date;
+        updatedAt: Date;
         deviceId: string;
+        location: string;
+        port: number | null;
         model: string;
         ip: string | null;
-        port: number | null;
         lastSync: Date | null;
     }>;
     update(deviceId: string, dto: UpdateDeviceDto): Promise<{
         message: string;
         device: {
             id: string;
-            createdAt: Date;
-            updatedAt: Date;
             name: string;
             status: string;
-            location: string;
+            createdAt: Date;
+            updatedAt: Date;
             deviceId: string;
+            location: string;
+            port: number | null;
             model: string;
             ip: string | null;
-            port: number | null;
             lastSync: Date | null;
         };
     }>;

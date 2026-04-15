@@ -29,6 +29,18 @@ __decorate([
     __metadata("design:type", String)
 ], CreateEmployeeDto.prototype, "email", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(30),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "mobile", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(50),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "nationalId", void 0);
+__decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], CreateEmployeeDto.prototype, "hourlyRate", void 0);
@@ -52,4 +64,14 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateEmployeeDto.prototype, "scheduledEnd", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsDateString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "employmentStartDate", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsDateString)(),
+    __metadata("design:type", String)
+], CreateEmployeeDto.prototype, "terminationDate", void 0);
 //# sourceMappingURL=create-employee.dto.js.map

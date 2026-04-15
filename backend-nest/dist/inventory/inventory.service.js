@@ -14,9 +14,17 @@ const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
 const pagination_util_1 = require("../common/utils/pagination.util");
+const short_cache_service_1 = require("../common/cache/short-cache.service");
 let InventoryService = class InventoryService {
-    constructor(prisma) {
+    constructor(prisma, shortCache) {
         this.prisma = prisma;
+        this.shortCache = shortCache;
+    }
+    async invalidateInventoryCaches() {
+        await Promise.all([
+            this.shortCache.invalidatePrefix('inventory:stats'),
+            this.shortCache.invalidatePrefix('inventory:alerts:low-stock'),
+        ]);
     }
     async listProducts(query) {
         const { page, limit, skip } = (0, pagination_util_1.resolvePagination)(query);
@@ -55,6 +63,7 @@ let InventoryService = class InventoryService {
                 status: 'active',
             },
         });
+        await this.invalidateInventoryCaches();
         return { message: 'Product created successfully', product };
     }
     async getProduct(productId) {
@@ -79,6 +88,7 @@ let InventoryService = class InventoryService {
                 status: safeDto.status,
             },
         });
+        await this.invalidateInventoryCaches();
         return { message: 'Product updated successfully', product };
     }
     async stockBySku(sku) {
@@ -103,6 +113,7 @@ let InventoryService = class InventoryService {
                 available: Math.max(0, quantity - reserved),
             },
         });
+        await this.invalidateInventoryCaches();
         return { message: 'Stock adjusted successfully', stockLevel: updated };
     }
     async reserveStock(dto) {
@@ -122,6 +133,7 @@ let InventoryService = class InventoryService {
                 available: Math.max(0, stock.quantity - reserved),
             },
         });
+        await this.invalidateInventoryCaches();
         return { message: 'Stock reserved successfully', stockLevel: updated };
     }
     async releaseReservation(dto) {
@@ -141,46 +153,52 @@ let InventoryService = class InventoryService {
                 available: Math.max(0, stock.quantity - reserved),
             },
         });
+        await this.invalidateInventoryCaches();
         return { message: 'Reservation released successfully', stockLevel: updated };
     }
     async lowStockAlerts() {
-        const [products, stockSums] = await Promise.all([
-            this.prisma.product.findMany({
-                where: { status: 'active' },
-                select: { sku: true, name: true, reorderLevel: true },
-            }),
-            this.prisma.stockLevel.groupBy({
-                by: ['sku'],
-                _sum: { available: true },
-            }),
-        ]);
-        const availableBySku = new Map(stockSums.map((entry) => [entry.sku, entry._sum.available ?? 0]));
-        const alerts = products
-            .filter((product) => (availableBySku.get(product.sku) ?? 0) < product.reorderLevel)
-            .map((product) => ({
-            sku: product.sku,
-            name: product.name,
-            available: availableBySku.get(product.sku) ?? 0,
-            reorderLevel: product.reorderLevel,
-        }));
-        return { alerts, count: alerts.length };
+        return this.shortCache.getOrSetJson('inventory:alerts:low-stock', 20, async () => {
+            const [products, stockSums] = await Promise.all([
+                this.prisma.product.findMany({
+                    where: { status: 'active' },
+                    select: { sku: true, name: true, reorderLevel: true },
+                }),
+                this.prisma.stockLevel.groupBy({
+                    by: ['sku'],
+                    _sum: { available: true },
+                }),
+            ]);
+            const availableBySku = new Map(stockSums.map((entry) => [entry.sku, entry._sum.available ?? 0]));
+            const alerts = products
+                .filter((product) => (availableBySku.get(product.sku) ?? 0) < product.reorderLevel)
+                .map((product) => ({
+                sku: product.sku,
+                name: product.name,
+                available: availableBySku.get(product.sku) ?? 0,
+                reorderLevel: product.reorderLevel,
+            }));
+            return { alerts, count: alerts.length };
+        });
     }
     async stats() {
-        const [totalProducts, stock] = await Promise.all([
-            this.prisma.product.count(),
-            this.prisma.stockLevel.findMany(),
-        ]);
-        return {
-            totalProducts,
-            totalStockRecords: stock.length,
-            totalQuantity: stock.reduce((s, x) => s + x.quantity, 0),
-            totalReserved: stock.reduce((s, x) => s + x.reserved, 0),
-        };
+        return this.shortCache.getOrSetJson('inventory:stats', 30, async () => {
+            const [totalProducts, stock] = await Promise.all([
+                this.prisma.product.count(),
+                this.prisma.stockLevel.findMany(),
+            ]);
+            return {
+                totalProducts,
+                totalStockRecords: stock.length,
+                totalQuantity: stock.reduce((s, x) => s + x.quantity, 0),
+                totalReserved: stock.reduce((s, x) => s + x.reserved, 0),
+            };
+        });
     }
 };
 exports.InventoryService = InventoryService;
 exports.InventoryService = InventoryService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        short_cache_service_1.ShortCacheService])
 ], InventoryService);
 //# sourceMappingURL=inventory.service.js.map

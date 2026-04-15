@@ -49,6 +49,7 @@ const path_1 = require("path");
 const XLSX = __importStar(require("xlsx"));
 const prisma_service_1 = require("../prisma/prisma.service");
 const pagination_util_1 = require("../common/utils/pagination.util");
+const short_cache_service_1 = require("../common/cache/short-cache.service");
 const ATTENDANCE_DELETION_ENTITY = 'attendance';
 const DEFAULT_ALERT_SCHEDULE_START = '08:00';
 const DEFAULT_LATE_THRESHOLD_MINUTES = 15;
@@ -66,8 +67,16 @@ const ATTENDANCE_IMPORT_EXTENSIONS = new Set([
     '.ods',
 ]);
 let AttendanceService = class AttendanceService {
-    constructor(prisma) {
+    constructor(prisma, shortCache) {
         this.prisma = prisma;
+        this.shortCache = shortCache;
+    }
+    async invalidateAttendanceDashboardCaches() {
+        await Promise.all([
+            this.shortCache.invalidatePrefix('attendance:stats:'),
+            this.shortCache.invalidatePrefix('attendance:anomalies:'),
+            this.shortCache.invalidatePrefix('attendance:alerts:'),
+        ]);
     }
     deriveDateKey(timestampInput, parsed) {
         const fromInput = /^(\d{4}-\d{2}-\d{2})/.exec(timestampInput)?.[1];
@@ -295,8 +304,18 @@ let AttendanceService = class AttendanceService {
         const where = {};
         if (query.employeeId)
             where.employeeId = query.employeeId;
-        if (query.date)
+        if (query.date) {
             where.date = query.date;
+        }
+        else if (query.startDate || query.endDate) {
+            if (query.startDate && query.endDate && query.startDate > query.endDate) {
+                throw new common_1.BadRequestException('startDate must be less than or equal to endDate');
+            }
+            where.date = {
+                ...(query.startDate ? { gte: query.startDate } : {}),
+                ...(query.endDate ? { lte: query.endDate } : {}),
+            };
+        }
         const [records, total] = await Promise.all([
             this.prisma.attendanceRecord.findMany({
                 where,
@@ -328,6 +347,7 @@ let AttendanceService = class AttendanceService {
                 date,
             },
         });
+        await this.invalidateAttendanceDashboardCaches();
         return { message: 'Attendance record created successfully', record };
     }
     async upload(file, userId) {
@@ -387,6 +407,7 @@ let AttendanceService = class AttendanceService {
                 });
             }
         }
+        await this.invalidateAttendanceDashboardCaches();
         return {
             message: errors.length > 0
                 ? 'Attendance upload completed with partial failures'
@@ -462,6 +483,7 @@ let AttendanceService = class AttendanceService {
             where: { id: recordId },
             data: payload,
         });
+        await this.invalidateAttendanceDashboardCaches();
         return { message: 'Attendance record updated successfully', record: updated };
     }
     async listDeletedHistory() {
@@ -487,6 +509,7 @@ let AttendanceService = class AttendanceService {
             await tx.attendanceRecord.delete({ where: { id: record.id } });
             return createdHistory;
         });
+        await this.invalidateAttendanceDashboardCaches();
         return {
             message: 'Attendance record deleted successfully',
             recordId: record.id,
@@ -551,6 +574,7 @@ let AttendanceService = class AttendanceService {
             });
             return created;
         });
+        await this.invalidateAttendanceDashboardCaches();
         return {
             message: 'Attendance record restored successfully',
             record: restoredRecord,
@@ -558,131 +582,137 @@ let AttendanceService = class AttendanceService {
     }
     async stats(startDate, endDate) {
         const range = this.resolveRange(startDate, endDate);
-        const records = await this.prisma.attendanceRecord.findMany({
-            where: {
-                date: { gte: range.startDate, lte: range.endDate },
-            },
+        return this.shortCache.getOrSetJson(`attendance:stats:${range.startDate}:${range.endDate}`, 20, async () => {
+            const records = await this.prisma.attendanceRecord.findMany({
+                where: {
+                    date: { gte: range.startDate, lte: range.endDate },
+                },
+            });
+            const unverified = records.filter((r) => !r.verified).length;
+            const late = records.filter((r) => (r.shiftPair?.minutesLate || 0) > 5).length;
+            return {
+                period: range,
+                statistics: {
+                    totalRecords: records.length,
+                    unverifiedRecords: unverified,
+                    totalLateArrivals: late,
+                },
+            };
         });
-        const unverified = records.filter((r) => !r.verified).length;
-        const late = records.filter((r) => (r.shiftPair?.minutesLate || 0) > 5).length;
-        return {
-            period: range,
-            statistics: {
-                totalRecords: records.length,
-                unverifiedRecords: unverified,
-                totalLateArrivals: late,
-            },
-        };
     }
     async anomalies(startDate, endDate) {
         const range = this.resolveRange(startDate, endDate);
-        const candidates = await this.prisma.attendanceRecord.findMany({
-            where: {
-                date: { gte: range.startDate, lte: range.endDate },
-            },
+        return this.shortCache.getOrSetJson(`attendance:anomalies:${range.startDate}:${range.endDate}`, 20, async () => {
+            const candidates = await this.prisma.attendanceRecord.findMany({
+                where: {
+                    date: { gte: range.startDate, lte: range.endDate },
+                },
+            });
+            const anomalies = candidates.filter((record) => {
+                if (!record.verified)
+                    return true;
+                const shiftPair = record.shiftPair;
+                return (shiftPair?.minutesLate || 0) > 60;
+            });
+            return {
+                period: range,
+                anomalies,
+                anomalyCount: anomalies.length,
+            };
         });
-        const anomalies = candidates.filter((record) => {
-            if (!record.verified)
-                return true;
-            const shiftPair = record.shiftPair;
-            return (shiftPair?.minutesLate || 0) > 60;
-        });
-        return {
-            period: range,
-            anomalies,
-            anomalyCount: anomalies.length,
-        };
     }
     async alerts(date, lateThresholdMinutes = DEFAULT_LATE_THRESHOLD_MINUTES) {
         const targetDate = date || this.toDateKey();
         const threshold = Number.isFinite(lateThresholdMinutes)
             ? Math.max(0, Math.floor(lateThresholdMinutes))
             : DEFAULT_LATE_THRESHOLD_MINUTES;
-        const [activeEmployees, records] = await Promise.all([
-            this.prisma.employee.findMany({
-                where: { status: 'active' },
-                select: {
-                    employeeId: true,
-                    name: true,
-                    department: true,
-                    scheduledStart: true,
+        return this.shortCache.getOrSetJson(`attendance:alerts:${targetDate}:${threshold}`, 15, async () => {
+            const [activeEmployees, records] = await Promise.all([
+                this.prisma.employee.findMany({
+                    where: { status: 'active' },
+                    select: {
+                        employeeId: true,
+                        name: true,
+                        department: true,
+                        scheduledStart: true,
+                    },
+                }),
+                this.prisma.attendanceRecord.findMany({
+                    where: { date: targetDate },
+                    orderBy: { timestamp: 'asc' },
+                    select: {
+                        employeeId: true,
+                        type: true,
+                        timestamp: true,
+                        shiftPair: true,
+                    },
+                }),
+            ]);
+            const attendanceByEmployee = new Map();
+            for (const record of records) {
+                const snapshot = attendanceByEmployee.get(record.employeeId) || {
+                    firstIn: null,
+                    maxMinutesLateFromShiftPair: null,
+                };
+                const shiftPair = record.shiftPair;
+                if (typeof shiftPair?.minutesLate === 'number' && Number.isFinite(shiftPair.minutesLate)) {
+                    const existingMinutes = snapshot.maxMinutesLateFromShiftPair ?? 0;
+                    snapshot.maxMinutesLateFromShiftPair = Math.max(existingMinutes, Math.max(0, Math.floor(shiftPair.minutesLate)));
+                }
+                if (record.type.toUpperCase() === 'IN' && !snapshot.firstIn) {
+                    snapshot.firstIn = record.timestamp;
+                }
+                attendanceByEmployee.set(record.employeeId, snapshot);
+            }
+            const absentAlerts = [];
+            const lateAlerts = [];
+            for (const employee of activeEmployees) {
+                const snapshot = attendanceByEmployee.get(employee.employeeId);
+                const scheduledStart = employee.scheduledStart || DEFAULT_ALERT_SCHEDULE_START;
+                if (!snapshot?.firstIn) {
+                    absentAlerts.push({
+                        status: 'absent',
+                        employeeId: employee.employeeId,
+                        name: employee.name,
+                        department: employee.department,
+                        scheduledStart,
+                        checkIn: null,
+                        minutesLate: 0,
+                    });
+                    continue;
+                }
+                const minutesLate = this.resolveMinutesLate(snapshot.firstIn, scheduledStart, snapshot.maxMinutesLateFromShiftPair);
+                if (minutesLate >= threshold) {
+                    lateAlerts.push({
+                        status: 'late',
+                        employeeId: employee.employeeId,
+                        name: employee.name,
+                        department: employee.department,
+                        scheduledStart,
+                        checkIn: snapshot.firstIn.toISOString(),
+                        minutesLate,
+                    });
+                }
+            }
+            const alerts = [...absentAlerts, ...lateAlerts].sort((a, b) => {
+                if (a.status !== b.status) {
+                    return a.status === 'absent' ? -1 : 1;
+                }
+                return a.name.localeCompare(b.name);
+            });
+            return {
+                date: targetDate,
+                lateThresholdMinutes: threshold,
+                summary: {
+                    activeEmployees: activeEmployees.length,
+                    checkedInCount: activeEmployees.length - absentAlerts.length,
+                    absentCount: absentAlerts.length,
+                    lateCount: lateAlerts.length,
+                    totalAlerts: alerts.length,
                 },
-            }),
-            this.prisma.attendanceRecord.findMany({
-                where: { date: targetDate },
-                orderBy: { timestamp: 'asc' },
-                select: {
-                    employeeId: true,
-                    type: true,
-                    timestamp: true,
-                    shiftPair: true,
-                },
-            }),
-        ]);
-        const attendanceByEmployee = new Map();
-        for (const record of records) {
-            const snapshot = attendanceByEmployee.get(record.employeeId) || {
-                firstIn: null,
-                maxMinutesLateFromShiftPair: null,
+                alerts,
             };
-            const shiftPair = record.shiftPair;
-            if (typeof shiftPair?.minutesLate === 'number' && Number.isFinite(shiftPair.minutesLate)) {
-                const existingMinutes = snapshot.maxMinutesLateFromShiftPair ?? 0;
-                snapshot.maxMinutesLateFromShiftPair = Math.max(existingMinutes, Math.max(0, Math.floor(shiftPair.minutesLate)));
-            }
-            if (record.type.toUpperCase() === 'IN' && !snapshot.firstIn) {
-                snapshot.firstIn = record.timestamp;
-            }
-            attendanceByEmployee.set(record.employeeId, snapshot);
-        }
-        const absentAlerts = [];
-        const lateAlerts = [];
-        for (const employee of activeEmployees) {
-            const snapshot = attendanceByEmployee.get(employee.employeeId);
-            const scheduledStart = employee.scheduledStart || DEFAULT_ALERT_SCHEDULE_START;
-            if (!snapshot?.firstIn) {
-                absentAlerts.push({
-                    status: 'absent',
-                    employeeId: employee.employeeId,
-                    name: employee.name,
-                    department: employee.department,
-                    scheduledStart,
-                    checkIn: null,
-                    minutesLate: 0,
-                });
-                continue;
-            }
-            const minutesLate = this.resolveMinutesLate(snapshot.firstIn, scheduledStart, snapshot.maxMinutesLateFromShiftPair);
-            if (minutesLate >= threshold) {
-                lateAlerts.push({
-                    status: 'late',
-                    employeeId: employee.employeeId,
-                    name: employee.name,
-                    department: employee.department,
-                    scheduledStart,
-                    checkIn: snapshot.firstIn.toISOString(),
-                    minutesLate,
-                });
-            }
-        }
-        const alerts = [...absentAlerts, ...lateAlerts].sort((a, b) => {
-            if (a.status !== b.status) {
-                return a.status === 'absent' ? -1 : 1;
-            }
-            return a.name.localeCompare(b.name);
         });
-        return {
-            date: targetDate,
-            lateThresholdMinutes: threshold,
-            summary: {
-                activeEmployees: activeEmployees.length,
-                checkedInCount: activeEmployees.length - absentAlerts.length,
-                absentCount: absentAlerts.length,
-                lateCount: lateAlerts.length,
-                totalAlerts: alerts.length,
-            },
-            alerts,
-        };
     }
     async employeeOnDate(employeeId, date) {
         const records = await this.prisma.attendanceRecord.findMany({
@@ -716,6 +746,7 @@ let AttendanceService = class AttendanceService {
 exports.AttendanceService = AttendanceService;
 exports.AttendanceService = AttendanceService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        short_cache_service_1.ShortCacheService])
 ], AttendanceService);
 //# sourceMappingURL=attendance.service.js.map

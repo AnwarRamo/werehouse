@@ -13,16 +13,16 @@ export declare class AttendanceController {
     list(query: AttendanceListQueryDto): Promise<{
         records: {
             id: string;
-            notes: string | null;
+            employeeId: string;
             createdAt: Date;
             updatedAt: Date;
-            employeeId: string;
-            location: string | null;
             timestamp: Date;
             type: string;
             deviceId: string | null;
+            location: string | null;
             source: string;
             verified: boolean;
+            notes: string | null;
             date: string;
             shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
         }[];
@@ -51,16 +51,16 @@ export declare class AttendanceController {
         };
         anomalies: {
             id: string;
-            notes: string | null;
+            employeeId: string;
             createdAt: Date;
             updatedAt: Date;
-            employeeId: string;
-            location: string | null;
             timestamp: Date;
             type: string;
             deviceId: string | null;
+            location: string | null;
             source: string;
             verified: boolean;
+            notes: string | null;
             date: string;
             shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
         }[];
@@ -100,16 +100,16 @@ export declare class AttendanceController {
         message: string;
         record: {
             id: string;
-            notes: string | null;
+            employeeId: string;
             createdAt: Date;
             updatedAt: Date;
-            employeeId: string;
-            location: string | null;
             timestamp: Date;
             type: string;
             deviceId: string | null;
+            location: string | null;
             source: string;
             verified: boolean;
+            notes: string | null;
             date: string;
             shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
         };
@@ -129,16 +129,16 @@ export declare class AttendanceController {
         message: string;
         record: {
             id: string;
-            notes: string | null;
+            employeeId: string;
             createdAt: Date;
             updatedAt: Date;
-            employeeId: string;
-            location: string | null;
             timestamp: Date;
             type: string;
             deviceId: string | null;
+            location: string | null;
             source: string;
             verified: boolean;
+            notes: string | null;
             date: string;
             shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
         };
@@ -148,16 +148,16 @@ export declare class AttendanceController {
         date: string;
         records: {
             id: string;
-            notes: string | null;
+            employeeId: string;
             createdAt: Date;
             updatedAt: Date;
-            employeeId: string;
-            location: string | null;
             timestamp: Date;
             type: string;
             deviceId: string | null;
+            location: string | null;
             source: string;
             verified: boolean;
+            notes: string | null;
             date: string;
             shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
         }[];
@@ -171,16 +171,16 @@ export declare class AttendanceController {
         };
         records: {
             id: string;
-            notes: string | null;
+            employeeId: string;
             createdAt: Date;
             updatedAt: Date;
-            employeeId: string;
-            location: string | null;
             timestamp: Date;
             type: string;
             deviceId: string | null;
+            location: string | null;
             source: string;
             verified: boolean;
+            notes: string | null;
             date: string;
             shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
         }[];
@@ -202,32 +202,32 @@ export declare class AttendanceController {
         };
         records: {
             id: string;
-            notes: string | null;
+            employeeId: string;
             createdAt: Date;
             updatedAt: Date;
-            employeeId: string;
-            location: string | null;
             timestamp: Date;
             type: string;
             deviceId: string | null;
+            location: string | null;
             source: string;
             verified: boolean;
+            notes: string | null;
             date: string;
             shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
         }[];
     }>;
     getById(recordId: string): Promise<{
         id: string;
-        notes: string | null;
+        employeeId: string;
         createdAt: Date;
         updatedAt: Date;
-        employeeId: string;
-        location: string | null;
         timestamp: Date;
         type: string;
         deviceId: string | null;
+        location: string | null;
         source: string;
         verified: boolean;
+        notes: string | null;
         date: string;
         shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
     }>;
@@ -235,16 +235,16 @@ export declare class AttendanceController {
         message: string;
         record: {
             id: string;
-            notes: string | null;
+            employeeId: string;
             createdAt: Date;
             updatedAt: Date;
-            employeeId: string;
-            location: string | null;
             timestamp: Date;
             type: string;
             deviceId: string | null;
+            location: string | null;
             source: string;
             verified: boolean;
+            notes: string | null;
             date: string;
             shiftPair: import("@prisma/client/runtime/client").JsonValue | null;
         };

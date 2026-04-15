@@ -21,6 +21,8 @@ const permissions_decorator_1 = require("../common/decorators/permissions.decora
 const create_employee_dto_1 = require("./dto/create-employee.dto");
 const update_employee_dto_1 = require("./dto/update-employee.dto");
 const employees_list_query_dto_1 = require("./dto/employees-list-query.dto");
+const employee_profile_query_dto_1 = require("./dto/employee-profile-query.dto");
+const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
 let EmployeesController = class EmployeesController {
     constructor(employeesService) {
         this.employeesService = employeesService;
@@ -36,6 +38,9 @@ let EmployeesController = class EmployeesController {
     }
     create(dto) {
         return this.employeesService.create(dto);
+    }
+    getProfile(employeeId, query, user) {
+        return this.employeesService.getProfile(employeeId, query, user);
     }
     getOne(employeeId) {
         return this.employeesService.getByEmployeeId(employeeId);
@@ -79,6 +84,16 @@ __decorate([
     __metadata("design:paramtypes", [create_employee_dto_1.CreateEmployeeDto]),
     __metadata("design:returntype", void 0)
 ], EmployeesController.prototype, "create", null);
+__decorate([
+    (0, common_1.Get)(':employeeId/profile'),
+    (0, permissions_decorator_1.Permissions)('view_employees'),
+    __param(0, (0, common_1.Param)('employeeId')),
+    __param(1, (0, common_1.Query)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, employee_profile_query_dto_1.EmployeeProfileQueryDto, Object]),
+    __metadata("design:returntype", void 0)
+], EmployeesController.prototype, "getProfile", null);
 __decorate([
     (0, common_1.Get)(':employeeId'),
     (0, permissions_decorator_1.Permissions)('view_employees'),

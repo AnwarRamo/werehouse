@@ -14,11 +14,11 @@ export declare class ImportsService {
     history(query: ImportsHistoryQueryDto): Promise<{
         imports: {
             id: string;
+            status: string;
             createdAt: Date;
             updatedAt: Date;
-            status: string;
-            jobId: string;
             entity: string;
+            jobId: string;
             fileName: string;
             uploadedBy: string;
             uploadedAt: Date;
@@ -45,11 +45,11 @@ export declare class ImportsService {
     details(jobId: string): Promise<{
         errorSummary: Record<string, number>;
         id: string;
+        status: string;
         createdAt: Date;
         updatedAt: Date;
-        status: string;
-        jobId: string;
         entity: string;
+        jobId: string;
         fileName: string;
         uploadedBy: string;
         uploadedAt: Date;
@@ -132,6 +132,7 @@ export declare class ImportsService {
     private detectDelimiter;
     private assertRowsLimit;
     private value;
+    private parseFlexibleNumber;
     private resolveDefaultRoleId;
     private resolveRoleId;
     private assertEmployeesHeaders;
