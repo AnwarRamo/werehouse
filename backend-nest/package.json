@@ -18,7 +18,7 @@
     "start:prod": "node dist/main",
     "start:worker:payroll:prod": "node dist/payroll-worker.js",
     "prisma:generate": "prisma generate",
-    "prisma:push": "prisma db push",
+    "prisma:push": "prisma db push --accept-data-loss",
     "seed:demo": "node scripts/seed-demo.js",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "test:security": "npm run test:e2e -- security.e2e-spec.ts",
