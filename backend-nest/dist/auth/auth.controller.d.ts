@@ -69,6 +69,14 @@ export declare class AuthController implements OnModuleInit {
         };
         roles: string[];
         permissions: string[];
+        attendance: {
+            recordId: string;
+            employeeId: string;
+            type: "IN" | "OUT";
+            timestamp: string;
+            date: string;
+            action: "created" | "updated";
+        } | null;
     }, "token">>;
     biometricRevoke(dto: BiometricRevokeDto, user: AuthenticatedUser): Promise<{
         ok: boolean;
@@ -83,6 +91,7 @@ export declare class AuthController implements OnModuleInit {
         name: string;
         username: string;
         email: string;
+        employeeId: string | null;
         status: string;
         role: string;
         roles: string[];

@@ -11,16 +11,29 @@ import { BiometricRevokeDto } from './dto/biometric-revoke.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthenticatedUser } from '../common/types/authenticated-user.types';
 import { TokenRevocationService } from './token-revocation.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
+type BiometricAttendanceAction = 'created' | 'updated';
+type BiometricAttendanceResult = {
+    recordId: string;
+    employeeId: string;
+    type: 'IN' | 'OUT';
+    timestamp: string;
+    date: string;
+    action: BiometricAttendanceAction;
+};
 export declare class AuthService {
     private readonly prisma;
     private readonly jwtService;
     private readonly config;
     private readonly tokenRevocation;
+    private readonly realtimeGateway;
     private readonly logger;
     private readonly biometricChallenges;
     private readonly biometricCredentialsByUser;
     private static readonly BIOMETRIC_CHALLENGE_TTL_MS;
     private static readonly BIOMETRIC_MAX_CREDENTIALS_PER_USER;
+    private static readonly EMPLOYEE_ID_REGEX;
+    private static readonly ATTENDANCE_OVERRIDE_ROLES;
     private static readonly ED25519_SPKI_PREFIX;
     private readonly bcryptRounds;
     private readonly maxLoginAttempts;
@@ -35,7 +48,7 @@ export declare class AuthService {
     private readonly superAdminEmail;
     private readonly superAdminPassword;
     private static readonly ADMIN_PERMISSIONS;
-    constructor(prisma: PrismaService, jwtService: JwtService, config: ConfigService, tokenRevocation: TokenRevocationService);
+    constructor(prisma: PrismaService, jwtService: JwtService, config: ConfigService, tokenRevocation: TokenRevocationService, realtimeGateway: RealtimeGateway);
     private isProtectedAdminIdentity;
     private upsertProtectedAdminUser;
     private resolveLockoutUntilDate;
@@ -45,6 +58,13 @@ export declare class AuthService {
     ensureAdminBootstrap(): Promise<void>;
     private buildAuthPayload;
     private toPublicAuthUser;
+    private toLocalDateKey;
+    private toArabicTimeLabel;
+    private buildAttendanceRealtimePayload;
+    private isAttendanceOverrideAllowed;
+    private resolveEmployeeIdByIdentity;
+    private resolveEmployeeIdForBiometricAttendance;
+    private upsertBiometricAttendanceRecord;
     private hashChallenge;
     private pruneBiometricState;
     private getUserCredentialMap;
@@ -82,6 +102,7 @@ export declare class AuthService {
         };
         roles: string[];
         permissions: string[];
+        attendance: BiometricAttendanceResult | null;
     }>;
     revokeBiometric(userId: string, dto: BiometricRevokeDto): Promise<{
         ok: boolean;
@@ -118,6 +139,7 @@ export declare class AuthService {
         name: string;
         username: string;
         email: string;
+        employeeId: string | null;
         status: string;
         role: string;
         roles: string[];
@@ -150,11 +172,12 @@ export declare class AuthService {
         }[];
     }>;
     getRoles(): Promise<{
+        description: string | null;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
-        description: string | null;
         permissions: string[];
     }[]>;
 }
+export {};

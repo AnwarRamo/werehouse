@@ -51,12 +51,14 @@ const crypto_1 = require("crypto");
 const bcrypt = __importStar(require("bcryptjs"));
 const prisma_service_1 = require("../prisma/prisma.service");
 const token_revocation_service_1 = require("./token-revocation.service");
+const realtime_gateway_1 = require("../realtime/realtime.gateway");
 let AuthService = AuthService_1 = class AuthService {
-    constructor(prisma, jwtService, config, tokenRevocation) {
+    constructor(prisma, jwtService, config, tokenRevocation, realtimeGateway) {
         this.prisma = prisma;
         this.jwtService = jwtService;
         this.config = config;
         this.tokenRevocation = tokenRevocation;
+        this.realtimeGateway = realtimeGateway;
         this.logger = new common_1.Logger(AuthService_1.name);
         this.biometricChallenges = new Map();
         this.biometricCredentialsByUser = new Map();
@@ -230,6 +232,148 @@ let AuthService = AuthService_1 = class AuthService {
             name: user.username,
             username: user.username,
             role: roleName,
+        };
+    }
+    toLocalDateKey(date = new Date()) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    toArabicTimeLabel(value) {
+        const parsed = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(parsed.getTime())) {
+            return '--:--';
+        }
+        return new Intl.DateTimeFormat('ar-SY', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        }).format(parsed);
+    }
+    buildAttendanceRealtimePayload(input) {
+        const actionLabel = input.attendance.type === 'OUT' ? 'خروج' : 'حضور';
+        const time = this.toArabicTimeLabel(input.attendance.timestamp);
+        return {
+            employeeId: input.attendance.employeeId,
+            employeeName: input.employeeName,
+            type: input.attendance.type,
+            timestamp: input.attendance.timestamp,
+            date: input.attendance.date,
+            time,
+            source: 'biometric',
+            status: 'success',
+            action: input.attendance.action,
+            message: `تم تسجيل ${actionLabel} ${input.employeeName} الساعة ${time}`,
+        };
+    }
+    isAttendanceOverrideAllowed(roleName) {
+        const normalizedRole = (roleName || '').trim().toLowerCase();
+        return AuthService_1.ATTENDANCE_OVERRIDE_ROLES.has(normalizedRole);
+    }
+    async resolveEmployeeIdByIdentity(input) {
+        if (input.email) {
+            const byEmail = await this.prisma.employee.findFirst({
+                where: {
+                    email: { equals: input.email, mode: 'insensitive' },
+                },
+                select: { employeeId: true },
+            });
+            if (byEmail?.employeeId) {
+                return byEmail.employeeId;
+            }
+        }
+        const usernameCandidate = (input.username || '').trim().toUpperCase();
+        if (!AuthService_1.EMPLOYEE_ID_REGEX.test(usernameCandidate)) {
+            return null;
+        }
+        const byEmployeeId = await this.prisma.employee.findUnique({
+            where: { employeeId: usernameCandidate },
+            select: { employeeId: true },
+        });
+        return byEmployeeId?.employeeId || null;
+    }
+    async resolveEmployeeIdForBiometricAttendance(input) {
+        const requestedEmployeeId = input.requestedEmployeeId?.trim();
+        if (requestedEmployeeId) {
+            const requestedEmployee = await this.prisma.employee.findUnique({
+                where: { employeeId: requestedEmployeeId },
+                select: { employeeId: true, email: true },
+            });
+            if (!requestedEmployee) {
+                throw new common_1.BadRequestException(`Employee not found: ${requestedEmployeeId}`);
+            }
+            if (this.isAttendanceOverrideAllowed(input.user.role?.name)) {
+                return requestedEmployee.employeeId;
+            }
+            const matchesUserEmail = Boolean(input.user.email) &&
+                requestedEmployee.email.toLowerCase() === input.user.email.toLowerCase();
+            const matchesUsernameEmployeeId = (input.user.username || '').trim().toLowerCase() ===
+                requestedEmployee.employeeId.toLowerCase();
+            if (!matchesUserEmail && !matchesUsernameEmployeeId) {
+                throw new common_1.UnauthorizedException('You are not allowed to record attendance for another employee');
+            }
+            return requestedEmployee.employeeId;
+        }
+        return this.resolveEmployeeIdByIdentity({
+            username: input.user.username,
+            email: input.user.email,
+        });
+    }
+    async upsertBiometricAttendanceRecord(input) {
+        const now = new Date();
+        const date = this.toLocalDateKey(now);
+        const existing = await this.prisma.attendanceRecord.findFirst({
+            where: {
+                employeeId: input.employeeId,
+                date,
+                type: input.type,
+            },
+            orderBy: {
+                timestamp: input.type === 'IN' ? 'asc' : 'desc',
+            },
+        });
+        if (existing) {
+            const updated = await this.prisma.attendanceRecord.update({
+                where: { id: existing.id },
+                data: {
+                    timestamp: now,
+                    source: 'device',
+                    verified: true,
+                    deviceId: input.deviceId ?? existing.deviceId,
+                    location: input.location ?? existing.location,
+                    notes: input.notes ?? existing.notes,
+                },
+            });
+            return {
+                recordId: updated.id,
+                employeeId: updated.employeeId,
+                type: updated.type,
+                timestamp: updated.timestamp.toISOString(),
+                date: updated.date,
+                action: 'updated',
+            };
+        }
+        const created = await this.prisma.attendanceRecord.create({
+            data: {
+                employeeId: input.employeeId,
+                timestamp: now,
+                type: input.type,
+                source: 'device',
+                verified: true,
+                deviceId: input.deviceId || null,
+                location: input.location || null,
+                notes: input.notes || null,
+                date,
+            },
+        });
+        return {
+            recordId: created.id,
+            employeeId: created.employeeId,
+            type: created.type,
+            timestamp: created.timestamp.toISOString(),
+            date: created.date,
+            action: 'created',
         };
     }
     hashChallenge(value) {
@@ -500,6 +644,32 @@ let AuthService = AuthService_1 = class AuthService {
         await this.clearFailedLoginState(user);
         challenge.usedAt = new Date();
         credential.lastUsedAt = new Date();
+        let attendance = null;
+        const shouldMarkAttendance = dto.markAttendance === true || Boolean(dto.employeeId);
+        if (shouldMarkAttendance) {
+            const employeeId = await this.resolveEmployeeIdForBiometricAttendance({
+                user,
+                requestedEmployeeId: dto.employeeId,
+            });
+            if (!employeeId) {
+                throw new common_1.BadRequestException('Unable to resolve employeeId for attendance. Provide employeeId or match user identity to employee data.');
+            }
+            attendance = await this.upsertBiometricAttendanceRecord({
+                employeeId,
+                type: dto.attendanceType === 'OUT' ? 'OUT' : 'IN',
+                deviceId: dto.attendanceDeviceId,
+                location: dto.attendanceLocation,
+                notes: dto.attendanceNotes,
+            });
+            const employee = await this.prisma.employee.findUnique({
+                where: { employeeId: attendance.employeeId },
+                select: { name: true },
+            });
+            this.realtimeGateway.emitAttendanceUpdate(this.buildAttendanceRealtimePayload({
+                attendance,
+                employeeName: employee?.name || attendance.employeeId,
+            }));
+        }
         const payload = this.buildAuthPayload(user);
         await this.prisma.user.update({
             where: { id: user.id },
@@ -510,6 +680,7 @@ let AuthService = AuthService_1 = class AuthService {
             user: this.toPublicAuthUser(user),
             roles: payload.roles || [],
             permissions: payload.permissions || [],
+            attendance,
         };
     }
     async revokeBiometric(userId, dto) {
@@ -675,11 +846,16 @@ let AuthService = AuthService_1 = class AuthService {
         if (!user)
             throw new common_1.UnauthorizedException('User not found');
         const role = user.role;
+        const employeeId = await this.resolveEmployeeIdByIdentity({
+            username: user.username,
+            email: user.email,
+        });
         return {
             id: user.id,
             name: user.username,
             username: user.username,
             email: user.email,
+            employeeId,
             status: user.status,
             role: role?.name,
             roles: role?.name ? [role.name] : [],
@@ -761,6 +937,8 @@ let AuthService = AuthService_1 = class AuthService {
 exports.AuthService = AuthService;
 AuthService.BIOMETRIC_CHALLENGE_TTL_MS = 90_000;
 AuthService.BIOMETRIC_MAX_CREDENTIALS_PER_USER = 5;
+AuthService.EMPLOYEE_ID_REGEX = /^EMP[0-9]{3,}$/;
+AuthService.ATTENDANCE_OVERRIDE_ROLES = new Set(['admin', 'hr', 'manager']);
 AuthService.ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
 AuthService.ADMIN_PERMISSIONS = [
     'view_employees',
@@ -789,6 +967,7 @@ exports.AuthService = AuthService = AuthService_1 = __decorate([
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         jwt_1.JwtService,
         config_1.ConfigService,
-        token_revocation_service_1.TokenRevocationService])
+        token_revocation_service_1.TokenRevocationService,
+        realtime_gateway_1.RealtimeGateway])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map
