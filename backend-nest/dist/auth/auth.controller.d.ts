@@ -5,6 +5,11 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { BiometricLoginFinishDto } from './dto/biometric-login-finish.dto';
+import { BiometricLoginStartDto } from './dto/biometric-login-start.dto';
+import { BiometricRegisterFinishDto } from './dto/biometric-register-finish.dto';
+import { BiometricRegisterStartDto } from './dto/biometric-register-start.dto';
+import { BiometricRevokeDto } from './dto/biometric-revoke.dto';
 import { AuditService } from '../common/services/audit.service';
 import { AuthenticatedUser } from '../common/types/authenticated-user.types';
 export declare class AuthController implements OnModuleInit {
@@ -36,6 +41,40 @@ export declare class AuthController implements OnModuleInit {
         roles: string[];
         permissions: string[];
     }, "token">>;
+    biometricRegisterStart(dto: BiometricRegisterStartDto, user: AuthenticatedUser): Promise<{
+        challengeId: string;
+        challengeBase64: string;
+        expiresAt: string;
+        note: string;
+    }>;
+    biometricRegisterFinish(dto: BiometricRegisterFinishDto, user: AuthenticatedUser): Promise<{
+        ok: boolean;
+        keyId: string;
+        message: string;
+    }>;
+    biometricLoginStart(dto: BiometricLoginStartDto): Promise<{
+        challengeId: string;
+        challengeBase64: string;
+        expiresAt: string;
+        allowedKeyIds: string[];
+        note: string;
+    }>;
+    biometricLoginFinish(dto: BiometricLoginFinishDto, res: Response): Promise<Omit<{
+        token: string;
+        user: {
+            id: string;
+            name: string;
+            username: string;
+            role: string;
+        };
+        roles: string[];
+        permissions: string[];
+    }, "token">>;
+    biometricRevoke(dto: BiometricRevokeDto, user: AuthenticatedUser): Promise<{
+        ok: boolean;
+        keyId: string;
+        message: string;
+    }>;
     logout(req: Request, res: Response): Promise<{
         message: string;
     }>;
@@ -77,9 +116,9 @@ export declare class AuthController implements OnModuleInit {
     }>;
     getRoles(user: AuthenticatedUser, req: Request): Promise<{
         id: string;
-        name: string;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
         description: string | null;
         permissions: string[];
     }[]>;

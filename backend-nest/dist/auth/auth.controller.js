@@ -20,6 +20,11 @@ const auth_service_1 = require("./auth.service");
 const login_dto_1 = require("./dto/login.dto");
 const register_dto_1 = require("./dto/register.dto");
 const create_user_dto_1 = require("./dto/create-user.dto");
+const biometric_login_finish_dto_1 = require("./dto/biometric-login-finish.dto");
+const biometric_login_start_dto_1 = require("./dto/biometric-login-start.dto");
+const biometric_register_finish_dto_1 = require("./dto/biometric-register-finish.dto");
+const biometric_register_start_dto_1 = require("./dto/biometric-register-start.dto");
+const biometric_revoke_dto_1 = require("./dto/biometric-revoke.dto");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const permissions_guard_1 = require("../common/guards/permissions.guard");
 const permissions_decorator_1 = require("../common/decorators/permissions.decorator");
@@ -45,6 +50,24 @@ let AuthController = class AuthController {
         this.setAuthCookie(res, result.token);
         res.setHeader('Cache-Control', 'no-store');
         return this.formatAuthResult(result);
+    }
+    async biometricRegisterStart(dto, user) {
+        return this.authService.startBiometricRegistration(user.userId, dto);
+    }
+    async biometricRegisterFinish(dto, user) {
+        return this.authService.finishBiometricRegistration(user.userId, dto);
+    }
+    biometricLoginStart(dto) {
+        return this.authService.startBiometricLogin(dto);
+    }
+    async biometricLoginFinish(dto, res) {
+        const result = await this.authService.finishBiometricLogin(dto);
+        this.setAuthCookie(res, result.token);
+        res.setHeader('Cache-Control', 'no-store');
+        return this.formatAuthResult(result);
+    }
+    biometricRevoke(dto, user) {
+        return this.authService.revokeBiometric(user.userId, dto);
     }
     async logout(req, res) {
         const token = this.extractTokenFromRequest(req);
@@ -159,6 +182,50 @@ __decorate([
     __metadata("design:paramtypes", [register_dto_1.RegisterDto, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "register", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Post)('biometric/register/start'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [biometric_register_start_dto_1.BiometricRegisterStartDto, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "biometricRegisterStart", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Post)('biometric/register/finish'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [biometric_register_finish_dto_1.BiometricRegisterFinishDto, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "biometricRegisterFinish", null);
+__decorate([
+    (0, throttler_1.Throttle)({ default: { limit: 20, ttl: 60_000 } }),
+    (0, common_1.Post)('biometric/login/start'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [biometric_login_start_dto_1.BiometricLoginStartDto]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "biometricLoginStart", null);
+__decorate([
+    (0, throttler_1.Throttle)({ default: { limit: 20, ttl: 60_000 } }),
+    (0, common_1.Post)('biometric/login/finish'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [biometric_login_finish_dto_1.BiometricLoginFinishDto, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "biometricLoginFinish", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Post)('biometric/revoke'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [biometric_revoke_dto_1.BiometricRevokeDto, Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "biometricRevoke", null);
 __decorate([
     (0, common_1.Post)('logout'),
     __param(0, (0, common_1.Req)()),

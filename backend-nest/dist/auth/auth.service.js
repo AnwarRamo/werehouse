@@ -47,6 +47,7 @@ exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const jwt_1 = require("@nestjs/jwt");
+const crypto_1 = require("crypto");
 const bcrypt = __importStar(require("bcryptjs"));
 const prisma_service_1 = require("../prisma/prisma.service");
 const token_revocation_service_1 = require("./token-revocation.service");
@@ -57,6 +58,8 @@ let AuthService = AuthService_1 = class AuthService {
         this.config = config;
         this.tokenRevocation = tokenRevocation;
         this.logger = new common_1.Logger(AuthService_1.name);
+        this.biometricChallenges = new Map();
+        this.biometricCredentialsByUser = new Map();
         this.bcryptRounds = this.config.get('BCRYPT_ROUNDS', 10);
         this.maxLoginAttempts = this.config.get('AUTH_MAX_LOGIN_ATTEMPTS', 5);
         this.lockoutMinutes = this.config.get('AUTH_LOCKOUT_MINUTES', 15);
@@ -227,6 +230,299 @@ let AuthService = AuthService_1 = class AuthService {
             name: user.username,
             username: user.username,
             role: roleName,
+        };
+    }
+    hashChallenge(value) {
+        return (0, crypto_1.createHash)('sha256').update(value).digest('base64url');
+    }
+    pruneBiometricState(now = Date.now()) {
+        for (const [challengeId, challenge] of this.biometricChallenges.entries()) {
+            const expired = challenge.expiresAt <= now;
+            if (expired || challenge.usedAt) {
+                this.biometricChallenges.delete(challengeId);
+            }
+        }
+    }
+    getUserCredentialMap(userId) {
+        const existing = this.biometricCredentialsByUser.get(userId);
+        if (existing) {
+            return existing;
+        }
+        const created = new Map();
+        this.biometricCredentialsByUser.set(userId, created);
+        return created;
+    }
+    getActiveCredentialCount(userId) {
+        const credentials = this.biometricCredentialsByUser.get(userId);
+        if (!credentials) {
+            return 0;
+        }
+        let count = 0;
+        for (const credential of credentials.values()) {
+            if (!credential.revokedAt) {
+                count += 1;
+            }
+        }
+        return count;
+    }
+    base64UrlToBuffer(value, fieldName) {
+        try {
+            const normalized = value.trim();
+            if (!normalized) {
+                throw new Error('empty');
+            }
+            const decoded = Buffer.from(normalized, 'base64url');
+            if (!decoded.length) {
+                throw new Error('empty');
+            }
+            return decoded;
+        }
+        catch {
+            throw new common_1.BadRequestException(`${fieldName} must be valid base64url`);
+        }
+    }
+    hashEquals(left, right) {
+        const leftBuffer = Buffer.from(left);
+        const rightBuffer = Buffer.from(right);
+        if (leftBuffer.length !== rightBuffer.length) {
+            return false;
+        }
+        return (0, crypto_1.timingSafeEqual)(leftBuffer, rightBuffer);
+    }
+    buildBiometricPayload(purpose, challengeId, challengeBase64) {
+        return `${purpose}.${challengeId}.${challengeBase64}`;
+    }
+    decodeEd25519PublicKeyDer(publicKeyBase64) {
+        const rawPublicKey = this.base64UrlToBuffer(publicKeyBase64, 'publicKeyBase64');
+        if (rawPublicKey.length !== 32) {
+            throw new common_1.BadRequestException('publicKeyBase64 must decode to 32 bytes (Ed25519 raw key)');
+        }
+        return Buffer.concat([AuthService_1.ED25519_SPKI_PREFIX, rawPublicKey]);
+    }
+    verifyBiometricSignature(input) {
+        const payload = this.buildBiometricPayload(input.purpose, input.challengeId, input.challengeBase64);
+        const signature = this.base64UrlToBuffer(input.signatureBase64, 'signatureBase64');
+        if (signature.length !== 64) {
+            throw new common_1.BadRequestException('signatureBase64 must decode to 64 bytes (Ed25519 signature)');
+        }
+        const keyObject = (0, crypto_1.createPublicKey)({
+            key: input.publicKeyDer,
+            format: 'der',
+            type: 'spki',
+        });
+        return (0, crypto_1.verify)(null, Buffer.from(payload, 'utf8'), keyObject, signature);
+    }
+    async startBiometricRegistration(userId, dto) {
+        this.pruneBiometricState();
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            throw new common_1.UnauthorizedException('User not found');
+        }
+        const activeCredentialCount = this.getActiveCredentialCount(userId);
+        if (activeCredentialCount >= AuthService_1.BIOMETRIC_MAX_CREDENTIALS_PER_USER) {
+            throw new common_1.BadRequestException('Biometric device limit reached for this user');
+        }
+        const publicKeyDer = this.decodeEd25519PublicKeyDer(dto.publicKeyBase64);
+        const userCredentials = this.getUserCredentialMap(userId);
+        const existingCredential = userCredentials.get(dto.keyId);
+        if (existingCredential && !existingCredential.revokedAt) {
+            throw new common_1.BadRequestException('This keyId is already registered for the current user');
+        }
+        (0, crypto_1.createPublicKey)({
+            key: publicKeyDer,
+            format: 'der',
+            type: 'spki',
+        });
+        const challengeId = (0, crypto_1.randomBytes)(16).toString('hex');
+        const challengeBase64 = (0, crypto_1.randomBytes)(32).toString('base64url');
+        const expiresAt = Date.now() + AuthService_1.BIOMETRIC_CHALLENGE_TTL_MS;
+        this.biometricChallenges.set(challengeId, {
+            id: challengeId,
+            userId,
+            purpose: 'REGISTER',
+            challengeHash: this.hashChallenge(challengeBase64),
+            challengeBase64,
+            expiresAt,
+            keyId: dto.keyId,
+            pendingPublicKeyBase64: dto.publicKeyBase64,
+            pendingDeviceName: dto.deviceName,
+        });
+        return {
+            challengeId,
+            challengeBase64,
+            expiresAt: new Date(expiresAt).toISOString(),
+            note: 'Testing mode: biometric credentials are stored in memory and reset on server restart.',
+        };
+    }
+    async finishBiometricRegistration(userId, dto) {
+        this.pruneBiometricState();
+        const challenge = this.biometricChallenges.get(dto.challengeId);
+        if (!challenge || challenge.purpose !== 'REGISTER') {
+            throw new common_1.BadRequestException('Invalid biometric registration challenge');
+        }
+        if (challenge.userId !== userId) {
+            throw new common_1.UnauthorizedException('This challenge does not belong to the current user');
+        }
+        if (challenge.usedAt) {
+            throw new common_1.BadRequestException('Challenge already used');
+        }
+        if (challenge.expiresAt <= Date.now()) {
+            this.biometricChallenges.delete(challenge.id);
+            throw new common_1.BadRequestException('Challenge expired');
+        }
+        const incomingHash = this.hashChallenge(dto.challengeBase64);
+        if (!this.hashEquals(incomingHash, challenge.challengeHash)) {
+            throw new common_1.UnauthorizedException('Challenge mismatch');
+        }
+        if (!challenge.keyId || !challenge.pendingPublicKeyBase64) {
+            throw new common_1.BadRequestException('Challenge is missing registration key data');
+        }
+        const publicKeyDer = this.decodeEd25519PublicKeyDer(challenge.pendingPublicKeyBase64);
+        const verified = this.verifyBiometricSignature({
+            purpose: 'REGISTER',
+            challengeId: challenge.id,
+            challengeBase64: dto.challengeBase64,
+            publicKeyDer,
+            signatureBase64: dto.signatureBase64,
+        });
+        if (!verified) {
+            throw new common_1.UnauthorizedException('Invalid biometric signature');
+        }
+        const userCredentials = this.getUserCredentialMap(userId);
+        userCredentials.set(challenge.keyId, {
+            keyId: challenge.keyId,
+            userId,
+            publicKeyDer,
+            deviceName: challenge.pendingDeviceName,
+            createdAt: new Date(),
+            revokedAt: undefined,
+            lastUsedAt: undefined,
+        });
+        challenge.usedAt = new Date();
+        return {
+            ok: true,
+            keyId: challenge.keyId,
+            message: 'Biometric key registered (testing mode).',
+        };
+    }
+    async startBiometricLogin(dto) {
+        this.pruneBiometricState();
+        const loginInput = dto.username.toLowerCase();
+        const user = await this.prisma.user.findFirst({
+            where: {
+                OR: [
+                    { username: { equals: loginInput, mode: 'insensitive' } },
+                    { email: { equals: loginInput, mode: 'insensitive' } },
+                ],
+            },
+        });
+        if (!user) {
+            throw new common_1.UnauthorizedException('Invalid biometric login user');
+        }
+        const userCredentials = this.biometricCredentialsByUser.get(user.id);
+        const activeKeyIds = [...(userCredentials?.values() || [])]
+            .filter((credential) => !credential.revokedAt)
+            .map((credential) => credential.keyId);
+        if (!activeKeyIds.length) {
+            throw new common_1.BadRequestException('No active biometric credentials for this user');
+        }
+        const challengeId = (0, crypto_1.randomBytes)(16).toString('hex');
+        const challengeBase64 = (0, crypto_1.randomBytes)(32).toString('base64url');
+        const expiresAt = Date.now() + AuthService_1.BIOMETRIC_CHALLENGE_TTL_MS;
+        this.biometricChallenges.set(challengeId, {
+            id: challengeId,
+            userId: user.id,
+            purpose: 'LOGIN',
+            challengeHash: this.hashChallenge(challengeBase64),
+            challengeBase64,
+            expiresAt,
+        });
+        return {
+            challengeId,
+            challengeBase64,
+            expiresAt: new Date(expiresAt).toISOString(),
+            allowedKeyIds: activeKeyIds,
+            note: 'Testing mode: biometric credentials are stored in memory and reset on server restart.',
+        };
+    }
+    async finishBiometricLogin(dto) {
+        this.pruneBiometricState();
+        const challenge = this.biometricChallenges.get(dto.challengeId);
+        if (!challenge || challenge.purpose !== 'LOGIN') {
+            throw new common_1.BadRequestException('Invalid biometric login challenge');
+        }
+        if (challenge.usedAt) {
+            throw new common_1.BadRequestException('Challenge already used');
+        }
+        if (challenge.expiresAt <= Date.now()) {
+            this.biometricChallenges.delete(challenge.id);
+            throw new common_1.BadRequestException('Challenge expired');
+        }
+        const incomingHash = this.hashChallenge(dto.challengeBase64);
+        if (!this.hashEquals(incomingHash, challenge.challengeHash)) {
+            throw new common_1.UnauthorizedException('Challenge mismatch');
+        }
+        const userCredentials = this.biometricCredentialsByUser.get(challenge.userId);
+        const credential = userCredentials?.get(dto.keyId);
+        if (!credential || credential.revokedAt) {
+            throw new common_1.UnauthorizedException('Biometric credential not found for this user');
+        }
+        const verified = this.verifyBiometricSignature({
+            purpose: 'LOGIN',
+            challengeId: challenge.id,
+            challengeBase64: dto.challengeBase64,
+            publicKeyDer: credential.publicKeyDer,
+            signatureBase64: dto.signatureBase64,
+        });
+        if (!verified) {
+            throw new common_1.UnauthorizedException('Invalid biometric signature');
+        }
+        const user = await this.prisma.user.findUnique({
+            where: { id: challenge.userId },
+            include: { role: true },
+        });
+        if (!user) {
+            throw new common_1.UnauthorizedException('User not found');
+        }
+        if (this.isAccountLocked(user.lockoutUntil)) {
+            throw new common_1.UnauthorizedException('Account is temporarily locked. Please try again later.');
+        }
+        const isProtectedAdmin = this.isProtectedAdminIdentity(user.username, user.email);
+        if (user.status !== 'active' && !isProtectedAdmin) {
+            throw new common_1.UnauthorizedException('User account is inactive');
+        }
+        if (isProtectedAdmin && user.status !== 'active') {
+            await this.prisma.user.update({
+                where: { id: user.id },
+                data: { status: 'active' },
+            });
+        }
+        await this.clearFailedLoginState(user);
+        challenge.usedAt = new Date();
+        credential.lastUsedAt = new Date();
+        const payload = this.buildAuthPayload(user);
+        await this.prisma.user.update({
+            where: { id: user.id },
+            data: { lastLogin: new Date() },
+        });
+        return {
+            token: await this.jwtService.signAsync(payload),
+            user: this.toPublicAuthUser(user),
+            roles: payload.roles || [],
+            permissions: payload.permissions || [],
+        };
+    }
+    async revokeBiometric(userId, dto) {
+        const credentials = this.biometricCredentialsByUser.get(userId);
+        const credential = credentials?.get(dto.keyId);
+        if (!credential || credential.revokedAt) {
+            throw new common_1.BadRequestException('Biometric credential not found or already revoked');
+        }
+        credential.revokedAt = new Date();
+        return {
+            ok: true,
+            keyId: credential.keyId,
+            message: 'Biometric credential revoked (testing mode).',
         };
     }
     async revokeToken(token) {
@@ -463,6 +759,9 @@ let AuthService = AuthService_1 = class AuthService {
     }
 };
 exports.AuthService = AuthService;
+AuthService.BIOMETRIC_CHALLENGE_TTL_MS = 90_000;
+AuthService.BIOMETRIC_MAX_CREDENTIALS_PER_USER = 5;
+AuthService.ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
 AuthService.ADMIN_PERMISSIONS = [
     'view_employees',
     'edit_employees',

@@ -15,6 +15,11 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { BiometricLoginFinishDto } from './dto/biometric-login-finish.dto';
+import { BiometricLoginStartDto } from './dto/biometric-login-start.dto';
+import { BiometricRegisterFinishDto } from './dto/biometric-register-finish.dto';
+import { BiometricRegisterStartDto } from './dto/biometric-register-start.dto';
+import { BiometricRevokeDto } from './dto/biometric-revoke.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Permissions } from '../common/decorators/permissions.decorator';
@@ -51,6 +56,48 @@ export class AuthController implements OnModuleInit {
     this.setAuthCookie(res, result.token);
     res.setHeader('Cache-Control', 'no-store');
     return this.formatAuthResult(result);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('biometric/register/start')
+  async biometricRegisterStart(
+    @Body() dto: BiometricRegisterStartDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.authService.startBiometricRegistration(user.userId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('biometric/register/finish')
+  async biometricRegisterFinish(
+    @Body() dto: BiometricRegisterFinishDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.authService.finishBiometricRegistration(user.userId, dto);
+  }
+
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Post('biometric/login/start')
+  biometricLoginStart(@Body() dto: BiometricLoginStartDto) {
+    return this.authService.startBiometricLogin(dto);
+  }
+
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Post('biometric/login/finish')
+  async biometricLoginFinish(
+    @Body() dto: BiometricLoginFinishDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.finishBiometricLogin(dto);
+    this.setAuthCookie(res, result.token);
+    res.setHeader('Cache-Control', 'no-store');
+    return this.formatAuthResult(result);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('biometric/revoke')
+  biometricRevoke(@Body() dto: BiometricRevokeDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.authService.revokeBiometric(user.userId, dto);
   }
 
   @Post('logout')
