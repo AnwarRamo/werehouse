@@ -37,7 +37,13 @@ export class AuthController implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    await this.authService.ensureAdminBootstrap();
+    try {
+      await this.authService.ensureAdminBootstrap();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      // Log but don't crash the server — bootstrap will retry on next restart
+      console.error(`[AuthController] Admin bootstrap failed: ${message}`);
+    }
   }
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
