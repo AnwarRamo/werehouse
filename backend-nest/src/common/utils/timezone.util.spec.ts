@@ -2,7 +2,7 @@ import {
   factoryDateKeyDayOfWeek,
   toFactoryDateKey,
   utcTimestampToLocalMinutes,
-} from '../common/utils/timezone.util';
+} from './timezone.util';
 
 describe('timezone.util', () => {
   it('toFactoryDateKey uses UTC+3 calendar day', () => {
