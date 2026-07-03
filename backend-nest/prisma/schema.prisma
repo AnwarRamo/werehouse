@@ -101,6 +101,7 @@ model Employee {
   terminationRecords        TerminationRecord[]
   financialSettlements      FinancialSettlement[]
   rehireRecords             RehireRecord[]
+  payrollReceipts           PayrollReceipt[]
 
   employeeSalary    EmployeeSalary?
   employeeInsurance EmployeeInsurance?
@@ -334,6 +335,7 @@ model PayrollRun {
   currency        String        @default("SYP")
   notes           String?
   items           PayrollItem[]
+  receipts        PayrollReceipt[]
 
   @@index([runDate])
   @@index([status, runDate])
@@ -369,6 +371,26 @@ model PayrollItem {
   @@index([payrollRunId])
   @@index([payrollRunId, employeeId])
   @@map("payroll_items")
+}
+
+model PayrollReceipt {
+  id          String      @id @default(uuid()) @db.Uuid
+  employeeId  String
+  employee    Employee    @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
+  month       String
+  payrollRunId String?    @db.Uuid
+  payrollRun  PayrollRun? @relation(fields: [payrollRunId], references: [id], onDelete: SetNull)
+  isReceived  Boolean     @default(false)
+  receivedAt  DateTime?   @db.Date
+  receivedBy  String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([employeeId, month])
+  @@index([month])
+  @@index([payrollRunId])
+  @@index([month, isReceived])
+  @@map("payroll_receipts")
 }
 
 // ---------------------------------------------------------------------------

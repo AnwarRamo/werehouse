@@ -6,11 +6,17 @@ import { paginationMeta, resolvePagination } from '../common/utils/pagination.ut
 import { CalculatePayrollDto } from './dto/calculate-payroll.dto';
 import { PayrollListQueryDto } from './dto/payroll-list-query.dto';
 import { PayrollInputsQueryDto, UpsertPayrollInputDto } from './dto/payroll-input.dto';
+import {
+  BulkUpsertPayrollReceiptsDto,
+  PayrollReceiptsQueryDto,
+  UpsertPayrollReceiptDto,
+} from './dto/payroll-receipt.dto';
 import { Queue } from 'bullmq';
 import { QUEUE_JOBS, QUEUE_NAMES } from '../queues/queue.constants';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { TransportationService } from '../transportation/transportation.service';
 import { AttendanceAggregationService } from '../attendance/attendance-aggregation.service';
+import { AuthenticatedUser } from '../common/types/authenticated-user.types';
 import {
   PAYROLL_BATCH_SIZE,
   WORK_DAYS_PER_MONTH,
@@ -118,6 +124,30 @@ export class PayrollService {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       value,
     );
+  }
+
+  private async resolveLatestPayrollRunIdForMonth(month: string) {
+    const period = this.resolveMonthPeriod(month);
+    const latestRun = await this.prisma.payrollRun.findFirst({
+      where: {
+        periodStart: {
+          gte: period.periodStartDate,
+          lte: period.periodEndDate,
+        },
+      },
+      orderBy: { runDate: 'desc' },
+      select: { id: true },
+    });
+    return latestRun?.id ?? null;
+  }
+
+  private resolveReceiptDate(isReceived: boolean, receivedAt?: string) {
+    if (!isReceived) {
+      return null;
+    }
+
+    const effectiveDate = receivedAt?.slice(0, 10) || new Date().toISOString().slice(0, 10);
+    return this.toDateOnly(effectiveDate);
   }
 
   private async resolvePayrollRun(runIdentifier: string) {
@@ -732,6 +762,167 @@ export class PayrollService {
         ),
       },
       items,
+    };
+  }
+
+  async listReceipts(query: PayrollReceiptsQueryDto) {
+    const period = this.resolveMonthPeriod(query.month);
+    const latestRunId = await this.resolveLatestPayrollRunIdForMonth(query.month);
+    const data = await this.prisma.payrollReceipt.findMany({
+      where: {
+        month: query.month,
+        ...(query.employeeId ? { employeeId: query.employeeId } : {}),
+      },
+      orderBy: { employeeId: 'asc' },
+    });
+
+    return {
+      month: query.month,
+      period: {
+        startDate: period.periodStart,
+        endDate: period.periodEnd,
+      },
+      latestRunId,
+      data,
+    };
+  }
+
+  async upsertReceipt(employeeId: string, dto: UpsertPayrollReceiptDto, user?: AuthenticatedUser) {
+    this.resolveMonthPeriod(dto.month);
+
+    const employee = await this.prisma.employee.findUnique({
+      where: { employeeId },
+      select: { employeeId: true },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    if (!dto.isReceived) {
+      await this.prisma.payrollReceipt.deleteMany({
+        where: {
+          employeeId,
+          month: dto.month,
+        },
+      });
+
+      return {
+        success: true,
+        data: {
+          employeeId,
+          month: dto.month,
+          isReceived: false,
+          receivedAt: null,
+        },
+      };
+    }
+
+    const payrollRunId = await this.resolveLatestPayrollRunIdForMonth(dto.month);
+    const receipt = await this.prisma.payrollReceipt.upsert({
+      where: {
+        employeeId_month: {
+          employeeId,
+          month: dto.month,
+        },
+      },
+      update: {
+        payrollRunId,
+        isReceived: true,
+        receivedAt: this.resolveReceiptDate(true, dto.receivedAt),
+        receivedBy: user?.userId || user?.username || 'system',
+      },
+      create: {
+        employeeId,
+        month: dto.month,
+        payrollRunId,
+        isReceived: true,
+        receivedAt: this.resolveReceiptDate(true, dto.receivedAt),
+        receivedBy: user?.userId || user?.username || 'system',
+      },
+    });
+
+    return {
+      success: true,
+      data: receipt,
+    };
+  }
+
+  async bulkUpsertReceipts(dto: BulkUpsertPayrollReceiptsDto, user?: AuthenticatedUser) {
+    this.resolveMonthPeriod(dto.month);
+
+    const uniqueEmployeeIds = Array.from(new Set(dto.employeeIds.filter(Boolean)));
+    if (uniqueEmployeeIds.length === 0) {
+      throw new BadRequestException('At least one employeeId is required');
+    }
+
+    const existingEmployees = await this.prisma.employee.findMany({
+      where: { employeeId: { in: uniqueEmployeeIds } },
+      select: { employeeId: true },
+    });
+    const existingEmployeeIdSet = new Set(existingEmployees.map((employee) => employee.employeeId));
+    const missingEmployeeIds = uniqueEmployeeIds.filter((employeeId) => !existingEmployeeIdSet.has(employeeId));
+
+    if (missingEmployeeIds.length > 0) {
+      throw new NotFoundException(`Employees not found: ${missingEmployeeIds.join(', ')}`);
+    }
+
+    if (!dto.isReceived) {
+      const deleted = await this.prisma.payrollReceipt.deleteMany({
+        where: {
+          month: dto.month,
+          employeeId: { in: uniqueEmployeeIds },
+        },
+      });
+
+      return {
+        success: true,
+        count: uniqueEmployeeIds.length,
+        deletedCount: deleted.count,
+        data: uniqueEmployeeIds.map((employeeId) => ({
+          employeeId,
+          month: dto.month,
+          isReceived: false,
+          receivedAt: null,
+        })),
+      };
+    }
+
+    const payrollRunId = await this.resolveLatestPayrollRunIdForMonth(dto.month);
+    const receivedAt = this.resolveReceiptDate(true, dto.receivedAt);
+    const actorId = user?.userId || user?.username || 'system';
+
+    const data = await this.prisma.$transaction(
+      uniqueEmployeeIds.map((employeeId) =>
+        this.prisma.payrollReceipt.upsert({
+          where: {
+            employeeId_month: {
+              employeeId,
+              month: dto.month,
+            },
+          },
+          update: {
+            payrollRunId,
+            isReceived: true,
+            receivedAt,
+            receivedBy: actorId,
+          },
+          create: {
+            employeeId,
+            month: dto.month,
+            payrollRunId,
+            isReceived: true,
+            receivedAt,
+            receivedBy: actorId,
+          },
+        }),
+      ),
+    );
+
+    return {
+      success: true,
+      count: data.length,
+      data,
     };
   }
 

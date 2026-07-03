@@ -16,6 +16,11 @@ import { PayrollListQueryDto } from './dto/payroll-list-query.dto';
 import { PayrollSummaryQueryDto } from './dto/payroll-summary-query.dto';
 import { RejectPayrollDto } from './dto/reject-payroll.dto';
 import { PayrollInputsQueryDto, UpsertPayrollInputDto } from './dto/payroll-input.dto';
+import {
+  BulkUpsertPayrollReceiptsDto,
+  PayrollReceiptsQueryDto,
+  UpsertPayrollReceiptDto,
+} from './dto/payroll-receipt.dto';
 
 @ApiTags('payroll')
 @ApiCookieAuth()
@@ -77,6 +82,57 @@ export class PayrollController {
   @Permissions('view_payroll')
   report(@Param('month') month: string) {
     return this.payrollService.report(month);
+  }
+
+  @Get('receipts')
+  @Permissions('view_payroll')
+  listReceipts(@Query() query: PayrollReceiptsQueryDto) {
+    return this.payrollService.listReceipts(query);
+  }
+
+  @Put('receipts/:employeeId')
+  @Permissions('view_payroll')
+  async upsertReceipt(
+    @Param('employeeId') employeeId: string,
+    @Body() dto: UpsertPayrollReceiptDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    const result = await this.payrollService.upsertReceipt(employeeId, dto, user);
+    this.audit.log(
+      {
+        action: 'payroll.receipt.upsert',
+        actorId: user?.userId,
+        actorUsername: user?.username,
+        targetType: 'employee',
+        targetId: employeeId,
+        metadata: { month: dto.month, isReceived: dto.isReceived, receivedAt: dto.receivedAt ?? null },
+      },
+      req,
+    );
+    return result;
+  }
+
+  @Post('receipts/bulk')
+  @Permissions('view_payroll')
+  async bulkUpsertReceipts(
+    @Body() dto: BulkUpsertPayrollReceiptsDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    const result = await this.payrollService.bulkUpsertReceipts(dto, user);
+    this.audit.log(
+      {
+        action: 'payroll.receipt.bulk-upsert',
+        actorId: user?.userId,
+        actorUsername: user?.username,
+        targetType: 'payroll_receipt',
+        targetId: dto.month,
+        metadata: { month: dto.month, count: dto.employeeIds.length, isReceived: dto.isReceived },
+      },
+      req,
+    );
+    return result;
   }
 
   @Get(':runId')
