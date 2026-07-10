@@ -92,13 +92,11 @@ export class AuthService {
 
     let user = await this.prisma.user.findFirst({
       where: { username: normalizedUsername },
-      include: { role: true },
     });
 
     if (!user) {
       user = await this.prisma.user.findFirst({
         where: { email: normalizedUsername },
-        include: { role: true },
       });
     }
 
@@ -123,8 +121,13 @@ export class AuthService {
       data: { failedLoginAttempts: 0, lockoutUntil: null, lastLogin: new Date() },
     });
 
-    const payload = this.buildAuthPayload(user);
-    return this.createSession(user, payload);
+    // Explicitly fetch roles or use cached roles to build payload
+    const allRoles = await this.getRoles();
+    const userRole = allRoles.find((role) => role.id === user.roleId);
+    const userWithRole = { ...user, role: userRole };
+
+    const payload = this.buildAuthPayload(userWithRole);
+    return this.createSession(userWithRole, payload);
   }
 
   async register(dto: RegisterDto) {
@@ -301,7 +304,14 @@ export class AuthService {
   }
 
   async getRoles() {
-    return this.prisma.role.findMany();
+    const cachedRoles = await this.authCache.getRoles();
+    if (cachedRoles) {
+      return cachedRoles;
+    }
+
+    const roles = await this.prisma.role.findMany();
+    await this.authCache.setRoles(roles);
+    return roles;
   }
 
   async revokeToken(token: string) {

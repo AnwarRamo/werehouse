@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateDepartmentDto {
   @IsString()
@@ -10,4 +10,8 @@ export class CreateDepartmentDto {
   @IsString()
   @MaxLength(120)
   manager?: string;
+
+  @IsOptional()
+  @IsDateString()
+  establishedAt?: string;
 }

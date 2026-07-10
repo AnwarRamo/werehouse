@@ -513,6 +513,23 @@ export class PayrollService {
     const employeeSalary = await this.prisma.employeeSalary.findUnique({ where: { employeeId } });
     const insuranceDeduction = this.toDecimal(employeeSalary?.insuranceAmount);
 
+    // Calculate absenceDays for diagnostic logging (prorated earned salary already handles financial impact)
+    const attendanceInRecords = await this.prisma.attendanceRecord.findMany({
+      where: {
+        employeeId,
+        type: 'IN',
+        date: {
+          gte: periodStart.toISOString().slice(0, 10),
+          lte: terminationDate.toISOString().slice(0, 10),
+        },
+      },
+      select: { date: true },
+    });
+    const uniqueDates = new Set(attendanceInRecords.map((r) => r.date));
+    const attendanceDays = uniqueDates.size;
+    const absenceDays = Math.max(0, workDays - attendanceDays);
+    const absencePenalty = new Prisma.Decimal(0); // Force absencePenalty to 0 for provisional settlement
+
     // 5. Bus subscription deduction (prorated for the partial month up to termination date)
     let busDeduction = 0;
     if (this.transportationService) {
@@ -520,6 +537,7 @@ export class PayrollService {
         const batchResult = await this.transportationService.calculateBatchBusDeductions(
           [employeeId],
           terminationDate,
+          { isProvisional: true, terminationDate: terminationDate }, // Pass options for provisional settlement
         );
         busDeduction = batchResult.get(employeeId) ?? 0;
       } catch (err) {
@@ -532,12 +550,13 @@ export class PayrollService {
     const totalDeductions = totalAdvances
       .plus(totalPenalties)
       .plus(insuranceDeduction)
-      .plus(new Prisma.Decimal(busDeduction));
+      .plus(new Prisma.Decimal(busDeduction))
+      .plus(absencePenalty);
 
     // TEMP DIAGNOSTIC LOG
     this.logger.log(`[PROVISIONAL] empId=${employeeId} termDate=${terminationDateStr} termEndOfDay=${terminationEndOfDay.toISOString()}`);
     this.logger.log(`[PROVISIONAL] advances=${JSON.stringify(advances.map(a => ({id:a.id,totalAmount:a.totalAmount.toString(),installment:a.installmentAmount.toString(),remaining:a.remainingAmount.toString(),issueDate:a.issueDate})))}`);
-    this.logger.log(`[PROVISIONAL] totalAdvances=${totalAdvances.toString()} totalPenalties=${totalPenalties.toString()} insurance=${insuranceDeduction.toString()} busDeduction=${busDeduction}`);
+    this.logger.log(`[PROVISIONAL] totalAdvances=${totalAdvances.toString()} totalPenalties=${totalPenalties.toString()} insurance=${insuranceDeduction.toString()} busDeduction=${busDeduction} absenceDays=${absenceDays} absencePenalty=${absencePenalty.toString()}`);
     this.logger.log(`[PROVISIONAL] totalDeductions=${totalDeductions.toString()}`);
 
     // Final provisional settlement
@@ -1615,30 +1634,6 @@ export class PayrollService {
 
 
 
-        const g3 = baseSalary
-          .plus(livingAllowance)
-          .plus(lumpSumSalary);
-        const dailyWage = g3.div(STANDARD_WORK_DAYS);
-        const hourlyWage = dailyWage.div(new Prisma.Decimal(hoursPerDayEmp));
-        const minuteWage = hourlyWage.div(MINUTES_PER_HOUR);
-
-        // Late penalty policy: minuteWage * lateMinutes * 1.5 (overtime multiplier)
-        const latePenalty = minuteWage.times(this.toDecimal(lateMinutes)).times(1.5);
-
-        const earlyLeavePenalty = minuteWage.times(this.toDecimal(earlyLeaveMinutes));
-        const absencePenalty = dailyWage.times(this.toDecimal(absenceDays));
-        const sickLeavePenalty = dailyWage
-          .times(this.toDecimal(sickLeaveDays))
-          .times(MULTIPLIER_SICK_LEAVE);
-        const unpaidLeavePenalty = dailyWage.times(this.toDecimal(unpaidLeaveDays));
-        const unpaidHoursPenalty = hourlyWage.times(this.toDecimal(unpaidHours));
-        const overtimeWeekendPay = dailyWage
-          .times(this.toDecimal(overtimeWeekendDays))
-          .times(MULTIPLIER_WEEKEND);
-        const overtimeRegularPay = minuteWage
-          .times(MULTIPLIER_OVERTIME)
-          .times(this.toDecimal(overtimeRegularMinutes));
-
         const leaveTotal = absenceDays + sickLeaveDays + adminLeaveDays + unpaidLeaveDays + deathLeaveDays;
         const transportAllowance = includeTransportationDeductions
           ? transportAllowanceBase
@@ -1646,23 +1641,29 @@ export class PayrollService {
               .times(this.toDecimal(Math.max(0, WORK_DAYS_PER_MONTH - leaveTotal)))
           : transportAllowanceBase;
 
-        const grossPay = g3
-          .plus(overtimeWeekendPay)
-          .plus(overtimeRegularPay)
+        // Base Gross = Attendance_Calculated_Salary.
+        // This already encapsulates base salary, attendance days, late penalties, early leave penalties, and overtime.
+        const attendanceCalculatedSalary = await this.computeEarnedSalaryForPeriod(
+          employee.employeeId,
+          this.toDateOnly(periodStart),
+          this.toDateOnly(periodEnd),
+          workDays,
+          hoursPerDayEmp,
+        );
+
+        // Final Gross Pay = Attendance_Calculated_Salary + other bonuses (bonusAdjustment) + transportAllowance
+        const grossPay = attendanceCalculatedSalary
           .plus(bonusAdjustment)
           .plus(transportAllowance);
-        const penaltyTotal = penaltyAmount.plus(clothingDeduction);
 
-        // ── Bus subscription deduction ──
+        // Other Deductions: penalties (from employeePenalty), clothing deduction, advances, insurance, bus subscription
+        const penaltiesFromRecords = this.toDecimal(penaltiesByEmployee.get(employee.employeeId) || 0);
+        const penaltyAmountFinal = this.toDecimal(input?.penaltyAmount ?? penaltiesFromRecords);
+
         const busDeductionAmount = this.toDecimal(busDeductionsByEmployee.get(employee.employeeId) ?? 0);
 
-        const employeeDeductions = latePenalty
-          .plus(earlyLeavePenalty)
-          .plus(absencePenalty)
-          .plus(sickLeavePenalty)
-          .plus(unpaidLeavePenalty)
-          .plus(unpaidHoursPenalty)
-          .plus(penaltyTotal)
+        const employeeDeductions = penaltyAmountFinal
+          .plus(clothingDeduction)
           .plus(advanceAmount)
           .plus(insuranceAmount)
           .plus(busDeductionAmount);
@@ -1681,17 +1682,9 @@ export class PayrollService {
         if (attendanceDays === 0) {
           anomalies.push('No attendance records in selected period');
         }
-        if (absenceDays > 0) {
-          anomalies.push(`Absence days deducted: ${absenceDays}`);
-        }
-        if (latePenalty.greaterThan(0)) {
-          anomalies.push(`Late penalty applied: ${latePenalty.toFixed(2)}`);
-        }
-        if (earlyLeavePenalty.greaterThan(0)) {
-          anomalies.push(`Early leave / missing minutes penalty: ${earlyLeavePenalty.toFixed(2)} (${earlyLeaveMinutes}min)`);
-        }
-        if (penaltyTotal.greaterThan(0)) {
-          anomalies.push(`Penalties applied: ${penaltyTotal.toFixed(2)}`);
+
+        if (penaltiesTotal.greaterThan(0)) {
+          anomalies.push(`Penalties applied: ${penaltiesTotal.toFixed(2)}`);
         }
         if (insuranceAmount.greaterThan(0)) {
           anomalies.push(`Insurance deducted: ${insuranceAmount.toFixed(2)}`);
@@ -1711,11 +1704,14 @@ export class PayrollService {
         totalNet = totalNet.plus(netPayRounded);
         processedEmployees += 1;
 
+        const hourlyWage = this.toDecimal(employee.hourlyRate ?? 0); // Calculate hourlyWage here
+
         items.push({
           payrollRunId: runId,
           employeeId: employee.employeeId,
           employeeName: employee.name,
           department: employee.department,
+          attendanceBasedSalary: attendanceCalculatedSalary,
           hoursWorked: new Prisma.Decimal(hoursWorked),
           hourlyRate: hourlyWage,
           grossPay,
@@ -1724,8 +1720,7 @@ export class PayrollService {
           netPayRounded,
           roundingDifference,
           netPayWithAdvance,
-          earlyLeaveMinutes: earlyLeaveMinutes,
-          earlyLeaveDeduction: earlyLeavePenalty,
+
           anomalies,
         });
       }

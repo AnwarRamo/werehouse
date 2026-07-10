@@ -351,6 +351,7 @@ model PayrollItem {
   employeeId         String
   employeeName       String
   department         String?
+  attendanceBasedSalary Decimal @db.Decimal(14, 2)
   hoursWorked        Decimal  @db.Decimal(8, 2)
   hourlyRate         Decimal  @db.Decimal(10, 2)
   grossPay           Decimal  @db.Decimal(14, 2)
