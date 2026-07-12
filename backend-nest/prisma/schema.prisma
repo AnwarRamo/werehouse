@@ -109,9 +109,9 @@ model Employee {
   employeePenalties EmployeePenalty[]
   payrollInputs     PayrollInput[]
 
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  busPassengers       BusPassenger[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  busPassengers BusPassenger[]
 
   @@index([status])
   @@index([name])
@@ -317,22 +317,22 @@ model ImportJob {
 }
 
 model PayrollRun {
-  id              String        @id @default(uuid()) @db.Uuid
-  runId           String        @unique
-  periodStart     DateTime      @db.Date
-  periodEnd       DateTime      @db.Date
-  periodType      String        @default("monthly")
-  runDate         DateTime      @default(now())
+  id              String           @id @default(uuid()) @db.Uuid
+  runId           String           @unique
+  periodStart     DateTime         @db.Date
+  periodEnd       DateTime         @db.Date
+  periodType      String           @default("monthly")
+  runDate         DateTime         @default(now())
   runBy           String?
-  status          String        @default("draft")
-  approvalStatus  String        @default("pending")
+  status          String           @default("draft")
+  approvalStatus  String           @default("pending")
   approvedBy      String?
   approvalDate    DateTime?
-  totalEmployees  Int           @default(0)
-  totalGrossPay   Decimal       @default(0) @db.Decimal(14, 2)
-  totalDeductions Decimal       @default(0) @db.Decimal(14, 2)
-  totalNetPay     Decimal       @default(0) @db.Decimal(14, 2)
-  currency        String        @default("SYP")
+  totalEmployees  Int              @default(0)
+  totalGrossPay   Decimal          @default(0) @db.Decimal(14, 2)
+  totalDeductions Decimal          @default(0) @db.Decimal(14, 2)
+  totalNetPay     Decimal          @default(0) @db.Decimal(14, 2)
+  currency        String           @default("SYP")
   notes           String?
   items           PayrollItem[]
   receipts        PayrollReceipt[]
@@ -346,25 +346,26 @@ model PayrollRun {
 }
 
 model PayrollItem {
-  id                 String   @id @default(uuid()) @db.Uuid
-  payrollRunId       String   @db.Uuid
-  employeeId         String
-  employeeName       String
-  department         String?
-  attendanceBasedSalary Decimal @db.Decimal(14, 2)
-  hoursWorked        Decimal  @db.Decimal(8, 2)
-  hourlyRate         Decimal  @db.Decimal(10, 2)
-  grossPay           Decimal  @db.Decimal(14, 2)
-  totalDeductions    Decimal  @db.Decimal(14, 2)
-  netPay             Decimal  @db.Decimal(14, 2)
-  netPayRounded      Decimal  @default(0) @db.Decimal(14, 2)
-  roundingDifference Decimal  @default(0) @db.Decimal(14, 2)
-  netPayWithAdvance  Decimal  @default(0) @db.Decimal(14, 2)
-  earlyLeaveMinutes  Int      @default(0)
-  earlyLeaveDeduction Decimal @default(0) @db.Decimal(14, 2)
-  anomalies          String[] @default([])
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                    String   @id @default(uuid()) @db.Uuid
+  payrollRunId          String   @db.Uuid
+  employeeId            String
+  employeeName          String
+  department            String?
+  attendanceBasedSalary Decimal  @db.Decimal(14, 2)
+  hoursWorked           Decimal  @db.Decimal(8, 2)
+  hourlyRate            Decimal  @db.Decimal(10, 2)
+  grossPay              Decimal  @db.Decimal(14, 2)
+  totalBonuses          Decimal  @default(0) @db.Decimal(14, 2)
+  totalDeductions       Decimal  @db.Decimal(14, 2)
+  netPay                Decimal  @db.Decimal(14, 2)
+  netPayRounded         Decimal  @default(0) @db.Decimal(14, 2)
+  roundingDifference    Decimal  @default(0) @db.Decimal(14, 2)
+  netPayWithAdvance     Decimal  @default(0) @db.Decimal(14, 2)
+  earlyLeaveMinutes     Int      @default(0)
+  earlyLeaveDeduction   Decimal  @default(0) @db.Decimal(14, 2)
+  anomalies             String[] @default([])
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   run PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
 
@@ -375,17 +376,17 @@ model PayrollItem {
 }
 
 model PayrollReceipt {
-  id          String      @id @default(uuid()) @db.Uuid
-  employeeId  String
-  employee    Employee    @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
-  month       String
-  payrollRunId String?    @db.Uuid
-  payrollRun  PayrollRun? @relation(fields: [payrollRunId], references: [id], onDelete: SetNull)
-  isReceived  Boolean     @default(false)
-  receivedAt  DateTime?   @db.Date
-  receivedBy  String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id           String      @id @default(uuid()) @db.Uuid
+  employeeId   String
+  employee     Employee    @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
+  month        String
+  payrollRunId String?     @db.Uuid
+  payrollRun   PayrollRun? @relation(fields: [payrollRunId], references: [id], onDelete: SetNull)
+  isReceived   Boolean     @default(false)
+  receivedAt   DateTime?   @db.Date
+  receivedBy   String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
   @@unique([employeeId, month])
   @@index([month])
@@ -405,7 +406,7 @@ model PayrollInput {
   periodEnd                  DateTime @db.Date
   lateMinutes                Int      @default(0)
   earlyLeaveMinutes          Int      @default(0)
-  absenceDays                Int      @default(0)
+  absenceDays                Int?
   sickLeaveDays              Int      @default(0)
   adminLeaveDays             Int      @default(0)
   unpaidLeaveDays            Int      @default(0)
@@ -413,10 +414,10 @@ model PayrollInput {
   unpaidHours                Decimal  @default(0) @db.Decimal(8, 2)
   overtimeRegularMinutes     Int      @default(0)
   overtimeWeekendDays        Decimal  @default(0) @db.Decimal(6, 2)
-  penaltyAmount              Decimal  @default(0) @db.Decimal(14, 2)
+  penaltyAmount              Decimal? @db.Decimal(14, 2)
   clothingDeduction          Decimal  @default(0) @db.Decimal(14, 2)
-  bonusAdjustment            Decimal  @default(0) @db.Decimal(14, 2)
-  advanceAmount              Decimal  @default(0) @db.Decimal(14, 2)
+  bonusAdjustment            Decimal? @db.Decimal(14, 2)
+  advanceAmount              Decimal? @db.Decimal(14, 2)
   insuranceAmount            Decimal? @db.Decimal(14, 2)
   transportAllowanceOverride Decimal? @db.Decimal(14, 2)
   notes                      String?
@@ -468,7 +469,7 @@ model EmployeeAdvance {
   remainingAmount   Decimal  @db.Decimal(14, 2)
   notes             String?
   issueDate         DateTime @default(now())
-  period            String?  // "YYYY-MM" — auto-filled from issueDate
+  period            String? // "YYYY-MM" — auto-filled from issueDate
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -543,7 +544,7 @@ model EmployeePenalty {
   amount     Decimal  @db.Decimal(14, 2)
   reason     String?
   issueDate  DateTime @default(now())
-  period     String?  // "YYYY-MM" — auto-filled from issueDate
+  period     String? // "YYYY-MM" — auto-filled from issueDate
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   employee   Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)

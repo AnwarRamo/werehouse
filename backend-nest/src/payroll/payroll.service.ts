@@ -222,7 +222,10 @@ export class PayrollService {
       periodEnd: this.toDateOnly(periodEnd),
       lateMinutes: Number(dto.lateMinutes ?? 0),
       earlyLeaveMinutes: Number(dto.earlyLeaveMinutes ?? 0),
-      absenceDays: Number(dto.absenceDays ?? 0),
+      absenceDays:
+        dto.absenceDays === undefined || dto.absenceDays === null
+          ? null
+          : Number(dto.absenceDays),
       sickLeaveDays: Number(dto.sickLeaveDays ?? 0),
       adminLeaveDays: Number(dto.adminLeaveDays ?? 0),
       unpaidLeaveDays: Number(dto.unpaidLeaveDays ?? 0),
@@ -230,10 +233,19 @@ export class PayrollService {
       unpaidHours: new Prisma.Decimal((dto.unpaidHours ?? 0).toString()),
       overtimeRegularMinutes: Number(dto.overtimeRegularMinutes ?? 0),
       overtimeWeekendDays: new Prisma.Decimal((dto.overtimeWeekendDays ?? 0).toString()),
-      penaltyAmount: new Prisma.Decimal((dto.penaltyAmount ?? 0).toString()),
+      penaltyAmount:
+        dto.penaltyAmount === undefined || dto.penaltyAmount === null
+          ? null
+          : new Prisma.Decimal(dto.penaltyAmount.toString()),
       clothingDeduction: new Prisma.Decimal((dto.clothingDeduction ?? 0).toString()),
-      bonusAdjustment: new Prisma.Decimal((dto.bonusAdjustment ?? 0).toString()),
-      advanceAmount: new Prisma.Decimal((dto.advanceAmount ?? 0).toString()),
+      bonusAdjustment:
+        dto.bonusAdjustment === undefined || dto.bonusAdjustment === null
+          ? null
+          : new Prisma.Decimal(dto.bonusAdjustment.toString()),
+      advanceAmount:
+        dto.advanceAmount === undefined || dto.advanceAmount === null
+          ? null
+          : new Prisma.Decimal(dto.advanceAmount.toString()),
       insuranceAmount:
         dto.insuranceAmount === undefined || dto.insuranceAmount === null
           ? null
@@ -575,14 +587,30 @@ export class PayrollService {
   }
 
   async calculate(dto: CalculatePayrollDto, userId?: string) {
+    const periodStart = this.toDateOnly(dto.periodStart);
+    const periodEnd = this.toDateOnly(dto.periodEnd);
+
+    // Check for an existing payroll run for the given period
+    const existingRun = await this.prisma.payrollRun.findFirst({
+      where: {
+        periodStart: periodStart,
+        periodEnd: periodEnd,
+      },
+    });
+
+    if (existingRun) {
+      this.logger.log(`Deleting existing payroll run ${existingRun.runId} for period ${dto.periodStart} - ${dto.periodEnd}`);
+      await this.deletePayrollRun(existingRun.id, userId);
+    }
+
     const runDateKey = dto.periodStart.slice(0, 10).replace(/-/g, '');
     const runId = `PAY${runDateKey}-${Date.now().toString().slice(-4)}`;
 
     const run = await this.prisma.payrollRun.create({
       data: {
         runId,
-        periodStart: this.toDateOnly(dto.periodStart),
-        periodEnd: this.toDateOnly(dto.periodEnd),
+        periodStart: periodStart,
+        periodEnd: periodEnd,
         runBy: userId,
         status: 'processing',
         approvalStatus: 'pending',
@@ -1570,35 +1598,35 @@ export class PayrollService {
         const advancesInstallments = this.toDecimal(advancesByEmployee.get(employee.employeeId) || 0);
         const penaltiesTotal = this.toDecimal(penaltiesByEmployee.get(employee.employeeId) || 0);
 
-        // العقوبات فقط (بدون assistanceAmount لأنها مكافآت)
-        const penaltyAmount = this.toDecimal(
-          input?.penaltyAmount ?? penaltiesTotal,
-        );
+        // ── FIX (Bug #2 — Missing Bonuses), root cause closed at the schema level ──
+        // `PayrollInput.bonusAdjustment` is now a genuinely nullable column
+        // (see migration 20260712000000_make_payroll_input_overrides_nullable).
+        // `input?.bonusAdjustment` is `null` for a row that was never given an
+        // explicit override, so `??` correctly falls back to the computed sum
+        // from EmployeeBonus (bonusAmount + assistanceAmount). An explicit `0`
+        // override is now honored too, since it's distinguishable from "unset".
+        const bonusAdjustment = this.toDecimal(input?.bonusAdjustment ?? bonusAmount);
+
+        // ── FIX (Bug #1 — Ghost / Double Deductions) ────────────────────────
+        // totalDeductions must ONLY contain PURE FINANCIAL deductions:
+        // advanceAmount + explicit financial penalties (+ clothing/insurance/
+        // bus subscription). Time/attendance-based penalties (delay minutes,
+        // early-leave minutes) are already netted out of `attendanceCalculatedSalary`
+        // by computeEarnedSalaryForPeriod() above. They must NEVER be summed
+        // into totalDeductions again — doing so double-discounts the employee.
+        // penaltyAmount/advanceAmount are now nullable too, so the same
+        // plain `??` correctly falls back to the computed EmployeePenalty /
+        // EmployeeAdvance totals instead of silently masking them.
+        const penaltyAmountFinal = this.toDecimal(input?.penaltyAmount ?? penaltiesTotal);
+        const advanceAmount = this.toDecimal(input?.advanceAmount ?? advancesInstallments);
+
         const clothingDeduction = this.toDecimal(
           (input as unknown as { clothingDeduction?: Prisma.Decimal })?.clothingDeduction ?? 0,
-        );
-        const bonusAdjustment = this.toDecimal(
-          input?.bonusAdjustment ?? bonusAmount,
-        );
-        const advanceAmount = this.toDecimal(
-          input?.advanceAmount ?? advancesInstallments,
         );
         const insuranceAmount = this.toDecimal(
           input?.insuranceAmount ?? salaryRecord?.insuranceAmount ?? 0,
         );
 
-        const lateMinutes = this.resolveAttendanceValue(
-          input?.lateMinutes,
-          lateMinutesByEmployee.get(employee.employeeId) || 0,
-          includeAttendanceDeductions,
-        );
-        // EARLY_LEAVE_MINUTES: Prefer PayrollInput override, fallback to DailyAttendanceLog aggregation
-        const earlyLeaveMinutesComputed = earlyLeaveMinutesByEmployee.get(employee.employeeId) || 0;
-        const earlyLeaveMinutes = this.resolveAttendanceValue(
-          input?.earlyLeaveMinutes,
-          earlyLeaveMinutesComputed,
-          includeAttendanceDeductions,
-        );
         const absenceDays = this.resolveAttendanceValue(
           input?.absenceDays,
           absenceDaysFallback,
@@ -1657,9 +1685,9 @@ export class PayrollService {
           .plus(transportAllowance);
 
         // Other Deductions: penalties (from employeePenalty), clothing deduction, advances, insurance, bus subscription
-        const penaltiesFromRecords = this.toDecimal(penaltiesByEmployee.get(employee.employeeId) || 0);
-        const penaltyAmountFinal = this.toDecimal(input?.penaltyAmount ?? penaltiesFromRecords);
-
+        // NOTE: penaltyAmountFinal / advanceAmount were already resolved above via
+        // resolveDecimalOverride() — do NOT recompute them here from the raw
+        // `input?.field ?? ...` pattern, that reintroduces the masking bug.
         const busDeductionAmount = this.toDecimal(busDeductionsByEmployee.get(employee.employeeId) ?? 0);
 
         const employeeDeductions = penaltyAmountFinal
@@ -1695,6 +1723,16 @@ export class PayrollService {
         if (busDeductionAmount.greaterThan(0)) {
           anomalies.push(`Bus subscription deducted: ${busDeductionAmount.toFixed(2)}`);
         }
+        // Informational only — these minutes are already netted inside
+        // attendanceCalculatedSalary and are intentionally NOT part of totalDeductions.
+        const lateMinutesForPeriod = lateMinutesByEmployee.get(employee.employeeId) || 0;
+        const earlyLeaveMinutesForPeriod = earlyLeaveMinutesByEmployee.get(employee.employeeId) || 0;
+        if (includeAttendanceDeductions && lateMinutesForPeriod > 0) {
+          anomalies.push(`Delay minutes (already netted in attendance salary): ${lateMinutesForPeriod}`);
+        }
+        if (includeAttendanceDeductions && earlyLeaveMinutesForPeriod > 0) {
+          anomalies.push(`Early-leave minutes (already netted in attendance salary): ${earlyLeaveMinutesForPeriod}`);
+        }
         if (netPay.lessThan(0)) {
           anomalies.push('Net pay is negative after deductions');
         }
@@ -1715,6 +1753,7 @@ export class PayrollService {
           hoursWorked: new Prisma.Decimal(hoursWorked),
           hourlyRate: hourlyWage,
           grossPay,
+          totalBonuses: bonusAdjustment,
           totalDeductions: employeeDeductions,
           netPay,
           netPayRounded,
